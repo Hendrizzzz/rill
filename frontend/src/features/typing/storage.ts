@@ -1,3 +1,4 @@
+import { calculateConsistency } from "./scoring";
 import type { TestConfig, TypingResult } from "./types";
 
 export type ThemeName = "paper" | "nocturne" | "tide";
@@ -74,6 +75,33 @@ function isTestConfig(value: unknown): value is TestConfig {
   );
 }
 
+function hasValidPaceBuckets(
+  value: unknown,
+  durationMs: number,
+  typedCharacters: number,
+): boolean {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 600) {
+    return false;
+  }
+
+  let totalDuration = 0;
+  let totalTyped = 0;
+  for (const [index, bucket] of value.entries()) {
+    if (
+      !isRecord(bucket) ||
+      !isIntegerInRange(bucket.durationMs, 1, 1_000) ||
+      !isIntegerInRange(bucket.typedCharacters, 0, 50_000) ||
+      (index < value.length - 1 && bucket.durationMs !== 1_000)
+    ) {
+      return false;
+    }
+    totalDuration += bucket.durationMs;
+    totalTyped += bucket.typedCharacters;
+  }
+
+  return totalDuration === durationMs && totalTyped === typedCharacters;
+}
+
 export function isTypingResult(value: unknown): value is TypingResult {
   if (!isRecord(value)) {
     return false;
@@ -105,6 +133,7 @@ export function isTypingResult(value: unknown): value is TypingResult {
   const extraAttempts = value.extraAttempts as number;
   const correctedErrors = value.correctedErrors as number;
   const durationMs = value.durationMs as number;
+  const modeValue = value.modeValue as number;
   const wpm = value.wpm as number;
   const rawWpm = value.rawWpm as number;
   const accuracy = value.accuracy as number;
@@ -121,8 +150,13 @@ export function isTypingResult(value: unknown): value is TypingResult {
   const completedAtValid =
     typeof value.completedAt === "string" &&
     Number.isFinite(Date.parse(value.completedAt));
-  const countersValid =
+  const durationValid =
     isIntegerInRange(durationMs, 1, 600_000) &&
+    (value.mode === "time"
+      ? durationMs === modeValue * 1_000
+      : durationMs >= 250);
+  const countersValid =
+    durationValid &&
     isIntegerInRange(typedCharacters, 1, 50_000) &&
     isIntegerInRange(correctAttempts, 0, 50_000) &&
     isIntegerInRange(incorrectAttempts, 0, 50_000) &&
@@ -152,15 +186,7 @@ export function isTypingResult(value: unknown): value is TypingResult {
       value.completionReason === "time" ||
       value.completionReason === "limit" ||
       value.completionReason === "prompt-exhausted") &&
-    Array.isArray(value.paceBuckets) &&
-    value.paceBuckets.length >= 1 &&
-    value.paceBuckets.length <= 600 &&
-    value.paceBuckets.every(
-      (bucket) =>
-        isRecord(bucket) &&
-        isIntegerInRange(bucket.durationMs, 1, 1_000) &&
-        isIntegerInRange(bucket.typedCharacters, 0, 50_000),
-    )
+    hasValidPaceBuckets(value.paceBuckets, durationMs, typedCharacters)
   );
 }
 
@@ -196,7 +222,13 @@ export function loadGuestResults(): TypingResult[] {
   if (!isRecord(stored) || stored.version !== 1 || !Array.isArray(stored.results)) {
     return [];
   }
-  return stored.results.filter(isTypingResult).slice(0, MAX_GUEST_RESULTS);
+  return stored.results
+    .filter(isTypingResult)
+    .map((result) => ({
+      ...result,
+      consistency: calculateConsistency(result.paceBuckets),
+    }))
+    .slice(0, MAX_GUEST_RESULTS);
 }
 
 export function saveGuestResult(

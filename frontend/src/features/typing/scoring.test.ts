@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  buildPaceAnalysisBuckets,
+  MINIMUM_PACE_ANALYSIS_WINDOW_MS,
+} from "./paceAnalysis";
 import { buildPaceBuckets, calculateConsistency, calculateMetrics } from "./scoring";
 
 describe("typing scoring", () => {
@@ -41,5 +45,53 @@ describe("typing scoring", () => {
       { durationMs: 1_000, typedCharacters: 5 },
       { durationMs: 250, typedCharacters: 2 },
     ]);
+  });
+
+  it("coalesces an unreliable terminal window without changing its totals", () => {
+    const source = [
+      { durationMs: 1_000, typedCharacters: 7 },
+      { durationMs: 1_000, typedCharacters: 7 },
+      { durationMs: 24, typedCharacters: 1 },
+    ];
+
+    expect(buildPaceAnalysisBuckets(source)).toEqual([
+      { durationMs: 1_000, typedCharacters: 7 },
+      { durationMs: 1_024, typedCharacters: 8 },
+    ]);
+    expect(source).toEqual([
+      { durationMs: 1_000, typedCharacters: 7 },
+      { durationMs: 1_000, typedCharacters: 7 },
+      { durationMs: 24, typedCharacters: 1 },
+    ]);
+    expect(calculateConsistency(source)).toBe(94.51);
+  });
+
+  it("uses an explicit minimum analysis window at the threshold boundaries", () => {
+    expect(
+      buildPaceAnalysisBuckets([
+        { durationMs: 1_000, typedCharacters: 5 },
+        {
+          durationMs: MINIMUM_PACE_ANALYSIS_WINDOW_MS - 1,
+          typedCharacters: 0,
+        },
+      ]),
+    ).toEqual([{ durationMs: 1_249, typedCharacters: 5 }]);
+    expect(
+      buildPaceAnalysisBuckets([
+        { durationMs: 1_000, typedCharacters: 5 },
+        {
+          durationMs: MINIMUM_PACE_ANALYSIS_WINDOW_MS,
+          typedCharacters: 0,
+        },
+      ]),
+    ).toEqual([
+      { durationMs: 1_000, typedCharacters: 5 },
+      { durationMs: 250, typedCharacters: 0 },
+    ]);
+    expect(
+      buildPaceAnalysisBuckets([
+        { durationMs: 24, typedCharacters: 1 },
+      ]),
+    ).toEqual([{ durationMs: 24, typedCharacters: 1 }]);
   });
 });

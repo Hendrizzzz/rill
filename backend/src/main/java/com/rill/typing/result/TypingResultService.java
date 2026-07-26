@@ -32,6 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class TypingResultService {
 
+    private static final int MINIMUM_PACE_ANALYSIS_WINDOW_MS = 250;
+
     private final TypingResultRepository results;
     private final AuthService authService;
     private final ResultRateLimiter rateLimiter;
@@ -240,8 +242,13 @@ public class TypingResultService {
                         ? rounded(100)
                         : rounded(request.correctAttempts() * 100d / denominator);
 
+        BigDecimal consistency = deriveConsistency(request.paceBuckets());
+        return new Metrics(wpm, rawWpm, accuracy, consistency);
+    }
+
+    private static BigDecimal deriveConsistency(List<PaceBucket> buckets) {
         List<Double> pace =
-                request.paceBuckets().stream()
+                paceAnalysisBuckets(buckets).stream()
                         .map(bucket -> bucket.typedCharacters() * 12_000d / bucket.durationMs())
                         .toList();
         double mean = pace.stream().mapToDouble(Double::doubleValue).average().orElse(0);
@@ -255,7 +262,23 @@ public class TypingResultService {
             consistency =
                     100 * Math.max(0, 1 - Math.sqrt(variance) / Math.max(mean, 1));
         }
-        return new Metrics(wpm, rawWpm, accuracy, rounded(consistency));
+        return rounded(consistency);
+    }
+
+    private static List<PaceBucket> paceAnalysisBuckets(List<PaceBucket> buckets) {
+        if (buckets.size() < 2
+                || buckets.getLast().durationMs() >= MINIMUM_PACE_ANALYSIS_WINDOW_MS) {
+            return buckets;
+        }
+
+        List<PaceBucket> analyzed = new ArrayList<>(buckets);
+        PaceBucket finalBucket = analyzed.removeLast();
+        PaceBucket previousBucket = analyzed.removeLast();
+        analyzed.add(
+                new PaceBucket(
+                        previousBucket.durationMs() + finalBucket.durationMs(),
+                        previousBucket.typedCharacters() + finalBucket.typedCharacters()));
+        return analyzed;
     }
 
     private TypingResultResponse toResponse(TypingResultEntity entity, int pruned) {
@@ -280,7 +303,7 @@ public class TypingResultService {
                 entity.getWpm(),
                 entity.getRawWpm(),
                 entity.getAccuracy(),
-                entity.getConsistency(),
+                deriveConsistency(pace),
                 pace,
                 entity.getCompletedAt(),
                 pruned);

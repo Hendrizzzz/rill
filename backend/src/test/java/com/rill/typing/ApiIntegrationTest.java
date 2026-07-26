@@ -230,6 +230,50 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void tinyTerminalPaceWindowIsCombinedForConsistencyAnalysis() throws Exception {
+        Client client = registeredClient("pace_window");
+        UUID clientResultId = UUID.randomUUID();
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "clientResultId":"%s",
+                                          "mode":"WORDS",
+                                          "modeValue":10,
+                                          "punctuation":false,
+                                          "numbers":false,
+                                          "durationMs":2024,
+                                          "typedCharacters":15,
+                                          "correctAttempts":15,
+                                          "incorrectAttempts":0,
+                                          "correctCharacters":15,
+                                          "missingCharacters":0,
+                                          "extraAttempts":0,
+                                          "correctedErrors":0,
+                                          "paceBuckets":[
+                                            {"durationMs":1000,"typedCharacters":7},
+                                            {"durationMs":1000,"typedCharacters":7},
+                                            {"durationMs":24,"typedCharacters":1}
+                                          ]
+                                        }
+                                        """
+                                                .formatted(clientResultId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rawWpm").value(88.93))
+                .andExpect(jsonPath("$.consistency").value(94.51))
+                .andExpect(jsonPath("$.paceBuckets.length()").value(3))
+                .andExpect(jsonPath("$.paceBuckets[2].durationMs").value(24))
+                .andExpect(jsonPath("$.paceBuckets[2].typedCharacters").value(1));
+
+        client.perform(get("/api/results").param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].consistency").value(94.51));
+    }
+
+    @Test
     void conflictingRetryAndInvalidCursorReturnStableProblemCodes() throws Exception {
         Client client = registeredClient("conflict");
         UUID id = UUID.randomUUID();

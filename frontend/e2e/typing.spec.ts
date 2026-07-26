@@ -582,6 +582,72 @@ test.describe("guest typing", () => {
     await expect(scrubber).toHaveValue("0");
   });
 
+  test("keeps a tiny terminal window from becoming a 500-WPM sample", async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "rill.guest-results.v1",
+        JSON.stringify({
+          version: 1,
+          results: [
+            {
+              clientResultId: "pace-window-regression",
+              mode: "words",
+              modeValue: 10,
+              punctuation: false,
+              numbers: false,
+              durationMs: 2_024,
+              typedCharacters: 15,
+              correctAttempts: 15,
+              incorrectAttempts: 0,
+              correctCharacters: 15,
+              missingCharacters: 0,
+              extraAttempts: 0,
+              correctedErrors: 0,
+              wpm: 88.93,
+              rawWpm: 88.93,
+              accuracy: 100,
+              consistency: 0.7,
+              paceBuckets: [
+                { durationMs: 1_000, typedCharacters: 7 },
+                { durationMs: 1_000, typedCharacters: 7 },
+                { durationMs: 24, typedCharacters: 1 },
+              ],
+              completedAt: "2026-07-26T00:00:00Z",
+              completionReason: "finished",
+            },
+          ],
+        }),
+      );
+    });
+
+    await page.goto("/history");
+    await expect(page.getByText("avg 89 · peak 94")).toBeVisible();
+    await expect(
+      page.locator(".pace-y-tick").filter({ hasText: /^500$/ }),
+    ).toHaveCount(0);
+    await expect(page.getByText("94.5%")).toBeVisible();
+
+    const scrubber = page.getByRole("slider", {
+      name: "Inspect raw typing pace",
+    });
+    await expect(scrubber).toHaveAttribute("max", "1");
+    await scrubber.focus();
+    await scrubber.press("End");
+    await expect(scrubber).toHaveAttribute(
+      "aria-valuetext",
+      "1 to 2.024 seconds, 94 raw words per minute, 8 typed characters",
+    );
+    await expect(page.getByTestId("pace-tooltip")).toContainText("1–2.024s");
+    if (testInfo.project.name === "chromium") {
+      await page.screenshot({
+        path: "output/playwright/pace-terminal-window-desktop.png",
+        fullPage: true,
+      });
+    }
+  });
+
   test("reveals a pace sample by touch", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",

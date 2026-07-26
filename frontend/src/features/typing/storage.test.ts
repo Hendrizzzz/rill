@@ -11,22 +11,22 @@ import type { TypingResult } from "./types";
 
 const result: TypingResult = {
   clientResultId: "result-1",
-  mode: "time",
-  modeValue: 30,
+  mode: "words",
+  modeValue: 10,
   punctuation: false,
   numbers: false,
-  durationMs: 30_000,
-  typedCharacters: 100,
-  correctAttempts: 95,
-  incorrectAttempts: 5,
-  correctCharacters: 92,
-  missingCharacters: 1,
-  extraAttempts: 2,
-  correctedErrors: 3,
-  wpm: 36.8,
-  rawWpm: 40,
-  accuracy: 94.06,
-  consistency: 88,
+  durationMs: 1_000,
+  typedCharacters: 3,
+  correctAttempts: 3,
+  incorrectAttempts: 0,
+  correctCharacters: 3,
+  missingCharacters: 0,
+  extraAttempts: 0,
+  correctedErrors: 0,
+  wpm: 36,
+  rawWpm: 36,
+  accuracy: 100,
+  consistency: 100,
   paceBuckets: [{ durationMs: 1_000, typedCharacters: 3 }],
   completedAt: "2026-07-26T00:00:00.000Z",
   completionReason: "time",
@@ -75,5 +75,48 @@ describe("typing local storage", () => {
     );
 
     expect(loadGuestResults()).toEqual([]);
+  });
+
+  it("drops results whose pace buckets do not match their totals", () => {
+    localStorage.setItem(
+      "rill.guest-results.v1",
+      JSON.stringify({
+        version: 1,
+        results: [
+          {
+            ...result,
+            paceBuckets: [{ durationMs: 999, typedCharacters: 2 }],
+          },
+        ],
+      }),
+    );
+
+    expect(loadGuestResults()).toEqual([]);
+  });
+
+  it("rederives legacy guest consistency from the honest analysis windows", () => {
+    const legacy = {
+      ...result,
+      durationMs: 2_024,
+      typedCharacters: 15,
+      correctAttempts: 15,
+      correctCharacters: 15,
+      wpm: 88.93,
+      rawWpm: 88.93,
+      consistency: 0.7,
+      paceBuckets: [
+        { durationMs: 1_000, typedCharacters: 7 },
+        { durationMs: 1_000, typedCharacters: 7 },
+        { durationMs: 24, typedCharacters: 1 },
+      ],
+    };
+    localStorage.setItem(
+      "rill.guest-results.v1",
+      JSON.stringify({ version: 1, results: [legacy] }),
+    );
+
+    expect(loadGuestResults()).toEqual([
+      expect.objectContaining({ consistency: 94.51 }),
+    ]);
   });
 });

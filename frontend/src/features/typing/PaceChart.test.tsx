@@ -107,6 +107,39 @@ describe("PaceChart", () => {
     expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("120 wpm");
   });
 
+  it("does not annualize a tiny terminal window as its own pace sample", () => {
+    const { container } = render(
+      <PaceChart
+        buckets={[
+          { durationMs: 1_000, typedCharacters: 7 },
+          { durationMs: 1_000, typedCharacters: 7 },
+          { durationMs: 24, typedCharacters: 1 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText(/avg 89 · peak 94/)).toBeVisible();
+    expect(screen.queryByText("500", { selector: ".pace-y-tick" })).not.toBeInTheDocument();
+    const scrubber = screen.getByRole("slider", {
+      name: "Inspect raw typing pace",
+    });
+    expect(scrubber).toHaveAttribute("max", "1");
+
+    fireEvent.focus(scrubber);
+    fireEvent.change(scrubber, { target: { value: "1" } });
+    expect(scrubber).toHaveAttribute(
+      "aria-valuetext",
+      "1 to 2.024 seconds, 94 raw words per minute, 8 typed characters",
+    );
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("1–2.024s");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("94 wpm");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("8 chars");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("1.024s");
+    expect(container.querySelector("path.pace-line")?.getAttribute("d")).not.toMatch(
+      /NaN|Infinity/,
+    );
+  });
+
   it("keeps a single sample inspectable", () => {
     render(
       <PaceChart
@@ -121,7 +154,7 @@ describe("PaceChart", () => {
     expect(scrubber).toHaveAttribute("max", "0");
     expect(scrubber).toHaveAttribute(
       "aria-valuetext",
-      "0 to 0.8 seconds, 16 raw words per minute, 1 typed character",
+      "0 to 0.75 seconds, 16 raw words per minute, 1 typed character",
     );
     expect(screen.getByText("One pace sample.")).toHaveClass("sr-only");
   });

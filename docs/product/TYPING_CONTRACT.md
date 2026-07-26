@@ -166,8 +166,18 @@ This separates:
 - Zero-character buckets are retained so pauses affect consistency.
 - The sum of bucket durations equals result duration.
 - The sum of bucket characters equals `typedCharacters`.
-- Each bucket’s raw pace is `typedCharacters * 12_000 / durationMs`.
-- Consistency uses the population standard deviation of bucket raw pace:
+- These exact buckets are the canonical storage/API representation.
+- A final bucket shorter than 250ms is too small to stand as an independent
+  annualized observation. For charting and consistency only, it is combined
+  with the preceding bucket by adding both durations and character counts.
+  A lone short bucket remains unchanged because there is no adjacent evidence.
+- This analysis step preserves exact total duration and characters. It does not
+  pad, cap, discard, or replace measured input, and it does not change overall
+  WPM/raw WPM.
+- Each resulting analysis bucket's raw pace is
+  `typedCharacters * 12_000 / durationMs`.
+- Consistency uses the population standard deviation of analysis-bucket raw
+  pace:
 
 ```text
 consistency = 100 * max(0, 1 - standardDeviation / max(mean, 1))
@@ -175,7 +185,10 @@ consistency = 100 * max(0, 1 - standardDeviation / max(mean, 1))
 
 - One bucket produces `100`.
 - A zero mean produces `100`, though a persisted completed test normally has at least one character.
-- The server validates bucket structure/cross-field sums and derives consistency. The underlying counts remain client-reported and are not anti-cheat evidence.
+- The server validates bucket structure/cross-field sums and derives
+  consistency. Stored legacy results are rederived on read, and guest results
+  are rederived on load, so historical displays use the same analysis policy.
+  The underlying counts remain client-reported and are not anti-cheat evidence.
 
 ## Worked traces
 

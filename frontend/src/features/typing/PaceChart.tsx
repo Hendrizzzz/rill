@@ -11,6 +11,10 @@ import {
 import { createPortal } from "react-dom";
 
 import { buildMonotonePath } from "./monotonePath";
+import {
+  buildPaceAnalysisBuckets,
+  calculateBucketWpm,
+} from "./paceAnalysis";
 import type { PaceBucket } from "./types";
 
 interface PaceChartProps {
@@ -51,8 +55,9 @@ const TOOLTIP_GAP = 12;
 const TOOLTIP_VIEWPORT_MARGIN = 10;
 
 function formatSeconds(milliseconds: number): string {
-  const seconds = milliseconds / 1_000;
-  return Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
+  return (milliseconds / 1_000)
+    .toFixed(3)
+    .replace(/\.?0+$/, "");
 }
 
 function visualInterval(point: PlotPoint): string {
@@ -105,7 +110,7 @@ function buildTimeTicks(totalDuration: number): AxisTick[] {
   if (totalSeconds < 1) {
     return [
       {
-        label: `${totalSeconds.toFixed(1)}s`,
+        label: `${formatSeconds(totalDuration)}s`,
         position: 100,
       },
     ];
@@ -194,24 +199,21 @@ export function PaceChart({ buckets }: PaceChartProps) {
   }, [committedIndex]);
 
   const { points, average, peak, xTicks, yTicks } = useMemo(() => {
-    const totalDuration = buckets.reduce(
+    const analysisBuckets = buildPaceAnalysisBuckets(buckets);
+    const totalDuration = analysisBuckets.reduce(
       (sum, bucket) => sum + bucket.durationMs,
       0,
     );
-    const totalCharacters = buckets.reduce(
+    const totalCharacters = analysisBuckets.reduce(
       (sum, bucket) => sum + bucket.typedCharacters,
       0,
     );
-    const rates = buckets.map((bucket) =>
-      bucket.durationMs > 0
-        ? (bucket.typedCharacters * 12_000) / bucket.durationMs
-        : 0,
-    );
+    const rates = analysisBuckets.map(calculateBucketWpm);
     const scale = buildWpmScale(
       rates.length > 0 ? Math.max(...rates) : 0,
     );
     const nextPoints = buildPlotPoints(
-      buckets,
+      analysisBuckets,
       rates,
       totalDuration,
       scale.maximum,

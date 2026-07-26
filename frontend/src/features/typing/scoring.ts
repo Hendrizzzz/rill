@@ -1,19 +1,20 @@
 import type { PaceBucket, ResultCounters } from "./types";
+import {
+  buildPaceAnalysisBuckets,
+  calculateBucketWpm,
+} from "./paceAnalysis";
 
 function roundTwo(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function calculateConsistency(buckets: readonly PaceBucket[]): number {
-  if (buckets.length <= 1) {
+  const analysisBuckets = buildPaceAnalysisBuckets(buckets);
+  if (analysisBuckets.length <= 1) {
     return 100;
   }
 
-  const pace = buckets.map((bucket) =>
-    bucket.durationMs > 0
-      ? (bucket.typedCharacters * 12_000) / bucket.durationMs
-      : 0,
-  );
+  const pace = analysisBuckets.map(calculateBucketWpm);
   const mean = pace.reduce((sum, value) => sum + value, 0) / pace.length;
   if (mean === 0) {
     return 100;

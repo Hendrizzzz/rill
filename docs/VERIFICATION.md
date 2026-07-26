@@ -30,12 +30,12 @@ Results:
 
 - clean install/audit: 260 packages, 0 vulnerabilities;
 - TypeScript and ESLint: pass, 0 warnings;
-- Vitest: 9 files, 60 tests passed;
+- Vitest: 9 files, 65 tests passed;
 - coverage gates passed for API/queue and deterministic typing modules; total
   source coverage was 43.88% lines because rendered UI is intentionally covered
   primarily by Playwright rather than shallow unit tests;
-- Vite production output after the result-shortcut and smooth-chart fixes:
-  JavaScript 284.52 KiB raw / 90.08 KiB gzip; CSS 23.03 KiB raw /
+- Vite production output after the terminal pace-window fix:
+  JavaScript 285.00 KiB raw / 90.28 KiB gzip; CSS 23.03 KiB raw /
   7.48 KiB gzip.
 
 ### Backend
@@ -44,7 +44,7 @@ Results:
 .\mvnw.cmd --batch-mode --no-transfer-progress clean verify
 ```
 
-Result: `BUILD SUCCESS`; 21 tests passed, 0 failures/errors/skips. The suite used
+Result: `BUILD SUCCESS`; 22 tests passed, 0 failures/errors/skips. The suite used
 PostgreSQL 18.4 through Testcontainers and includes migration, MockMvc,
 authorization, validation, idempotency, retention, limiter, and concurrency
 cases.
@@ -78,6 +78,12 @@ Against the built Compose/Nginx/Spring/PostgreSQL application:
 - result Enter restart and smooth-path pointer/keyboard exploration passed in
   all four browser projects (8 passed). The real-touch tooltip regression
   passed twice consecutively in development and twice against production.
+- the deterministic terminal-window regression first reproduced `avg 89 · peak
+  500` in Vitest, then passed against production in Chromium, Firefox, WebKit,
+  and mobile Chromium (4 passed). The same raw 24ms tail now renders as part of
+  a 1.024s analysis window with `avg 89 · peak 94`; its tooltip, accessible
+  value, Y scale, and historical `94.5%` consistency agree. Browser console
+  inspection reported no warnings or errors.
 
 The browser cases cover keyboard completion/restart, wrong character rendering,
 repeated Backspace, native `InputEvent` paste rejection, prompt/config focus,
@@ -125,9 +131,10 @@ Final visual captures:
 - `output/playwright/prompt-reopened-error-desktop.png` (1440×900);
 - `output/playwright/prompt-reopened-error-mobile.png` (390×844);
 - `output/playwright/pace-smooth-curve-desktop.png` (1440×900);
-- `output/playwright/pace-smooth-curve-mobile.png` (390×844).
+- `output/playwright/pace-smooth-curve-mobile.png` (390×844);
+- `frontend/output/playwright/pace-terminal-window-desktop.png` (1280×1120).
 
-These are local, gitignored verification artifacts. All eleven were visually
+These are local, gitignored verification artifacts. All twelve were visually
 inspected. Earlier inspection also covered the typing,
 active, completion, account-dialog, Nocturne, and narrow/landscape states.
 

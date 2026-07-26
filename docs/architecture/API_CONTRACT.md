@@ -179,6 +179,11 @@ Bounds and invariants:
 - a completed/persisted result has at least one typed character.
 
 The server derives WPM, raw WPM, accuracy, consistency, and `completedAt`.
+The submitted pace buckets remain canonical and exact. When the final bucket is
+shorter than 250ms and has a predecessor, the server combines those two buckets
+only for consistency analysis; the response still returns the unchanged raw
+buckets. This prevents a few milliseconds at a second boundary from receiving
+the statistical weight of a full sample.
 
 First creation: `201` with canonical `TypingResult`.
 
