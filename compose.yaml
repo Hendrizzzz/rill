@@ -1,0 +1,132 @@
+name: rill
+
+services:
+  database:
+    image: postgres:18.4-alpine3.24
+    environment:
+      POSTGRES_DB: rill
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${RILL_POSTGRES_ADMIN_PASSWORD:?set RILL_POSTGRES_ADMIN_PASSWORD}
+      RILL_MIGRATOR_DB_PASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
+      RILL_APP_DB_PASSWORD: ${RILL_APP_DB_PASSWORD:?set RILL_APP_DB_PASSWORD}
+    volumes:
+      - rill-data:/var/lib/postgresql
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rill"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - data
+
+  migrate:
+    image: flyway/flyway:12.11.0-alpine
+    environment:
+      FLYWAY_URL: jdbc:postgresql://database:5432/rill
+      FLYWAY_USER: rill_migrator
+      FLYWAY_PASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
+      FLYWAY_CONNECT_RETRIES: "60"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+    command: ["migrate"]
+    volumes:
+      - ./backend/src/main/resources/db/migration:/flyway/sql:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - data
+
+  permissions:
+    image: postgres:18.4-alpine3.24
+    environment:
+      PGPASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
+    command:
+      [
+        "psql",
+        "--host=database",
+        "--username=rill_migrator",
+        "--dbname=rill",
+        "--set=ON_ERROR_STOP=1",
+        "--command=REVOKE ALL ON TABLE flyway_schema_history FROM rill_app",
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${RILL_SPRING_PROFILES_ACTIVE:-prod}
+      RILL_DATABASE_URL: jdbc:postgresql://database:5432/rill
+      RILL_DATABASE_USERNAME: rill_app
+      RILL_DATABASE_PASSWORD: ${RILL_APP_DB_PASSWORD:?set RILL_APP_DB_PASSWORD}
+      RILL_COOKIE_SECURE: ${RILL_COOKIE_SECURE:-true}
+      RILL_FLYWAY_ENABLED: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+      permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    networks:
+      - edge
+      - data
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "${RILL_BIND_ADDRESS:-127.0.0.1}:${RILL_HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/cache/nginx:size=32m,mode=0755
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    networks:
+      - edge
+
+volumes:
+  rill-data:
+
+networks:
+  edge:
+  data:
+    internal: true

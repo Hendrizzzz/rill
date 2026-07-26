@@ -1,0 +1,34 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Java / Maven
+backend/target/
+backend/.mvn/timing.properties
+*.log
+hs_err_pid*
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+frontend/output/
+*.tsbuildinfo
+
+# Local tooling
+.cache/
+.tmp/
+artifacts/
+.playwright-cli/
+output/

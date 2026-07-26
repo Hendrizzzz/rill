@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+**/node_modules
+**/dist
+**/coverage
+**/target
+**/playwright-report
+**/test-results
+**/*.log
+.env
+.env.*
+!.env.example

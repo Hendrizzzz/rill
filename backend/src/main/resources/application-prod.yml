@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${RILL_DATABASE_URL}
+    username: ${RILL_DATABASE_USERNAME}
+    password: ${RILL_DATABASE_PASSWORD}
+  flyway:
+    enabled: ${RILL_FLYWAY_ENABLED:false}
+
+rill:
+  cookie:
+    secure: ${RILL_COOKIE_SECURE:true}
+  allowed-origins: []
+
+logging:
+  structured:
+    format:
+      console: logstash

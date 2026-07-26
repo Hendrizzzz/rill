@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: rill-backend
+  datasource:
+    url: ${RILL_DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/rill}
+    username: ${RILL_DATABASE_USERNAME:rill}
+    password: ${RILL_DATABASE_PASSWORD:rill-local-only}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 1
+      connection-timeout: 5000
+  flyway:
+    enabled: ${RILL_FLYWAY_ENABLED:true}
+    clean-disabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    default-property-inclusion: non_null
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: none
+  max-http-request-header-size: 16KB
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+rill:
+  cookie:
+    name: RILL_SESSION
+    secure: ${RILL_COOKIE_SECURE:false}
+    max-age: 7d
+    touch-interval: 15m
+  allowed-origins: []
+  max-results-per-account: 1000
+  max-sessions-per-account: 10
+  max-results-per-hour: 120
+  max-result-requests-per-minute: 240
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: INFO
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"

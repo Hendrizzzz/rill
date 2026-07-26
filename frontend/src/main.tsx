@@ -1,0 +1,18 @@
+import "@fontsource-variable/newsreader";
+import "@fontsource-variable/recursive";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+
+import { App } from "./app/App";
+import "./styles/app.css";
+
+const root = document.getElementById("root");
+if (root === null) {
+  throw new Error("Rill could not find its application root.");
+}
+
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
