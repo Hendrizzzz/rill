@@ -649,8 +649,11 @@ test.describe("guest typing", () => {
 
     const lines = await readPromptTargets(page);
     expect(lines.length).toBeGreaterThanOrEqual(4);
+    const codeTypingDelay = persistableTypingDelay(lines.join("\n"));
     const input = page.getByRole("textbox", { name: "Typing input" });
-    await input.pressSequentially(lines[0] ?? "", { delay: 1 });
+    await input.pressSequentially(lines[0] ?? "", {
+      delay: codeTypingDelay,
+    });
     await page.setViewportSize({ width: 320, height: 568 });
 
     await expect
@@ -707,7 +710,9 @@ test.describe("guest typing", () => {
 
     await input.press("Enter");
     for (let index = 1; index < lines.length; index += 1) {
-      await input.pressSequentially(lines[index] ?? "", { delay: 1 });
+      await input.pressSequentially(lines[index] ?? "", {
+        delay: codeTypingDelay,
+      });
       if (index < lines.length - 1) {
         await input.press("Enter");
       }
@@ -717,6 +722,7 @@ test.describe("guest typing", () => {
     await expect(
       page.getByText("Python 3 code · words per minute"),
     ).toBeVisible();
+    await expect(page.getByText("saved", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "history" }).click();
     await expect(
       page.locator(".history-table tbody tr").first().locator("td").nth(1),
@@ -1497,9 +1503,10 @@ test.describe("guest typing", () => {
     page,
     context,
   }) => {
-    await page.goto("/");
-    const words = await chooseTenWords(page);
+    await page.goto("/", { waitUntil: "commit" });
     const input = page.getByRole("textbox", { name: "Typing input" });
+    await expect(input).toBeFocused();
+    const words = await chooseTenWords(page);
     await input.press(words[0]?.[0] ?? "a");
     await expect(
       page
@@ -1514,8 +1521,12 @@ test.describe("guest typing", () => {
         ? route.abort("connectionrefused")
         : route.continue();
     });
-    await sibling.goto(new URL("/", page.url()).toString());
-    await sibling.getByRole("button", { name: /Theme:/ }).click();
+    await sibling.goto(new URL("/", page.url()).toString(), {
+      waitUntil: "commit",
+    });
+    const siblingTheme = sibling.getByRole("button", { name: /Theme:/ });
+    await expect(siblingTheme).toBeVisible();
+    await siblingTheme.click();
     await sibling.getByRole("button", { name: "time", exact: true }).click();
     await sibling.close();
 
