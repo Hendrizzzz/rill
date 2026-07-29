@@ -9,7 +9,6 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health/readiness
-    maxShutdownDelaySeconds: 30
     autoDeployTrigger: "off"
     buildFilter:
       paths:

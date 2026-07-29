@@ -44,6 +44,7 @@ class DeploymentManifestTest {
                 .containsEntry("dockerContext", ".")
                 .containsEntry("healthCheckPath", "/actuator/health/readiness")
                 .containsEntry("autoDeployTrigger", "off");
+        assertThat(service).doesNotContainKey("maxShutdownDelaySeconds");
         Map<String, Object> buildFilter = map(service.get("buildFilter"));
         assertThat(values(buildFilter.get("paths")))
                 .contains("backend/**", ".dockerignore", "render.yaml");
