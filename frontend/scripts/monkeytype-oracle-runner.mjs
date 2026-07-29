@@ -374,7 +374,12 @@ function runTrace(trace) {
   };
 }
 
-const input = JSON.parse(readFileSync(0, "utf8").replace(/^\uFEFF/, ""));
+let standardInput = "";
+process.stdin.setEncoding("utf8");
+for await (const chunk of process.stdin) {
+  standardInput += chunk;
+}
+const input = JSON.parse(standardInput.replace(/^\uFEFF/, ""));
 const source = {
   repository: fixture.repository,
   commit: actualCommit,
