@@ -1937,4 +1937,28 @@ test("account password can be revealed and concealed without losing its value", 
   await accountDialog.getByRole("button", { name: "hide" }).click();
   await expect(password).toHaveAttribute("type", "password");
   await expect(password).toHaveValue("quiet-river-password");
+
+  await accountDialog.getByRole("button", { name: "show" }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await accountDialog.getByRole("button", { name: /close/ }).click();
+  await page.getByRole("button", { name: "account", exact: true }).click();
+  const reopenedDialog = page.getByRole("dialog", { name: "Account" });
+  const reopenedPassword = reopenedDialog.getByLabel("password");
+  await expect(reopenedPassword).toHaveAttribute("type", "password");
+  await expect(reopenedPassword).toHaveValue("");
+  await expect(
+    reopenedDialog.getByRole("button", { name: "show" }),
+  ).toHaveAttribute("aria-pressed", "false");
+
+  await reopenedDialog.getByRole("button", { name: "show" }).click();
+  await expect(reopenedPassword).toHaveAttribute("type", "text");
+  await reopenedDialog
+    .getByRole("button", { name: "create account", exact: true })
+    .click();
+  const registrationPassword = reopenedDialog.getByLabel("password");
+  await expect(registrationPassword).toHaveAttribute("type", "password");
+  await expect(registrationPassword).toHaveValue("");
+  await expect(
+    reopenedDialog.getByRole("button", { name: "show" }),
+  ).toHaveAttribute("aria-pressed", "false");
 });

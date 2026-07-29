@@ -214,6 +214,7 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
               />
             </label>
             <PasswordField
+              key={`${mode}-${open ? "open" : "closed"}`}
               label="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               minLength={12}
@@ -245,6 +246,7 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
             history is not affected.
           </p>
           <PasswordField
+            key={`delete-${open ? "open" : "closed"}`}
             label="confirm password"
             autoComplete="current-password"
             disabled={busy}

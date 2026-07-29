@@ -790,6 +790,17 @@ session owns the shared `backend/target`. Its first harness attempt omitted
 repository file from its absolute source path, the complete focused suite
 above passed. This was a test-fixture copy error, not an application defect.
 
+The frontend review follow-up then reproduced a password-privacy state bug in
+the first visibility-toggle revision. Expected behavior was a concealed,
+empty field after closing/reopening the account dialog or switching between
+sign-in and registration. Observed behavior was that `form.reset()` cleared the
+value but preserved React's `visible` state, so a reopened field could remain
+`type="text"`. The field is now remounted at dialog and mode boundaries. The
+browser regression reveals the password, closes and reopens the dialog, then
+reveals it again and switches account modes; both boundaries restore
+`type="password"`, an empty value, and `aria-pressed="false"`. The focused
+Chromium test passed after the fix.
+
 Vercel is not deployed or claimed verified. GitHub authentication reaches
 Vercel's six-digit authenticator challenge, and this environment has neither a
 Vercel CLI session nor `VERCEL_TOKEN`. Until that account-controlled step is
