@@ -84,9 +84,9 @@ jobs:
     timeout-minutes: 20
     env:
       MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
-      MONKEYTYPE_SOURCE_ROOT: ${{ runner.temp }}/monkeytype-oracle
+      MONKEYTYPE_SOURCE_ROOT: ${{ github.workspace }}/../monkeytype-oracle
       PARITY_RUNS: "500"
-      PARITY_EVIDENCE_PATH: ${{ runner.temp }}/parity-smoke.json
+      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/../parity-smoke.json
     defaults:
       run:
         working-directory: frontend
@@ -121,10 +121,10 @@ jobs:
     timeout-minutes: 30
     env:
       MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
-      MONKEYTYPE_SOURCE_ROOT: ${{ runner.temp }}/monkeytype-oracle
+      MONKEYTYPE_SOURCE_ROOT: ${{ github.workspace }}/../monkeytype-oracle
       PARITY_RUNS: "10000"
-      PARITY_EVIDENCE_PATH: ${{ runner.temp }}/parity-campaign.json
-      PARITY_STATUS_PATH: ${{ runner.temp }}/PARITY_STATUS.md
+      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/../parity-campaign.json
+      PARITY_STATUS_PATH: ${{ github.workspace }}/../PARITY_STATUS.md
     defaults:
       run:
         working-directory: frontend
