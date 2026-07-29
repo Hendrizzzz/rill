@@ -32,6 +32,10 @@ services:
         value: "5"
       - key: RILL_DATABASE_MIN_IDLE
         value: "0"
+      - key: RILL_MAX_AUTH_ATTEMPTS_PER_MINUTE
+        value: "30"
+      - key: RILL_MAX_REGISTRATIONS_PER_HOUR
+        value: "60"
       - key: RILL_DATABASE_URL
         sync: false
       - key: RILL_DATABASE_USERNAME

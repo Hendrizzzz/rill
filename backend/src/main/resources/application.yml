@@ -48,6 +48,8 @@ rill:
   max-sessions-per-account: 10
   max-results-per-hour: 120
   max-result-requests-per-minute: 240
+  max-auth-attempts-per-minute: ${RILL_MAX_AUTH_ATTEMPTS_PER_MINUTE:30}
+  max-registrations-per-hour: ${RILL_MAX_REGISTRATIONS_PER_HOUR:60}
 
 management:
   endpoints:

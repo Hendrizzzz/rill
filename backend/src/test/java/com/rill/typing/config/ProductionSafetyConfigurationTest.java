@@ -180,6 +180,6 @@ class ProductionSafetyConfigurationTest {
 
     private static RillProperties properties(
             RillProperties.Cookie cookie, List<String> origins) {
-        return new RillProperties(cookie, origins, 10_000, 10, 120, 240);
+        return new RillProperties(cookie, origins, 10_000, 10, 120, 240, 30, 60);
     }
 }

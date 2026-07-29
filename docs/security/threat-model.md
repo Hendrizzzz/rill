@@ -20,7 +20,7 @@ against this boundary.
 
 ## Executive summary
 
-The highest-risk areas are account-session theft or fixation, cross-site state changes against cookie-authenticated users, ownership mistakes in result/export/delete endpoints, and resource abuse of authentication/result APIs. Rill reduces these risks with random revocable sessions whose raw values never enter storage or logs, explicit CSRF protection, principal-derived ownership, bounded DTOs/database constraints, password hashing, a constrained same-origin deployment, and rate limits. Client score tampering remains an accepted low-impact limitation because results are private and non-competitive.
+The highest-risk areas are account-session theft or fixation, cross-site state changes against cookie-authenticated users, ownership mistakes in result/export/delete endpoints, and resource abuse of authentication/result APIs. Rill reduces these risks with random revocable sessions whose raw values never enter storage or logs, explicit CSRF protection, principal-derived ownership, bounded DTOs/database constraints, password hashing, a constrained same-origin deployment, per-username throttling, and a process-global pre-work authentication budget. Client score tampering remains an accepted low-impact limitation because results are private and non-competitive.
 
 ## Scope and assumptions
 
@@ -193,8 +193,9 @@ this model does not treat planned CI runs as executed evidence.
 | Risk | Decision |
 | --- | --- |
 | Fabricated private scores | Accepted because there is no public competition; ranges and formulas are still server-validated. |
-| Single-instance rate limiting | Accepted for one API instance. A shared edge/store limiter is required before horizontal scaling. |
-| Targeted username lockout | Ten failed attempts can delay that username for up to 15 minutes. The edge IP limiter reduces single-source abuse but not distributed attempts; an internet-scale deployment should use shared source-plus-account progressive throttling and monitor lockout rates. |
+| Single-instance rate limiting | Accepted for one API instance. The process-wide minute/hour budgets bound database and BCrypt work even on the public Render origin, but reset on process restart and do not coordinate across replicas. A shared edge/store limiter is required before horizontal scaling. |
+| Authentication-budget denial | A caller can consume the 30-attempt minute budget or 60-registration hour budget and temporarily deny legitimate authentication. This is accepted for the single-instance free launch because the alternative permits unbounded expensive work; monitor 429 rates and move to source-aware shared throttling before material traffic. |
+| Targeted username lockout | Ten failed attempts can delay that username for up to 15 minutes. The Compose edge IP limiter reduces single-source abuse but not distributed attempts; an internet-scale deployment should use shared source-plus-account progressive throttling and monitor lockout rates. |
 | No password recovery or MFA | Accepted for the no-email release-1 scope and disclosed to users/operators. |
 | No in-repository TLS/host hardening | Owned by the documented operator-managed ingress/platform boundary. |
 | Browser extensions or compromised client device | Outside the web application's control; HttpOnly cookies reduce ordinary script exposure. |
@@ -216,10 +217,12 @@ this model does not treat planned CI runs as executed evidence.
 The Vercel rewrite preserves one browser-visible origin, but the Render API
 hostname is still public. A caller can bypass Vercel and consume Render or Neon
 free-tier quota. Spring authentication, CSRF checks, request bounds, validation,
-and process-local rate limits still apply; they do not create a private origin
-or a distributed denial-of-service boundary. This availability risk is accepted
-for the single-instance hobby deployment. Provider usage must be monitored, and
-a shared edge limiter or private origin is required before horizontal scaling.
+per-username login throttling, and pre-work process-global authentication
+budgets still apply; they do not create a private origin or a distributed
+denial-of-service boundary. This availability risk is accepted for the
+single-instance hobby deployment. Provider usage and 429 rates must be
+monitored, and a shared source-aware edge limiter or private origin is required
+before horizontal scaling.
 
 Render starts Flyway inside the Spring process before opening the application
 pool. The process therefore holds both the non-superuser schema-owner secret

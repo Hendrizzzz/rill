@@ -133,8 +133,10 @@ Provide these secret values when the Blueprint asks:
 
 The manifest fixes the production profile, secure cookies, small connection
 pool, Flyway connection retries, startup migrations, Singapore region,
-readiness health check, and 100-result retention cap. A deploy is healthy only
-when the API can query the database and all Flyway migrations have succeeded.
+readiness health check, 100-result retention cap, a 30-attempt-per-minute
+process-wide authentication budget, and a 60-registration-per-hour budget. A
+deploy is healthy only when the API can query the database and all Flyway
+migrations have succeeded.
 After the first successful migration, connect as the Neon owner and remove the
 runtime role's default access to Flyway metadata:
 
@@ -158,8 +160,11 @@ operator changes. The application does not need Flyway history access.
 
 The Render hostname is necessarily public on the free plan; Vercel provides a
 same-origin browser route, not a private origin. Direct callers still face
-Spring authentication, CSRF, validation, and process-local rate limits, but
-they can bypass Vercel's edge and consume free quota.
+Spring authentication, CSRF, validation, a per-username login limiter, and the
+pre-work process-global budgets, but they can bypass Vercel's edge and consume
+free quota. The global budgets deliberately bound expensive work on the one
+free instance; an attacker can also consume a budget temporarily, so they are
+not a substitute for a source-aware distributed edge limiter.
 
 If Render assigns a hostname other than
 `rill-typewriting-api.onrender.com`, update the destination in

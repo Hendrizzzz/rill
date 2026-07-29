@@ -21,7 +21,7 @@ rill:
     secure: ${RILL_COOKIE_SECURE:true}
   allowed-origins: []
   deployment:
-    require-verified-database-tls: ${RILL_REQUIRE_VERIFIED_DATABASE_TLS:false}
+    require-verified-database-tls: ${RILL_REQUIRE_VERIFIED_DATABASE_TLS:true}
 
 logging:
   structured:

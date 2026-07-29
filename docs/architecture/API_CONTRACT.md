@@ -302,7 +302,15 @@ Record tie-breaker: WPM descending, accuracy descending, earliest `completedAt`.
 
 ## Rate and resource controls
 
-- Bundled Nginx is the public service and rate-limits `/api/auth/login` and `/api/auth/register` by its resolved source address. The backend port is private in production Compose.
+- Before database lookup or BCrypt work, the API applies a fixed-memory,
+  process-global authentication budget: 30 login/registration attempts per
+  minute and 60 registrations per hour by default. The limits are configurable
+  within bounded production properties. This protects a directly reachable
+  Render instance; it is deliberately single-instance, not a distributed
+  identity or source-address limiter.
+- Bundled Nginx additionally rate-limits `/api/auth/login` and
+  `/api/auth/register` by its resolved source address. The backend port is
+  private in production Compose.
 - The API also maintains a bounded, expiring per-normalized-username login limiter so a distributed source cannot hammer one account indefinitely.
 - Authenticated result requests are limited to 240 per account per minute
   before validation/database work, while novel stored results are separately
@@ -310,7 +318,11 @@ Record tie-breaker: WPM descending, accuracy descending, earliest `completedAt`.
   per completed test.
 - Nginx and API enforce 64-KiB request bodies, request/header timeouts, and no request buffering beyond what the small JSON contract needs.
 - Pace arrays, page size, active sessions, retained results, and export size are bounded as above.
-- If an external ingress sits before bundled Nginx, it must overwrite forwarding headers and own public-source rate limiting. The API does not infer cookie security from forwarded scheme headers.
+- If an external ingress sits before bundled Nginx, it must overwrite
+  forwarding headers and own public-source rate limiting. The API's
+  process-global budget remains a last-resort work bound but cannot identify a
+  source or coordinate across replicas. The API does not infer cookie security
+  from forwarded scheme headers.
 
 ## Deployment boundary
 

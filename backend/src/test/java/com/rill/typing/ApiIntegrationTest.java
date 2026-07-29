@@ -59,7 +59,9 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(
         properties = {
             "rill.max-results-per-account=2",
-            "rill.max-result-requests-per-minute=20"
+            "rill.max-result-requests-per-minute=20",
+            "rill.max-auth-attempts-per-minute=10000",
+            "rill.max-registrations-per-hour=10000"
         })
 @AutoConfigureMockMvc
 @Testcontainers

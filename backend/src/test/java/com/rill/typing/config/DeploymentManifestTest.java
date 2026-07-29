@@ -81,7 +81,32 @@ class DeploymentManifestTest {
                         variable ->
                                 assertThat(variable)
                                         .containsEntry("key", "RILL_MAX_RESULTS_PER_ACCOUNT")
-                                        .containsEntry("value", "100"));
+                                        .containsEntry("value", "100"))
+                .anySatisfy(
+                        variable ->
+                                assertThat(variable)
+                                        .containsEntry(
+                                                "key",
+                                                "RILL_MAX_AUTH_ATTEMPTS_PER_MINUTE")
+                                        .containsEntry("value", "30"))
+                .anySatisfy(
+                        variable ->
+                                assertThat(variable)
+                                        .containsEntry(
+                                                "key",
+                                                "RILL_MAX_REGISTRATIONS_PER_HOUR")
+                                        .containsEntry("value", "60"));
+
+        Map<String, Object> production =
+                loadYaml(
+                        repository.resolve(
+                                "backend/src/main/resources/application-prod.yml"));
+        Map<String, Object> deployment =
+                map(map(production.get("rill")).get("deployment"));
+        assertThat(deployment)
+                .containsEntry(
+                        "require-verified-database-tls",
+                        "${RILL_REQUIRE_VERIFIED_DATABASE_TLS:true}");
 
         JsonNode vercel =
                 JsonMapper.builder()

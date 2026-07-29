@@ -13,7 +13,9 @@ public record RillProperties(
         @DefaultValue("1000") int maxResultsPerAccount,
         @DefaultValue("10") int maxSessionsPerAccount,
         @DefaultValue("120") int maxResultsPerHour,
-        @DefaultValue("240") int maxResultRequestsPerMinute) {
+        @DefaultValue("240") int maxResultRequestsPerMinute,
+        @DefaultValue("30") int maxAuthAttemptsPerMinute,
+        @DefaultValue("60") int maxRegistrationsPerHour) {
 
     public RillProperties {
         allowedOrigins = List.copyOf(allowedOrigins);
@@ -32,6 +34,14 @@ public record RillProperties(
         if (maxResultRequestsPerMinute < 1 || maxResultRequestsPerMinute > 10_000) {
             throw new IllegalArgumentException(
                     "rill.max-result-requests-per-minute must be between 1 and 10000");
+        }
+        if (maxAuthAttemptsPerMinute < 1 || maxAuthAttemptsPerMinute > 10_000) {
+            throw new IllegalArgumentException(
+                    "rill.max-auth-attempts-per-minute must be between 1 and 10000");
+        }
+        if (maxRegistrationsPerHour < 1 || maxRegistrationsPerHour > 10_000) {
+            throw new IllegalArgumentException(
+                    "rill.max-registrations-per-hour must be between 1 and 10000");
         }
         if (allowedOrigins.stream()
                 .anyMatch(

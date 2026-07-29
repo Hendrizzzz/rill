@@ -24,7 +24,9 @@ class SecurityConfigurationTest {
                         10_000,
                         10,
                         120,
-                        240);
+                        240,
+                        30,
+                        60);
         CorsConfigurationSource source =
                 new SecurityConfiguration().corsConfigurationSource(properties);
         MockHttpServletRequest request = new MockHttpServletRequest();

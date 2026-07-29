@@ -1703,9 +1703,21 @@ test.describe("guest typing", () => {
         .locator("path.pace-line--raw")
         .evaluate((element) => getComputedStyle(element).strokeDasharray),
     ).not.toBe("none");
-    await expect(
-      page.getByRole("slider", { name: "Inspect typing pace" }),
-    ).toBeVisible();
+    const paceScrubber = page.getByRole("slider", {
+      name: "Inspect typing pace",
+    });
+    await expect(paceScrubber).toBeVisible();
+    await paceScrubber.focus();
+    await expect(paceScrubber).toBeFocused();
+    await expect(page.locator(".pace-chart-shell")).toHaveClass(/is-focused/);
+    await expect(page.locator(".pace-plot")).toHaveCSS(
+      "outline-style",
+      "solid",
+    );
+    await expect(page.locator(".pace-plot")).toHaveCSS(
+      "outline-width",
+      "2px",
+    );
   });
 });
 
@@ -1824,7 +1836,14 @@ test("account result, export, logout, and deletion lifecycle", async ({ page }) 
     .click();
   const registrationForm = accountDialog.locator("form");
   await registrationForm.getByLabel("username").fill(username);
-  await registrationForm.getByLabel("password").fill(password);
+  const registrationPassword = registrationForm.getByLabel("password");
+  await expect(registrationPassword).toHaveAttribute("type", "password");
+  await registrationForm.getByRole("button", { name: "show" }).click();
+  await expect(registrationPassword).toHaveAttribute("type", "text");
+  await expect(
+    registrationForm.getByRole("button", { name: "hide" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await registrationPassword.fill(password);
   const registrationResponse = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/auth/register" &&
@@ -1884,4 +1903,38 @@ test("account result, export, logout, and deletion lifecycle", async ({ page }) 
     .getByRole("button", { name: "delete account", exact: true })
     .click();
   await expect(page.getByRole("button", { name: "account", exact: true })).toBeVisible();
+});
+
+test("account password can be revealed and concealed without losing its value", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/session", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        authenticated: false,
+        user: null,
+        csrfToken: "csrf-password-visibility",
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "account", exact: true }).click();
+  const accountDialog = page.getByRole("dialog", { name: "Account" });
+  const password = accountDialog.getByLabel("password");
+  const toggle = accountDialog.getByRole("button", { name: "show" });
+
+  await password.fill("quiet-river-password");
+  await expect(password).toHaveAttribute("type", "password");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(password).toHaveValue("quiet-river-password");
+  await expect(
+    accountDialog.getByRole("button", { name: "hide" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await accountDialog.getByRole("button", { name: "hide" }).click();
+  await expect(password).toHaveAttribute("type", "password");
+  await expect(password).toHaveValue("quiet-river-password");
 });

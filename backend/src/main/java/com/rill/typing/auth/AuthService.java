@@ -21,6 +21,7 @@ public class AuthService {
 
     private final UserAccountRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationRateLimiter authenticationRateLimiter;
     private final LoginRateLimiter rateLimiter;
     private final AccountDeletionRateLimiter deletionRateLimiter;
     private final Clock clock;
@@ -28,11 +29,13 @@ public class AuthService {
     AuthService(
             UserAccountRepository users,
             PasswordEncoder passwordEncoder,
+            AuthenticationRateLimiter authenticationRateLimiter,
             LoginRateLimiter rateLimiter,
             AccountDeletionRateLimiter deletionRateLimiter,
             Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationRateLimiter = authenticationRateLimiter;
         this.rateLimiter = rateLimiter;
         this.deletionRateLimiter = deletionRateLimiter;
         this.clock = clock;
@@ -41,6 +44,7 @@ public class AuthService {
     @Transactional
     public UserAccount register(String username, String password) {
         Credentials credentials = validate(username, password);
+        authenticationRateLimiter.checkRegistration();
         if (users.existsByUsernameNormalized(credentials.normalizedUsername())) {
             throw usernameUnavailable();
         }
@@ -60,6 +64,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public UserAccount login(String username, String password) {
         Credentials credentials = validate(username, password);
+        authenticationRateLimiter.checkLogin();
         rateLimiter.check(credentials.normalizedUsername());
         Optional<UserAccount> candidate =
                 users.findByUsernameNormalized(credentials.normalizedUsername());

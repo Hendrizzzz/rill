@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type SubmitEvent,
+} from "react";
 
 import { ApiError, downloadAccountExport } from "../../api/client";
 import { useAuth } from "./auth-context";
@@ -18,6 +24,50 @@ function messageFor(error: unknown): string {
 function stringField(data: FormData, name: string): string {
   const value = data.get(name);
   return typeof value === "string" ? value : "";
+}
+
+interface PasswordFieldProps {
+  autoComplete: "current-password" | "new-password";
+  disabled: boolean;
+  label: string;
+  minLength?: number;
+}
+
+function PasswordField({
+  autoComplete,
+  disabled,
+  label,
+  minLength,
+}: PasswordFieldProps) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="account-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="password-field">
+        <input
+          id={id}
+          name="password"
+          type={visible ? "text" : "password"}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          required
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          className="password-toggle"
+          aria-controls={id}
+          aria-pressed={visible}
+          onClick={() => setVisible((current) => !current)}
+          disabled={disabled}
+        >
+          {visible ? "hide" : "show"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function AccountDialog({ open, onClose }: AccountDialogProps) {
@@ -163,17 +213,12 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
                 disabled={busy}
               />
             </label>
-            <label>
-              password
-              <input
-                name="password"
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                minLength={12}
-                required
-                disabled={busy}
-              />
-            </label>
+            <PasswordField
+              label="password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              minLength={12}
+              disabled={busy}
+            />
             {mode === "register" ? (
               <p className="field-note">
                 12 or more characters. Usernames use letters, numbers, and underscores.
@@ -199,16 +244,11 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
             This permanently removes the account and its saved results. Local guest
             history is not affected.
           </p>
-          <label>
-            confirm password
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              disabled={busy}
-            />
-          </label>
+          <PasswordField
+            label="confirm password"
+            autoComplete="current-password"
+            disabled={busy}
+          />
           {error === "" ? null : (
             <p className="form-error" role="alert">
               {error}

@@ -1,17 +1,16 @@
 # Rill verification record
 
-## Authoritative current-worktree verification
+## Authoritative release verification
 
-Run date: 2026-07-28 (Asia/Manila)
-Source binding: base commit `528e07f68a381351c61cb5c4c9b303adf84ecd8c`
-plus the current documented worktree; production frontend build ID
-`source-ac056b5a46cb9436`.
+Last reconciled: 2026-07-30 (Asia/Manila)
 
-This section supersedes every older numerical status or environment limitation
-below it. The remaining sections are retained as dated engineering history and
-must not be read as the current release result.
+Source binding: this record applies to the source in the same Git commit.
+Provider-specific deployed commits and live observations are identified in the
+dated deployment sections. The 2026-07-28 local matrix remains historical
+baseline evidence; the 2026-07-30 sections contain the current deployment and
+post-review delta evidence.
 
-### Current blocking gates
+### Verified baseline gates
 
 - Frontend: `npm run typecheck` and `npm run lint` passed with zero warnings;
   `npm run test:run` passed 229 tests in 15 files; `npm run build` transformed
@@ -69,7 +68,8 @@ were automatically removed after the Maven processes exited.
 
 - The local Node runtime was `v22.20.0`, below the repository's supported
   `>=22.22.0` floor. All stated local frontend commands passed, and CI is pinned
-  to Node 24.18, but the updated workflow was not run on GitHub.
+  to Node 24.18. Later commit-specific GitHub Actions results supersede the
+  baseline's then-unverified workflow state.
 - C, C++, C#, and Go snippets received static review but no local compiler
   execution. C++ signed/unsigned warnings identified by independent review were
   fixed, but only a CI/host with working toolchains can close these skips.
@@ -79,12 +79,15 @@ were automatically removed after the Maven processes exited.
 - History/export retain the code language and statistics, not the exact
   exercise ID; per-algorithm progression is deferred.
 - No physical mobile keyboard, real screen reader, low-end-device benchmark,
-  public TLS deployment, off-host restore, distributed rate limiter, or
-  multi-user load test was available.
+  public Vercel deployment, off-host restore, distributed rate limiter, or
+  multi-user load test was available. The Render API has since been verified
+  over public TLS as recorded below.
 - The earlier pinned-Monkeytype 10,000-trace parity campaign and broader
   Dependency-Check/Compose security evidence remain recorded below but were not
   rerun for this code-learning increment.
-- No commit, push, deployment, or GitHub Actions execution is claimed.
+- Commit, push, CI, and provider claims are made only where a dated section
+  records the exact source or run. Vercel is explicitly excluded until its
+  account-controlled two-factor challenge is completed.
 
 Historical release run date: 2026-07-26
 
@@ -585,11 +588,10 @@ The browser run used an isolated production preview on port 4174. Its exact
 process was stopped afterward and the port was confirmed released. Port 4173,
 Docker, and the user's other running sessions were not changed.
 
-The deployment manifests are structurally tested but have not yet been
-accepted by the providers. No Neon project, Render service, Vercel project, or
-public hostname is claimed verified until provider authentication, deployment,
-and the public-origin checks in
-`docs/operations/FREE_TIER_DEPLOYMENT.md` complete.
+Neon and Render have since accepted the production database and API
+configuration. The Vercel project and public same-origin browser checks remain
+blocked by the account's two-factor authentication gate. The provider evidence
+and exact remaining boundary are recorded below.
 
 ## 2026-07-30 subsecond scoring and persistence boundary
 
@@ -646,3 +648,151 @@ stopped, or used. PostgreSQL-backed API and Flyway upgrade tests compiled but
 are left to the clean GitHub Actions container job. The local Node runtime was
 22.20.0, below the repository's 22.22.0 floor; the definitive frontend CI job
 uses Node 24.
+
+## 2026-07-30 live Neon and Render verification
+
+The free Neon project is in Singapore and uses a direct owner connection for
+Flyway plus a pooled `rill_app` connection for ordinary runtime access. The
+runtime role was checked after its password rotation:
+
+```text
+rolcanlogin = true
+password_disabled = false
+rolsuper = false
+rolcreaterole = false
+rolcreatedb = false
+rolreplication = false
+rolbypassrls = false
+neon_superuser = false
+```
+
+Render accepted the free Blueprint and created
+`https://rill-typewriting-api.onrender.com`. The first live startup reproduced
+a pgJDBC portability defect:
+
+```text
+Could not open SSL root certificate file /app/.postgresql/root.crt
+```
+
+Two independent deployment/security reviewers traced that to pgJDBC 42.7.13's
+default `LibPQFactory`. Both recommended
+`org.postgresql.ssl.DefaultJavaSSLFactory` for the runtime and Flyway URLs,
+while retaining `sslmode=verify-full` and `channelBinding=require`. Both also
+identified that the original presence-only regex validator accepted duplicate
+security parameters even though pgJDBC uses the last value. That finding was
+accepted after reproducing the driver's behavior. The validator now requires
+exactly one correctly cased value for each protected parameter and rejects
+duplicate insecure overrides.
+
+Focused verification used an isolated backend copy because another local
+session held the shared `backend/target` directory:
+
+```text
+.\mvnw.cmd '-Dtest=ProductionSafetyConfigurationTest,DeploymentManifestTest' test
+# 6 tests passed; 0 failures; BUILD SUCCESS
+```
+
+Render deployed commit `85a07354f2cb422129bc3ce2cbe3cd2650b993e9`.
+Its container log reported `Started RillApplication in 145.099 seconds` on the
+free instance and then `Your service is live`. This is a cold deployment
+startup observation, not an application-request benchmark. The deployed
+readiness endpoint returned:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: application/vnd.spring-boot.actuator.v3+json
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+
+{"status":"UP"}
+```
+
+Direct public-API smoke tests against Render used randomly generated
+disposable accounts and deleted them in the same scripts:
+
+```text
+session bootstrap       200
+registration            201
+Secure HttpOnly session cookie confirmed
+Secure CSRF cookie confirmed
+account export          200, schemaVersion 1
+account deletion        204
+post-delete session     200, authenticated false
+
+result creation         201
+history read            200, matching client result id
+summary read            200, one retained run
+export                  200, one result
+account deletion        204
+
+missing-CSRF register   403
+invalid register body   400, VALIDATION_FAILED
+untrusted Origin GET    200, no Access-Control-Allow-Origin header
+```
+
+After Flyway completed, the Neon owner revoked runtime access to migration
+metadata. The verification query returned:
+
+```text
+can_select  can_insert  can_update  can_delete
+f           f           f           f
+```
+
+Two independent final reviewers then examined different release boundaries.
+The backend/security reviewer found that Render's directly reachable hostname
+could reach registration BCrypt and database work without a pre-work global
+budget, that the production TLS-verification property had an unsafe false
+fallback, and that the verification summary was stale. The
+frontend/accessibility reviewer found that the invisible graph scrubber lost
+its focus indication in Windows forced-colors mode and that the design
+specification promised a password-visibility control which was absent. These
+findings were accepted after source inspection.
+
+The final delta adds a bounded, fixed-memory process-global limit before
+database or BCrypt work, safe-by-default production database TLS validation,
+an explicit forced-colors graph outline, and an accessible password show/hide
+control. The authentication limiter updates its minute and hour windows
+atomically so a request rejected by the short window cannot consume the longer
+registration budget. The retained tradeoffs are documented: the limiter is
+single-process and can itself be consumed temporarily, and the Spring process
+still holds both runtime and Flyway credentials on this free topology.
+
+Local post-review verification, without Docker or port 4173, returned:
+
+```text
+npm.cmd run typecheck
+# passed
+
+npm.cmd run lint
+# passed with zero warnings
+
+npm.cmd run test:run
+# 18 files, 248 tests passed
+
+npm.cmd run build
+# 103 modules transformed; production build succeeded
+
+npx.cmd playwright test e2e/typing.spec.ts --project=chromium --workers=1
+  --grep "renders focus, errors, and graph encodings in forced colors|
+           account password can be revealed and concealed"
+# 2 tests passed
+
+.\mvnw.cmd
+  '-Dtest=AuthenticationRateLimiterTest,ProductionSafetyConfigurationTest,
+          DeploymentManifestTest,SecurityConfigurationTest,
+          RillPrincipalResolverTest' test
+# 12 tests passed; 0 failures; 0 errors; BUILD SUCCESS
+```
+
+The Maven command used an isolated repository copy because another user
+session owns the shared `backend/target`. Its first harness attempt omitted
+`.github/workflows/verify.yml`, so one manifest test ended with
+`NoSuchFileException` while the other eight tests passed. After copying that
+repository file from its absolute source path, the complete focused suite
+above passed. This was a test-fixture copy error, not an application defect.
+
+Vercel is not deployed or claimed verified. GitHub authentication reaches
+Vercel's six-digit authenticator challenge, and this environment has neither a
+Vercel CLI session nor `VERCEL_TOKEN`. Until that account-controlled step is
+completed, the Vercel production URL, same-origin rewrite, security headers,
+SPA deep links, host-only cookie scope, and public browser workflows remain
+unverified.
