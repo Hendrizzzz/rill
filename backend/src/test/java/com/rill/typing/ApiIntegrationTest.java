@@ -443,7 +443,7 @@ class ApiIntegrationTest {
     void fractionalWordGraphTailRoundTrips() throws Exception {
         Client client = registeredClient("fractional_tail");
         CompletionCase completion =
-                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+                new CompletionCase(TestMode.WORDS, 10, 1_500, CompletionReason.FINISHED);
         String payload = completionResultJson(UUID.randomUUID(), completion, 500.49);
 
         client.perform(
@@ -451,12 +451,12 @@ class ApiIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(payload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.durationMs").value(500))
-                .andExpect(jsonPath("$.paceBuckets[0].durationMs").value(500.49));
+                .andExpect(jsonPath("$.durationMs").value(1_500))
+                .andExpect(jsonPath("$.paceBuckets[1].durationMs").value(500.49));
 
         client.perform(get("/api/results").param("limit", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].paceBuckets[0].durationMs").value(500.49));
+                .andExpect(jsonPath("$.items[0].paceBuckets[1].durationMs").value(500.49));
 
         CompletionCase afterWholeSecond =
                 new CompletionCase(TestMode.WORDS, 10, 1_530, CompletionReason.FINISHED);
@@ -480,7 +480,7 @@ class ApiIntegrationTest {
     void paceBucketDurationBeyondHundredthPrecisionIsRejected() throws Exception {
         Client client = registeredClient("fractional_precision");
         CompletionCase completion =
-                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+                new CompletionCase(TestMode.WORDS, 10, 1_500, CompletionReason.FINISHED);
 
         client.perform(
                         post("/api/results")
@@ -496,7 +496,7 @@ class ApiIntegrationTest {
     void rawGraphDurationAtNextAggregateBoundaryIsRejected() throws Exception {
         Client client = registeredClient("aggregate_boundary");
         CompletionCase completion =
-                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+                new CompletionCase(TestMode.WORDS, 10, 1_500, CompletionReason.FINISHED);
 
         client.perform(
                         post("/api/results")
@@ -1006,7 +1006,7 @@ class ApiIntegrationTest {
         String schema =
                 "upgrade_" + UUID.randomUUID().toString().replace("-", "");
         UUID userId = UUID.randomUUID();
-        UUID minimumPersistableResultId = UUID.randomUUID();
+        UUID legacyInvalidResultId = UUID.randomUUID();
         UUID subsecondResultId = UUID.randomUUID();
         UUID boundaryResultId = UUID.randomUUID();
         try {
@@ -1045,7 +1045,7 @@ class ApiIntegrationTest {
                     )
                     """
                             .formatted(schema),
-                    minimumPersistableResultId,
+                    legacyInvalidResultId,
                     userId,
                     UUID.randomUUID());
             jdbc.update(
@@ -1212,14 +1212,14 @@ class ApiIntegrationTest {
                                             "UPDATE "
                                                     + schema
                                                     + ".typing_result SET duration_ms = 990 WHERE id = ?",
-                                            minimumPersistableResultId))
+                                            boundaryResultId))
                     .hasMessageContaining("ck_typing_result_duration");
             assertThat(
                             jdbc.update(
                                     "UPDATE "
                                             + schema
                                             + ".typing_result SET duration_ms = 1000 WHERE id = ?",
-                                    minimumPersistableResultId))
+                                    boundaryResultId))
                     .isEqualTo(1);
             assertThat(
                             jdbc.queryForObject(
