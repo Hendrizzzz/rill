@@ -189,7 +189,6 @@ textarea:focus-visible {
   color: var(--muted);
   text-decoration: none;
   cursor: pointer;
-  transition: color 140ms ease-out;
 }
 
 .site-header nav a:hover,

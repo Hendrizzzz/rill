@@ -8,7 +8,9 @@ RUN mvn --batch-mode --no-transfer-progress -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
 
-RUN addgroup -S rill && adduser -S -G rill -h /app rill
+RUN apk --no-cache --update-cache upgrade p11-kit p11-kit-trust libexpat \
+    && addgroup -S rill \
+    && adduser -S -G rill -h /app rill
 WORKDIR /app
 COPY --from=build --chown=rill:rill /workspace/target/rill-backend-1.0.0.jar /app/rill.jar
 

@@ -49,7 +49,7 @@ async function readPromptTargets(page: Page): Promise<string[]> {
   );
 }
 
-async function completeTenWords(page: Page, delay = 1): Promise<void> {
+async function completeTenWords(page: Page, delay = 10): Promise<void> {
   const words = await chooseTenWords(page);
   await page.getByRole("textbox", { name: "Typing input" }).pressSequentially(
     words.join(" "),
