@@ -114,6 +114,77 @@ class DeploymentManifestTest {
         assertThat(headerValue(browserHeaders, "X-Frame-Options")).isEqualTo("DENY");
     }
 
+    @Test
+    void dependencyCheckIsAnIsolatedCachedRequiredGate() throws IOException {
+        Map<String, Object> workflow =
+                loadYaml(repositoryRoot().resolve(".github/workflows/verify.yml"));
+        Map<String, Object> jobs = map(workflow.get("jobs"));
+        Map<String, Object> backend = map(jobs.get("backend"));
+        Map<String, Object> dependencyCheck = map(jobs.get("dependency-check"));
+
+        assertThat(stepNames(backend)).doesNotContain("Scan backend dependencies");
+        assertThat(dependencyCheck)
+                .containsEntry("runs-on", "ubuntu-latest")
+                .containsEntry("timeout-minutes", 180)
+                .doesNotContainKey("continue-on-error");
+        assertThat(map(dependencyCheck.get("env")))
+                .containsEntry("NVD_API_KEY", "${{ secrets.NVD_API_KEY }}");
+
+        Map<String, Object> cache =
+                stepByName(dependencyCheck, "Restore OWASP Dependency-Check data");
+        assertThat(cache)
+                .containsEntry("id", "odc-cache")
+                .containsEntry("uses", "actions/cache/restore@v6");
+        Map<String, Object> cacheConfiguration = map(cache.get("with"));
+        assertThat(cacheConfiguration)
+                .containsEntry("path", "${{ runner.temp }}/dependency-check-data")
+                .containsEntry(
+                        "key",
+                        "odc-data-${{ runner.os }}-${{ runner.arch }}-12.2.2-v1-${{ steps.odc-week.outputs.week }}")
+                .containsEntry(
+                        "restore-keys",
+                        "odc-data-${{ runner.os }}-${{ runner.arch }}-12.2.2-v1-\n");
+
+        Map<String, Object> update =
+                stepByName(dependencyCheck, "Update vulnerability data");
+        assertThat(update.get("run").toString())
+                .contains("org.owasp:dependency-check-maven:12.2.2:update-only")
+                .contains("-DdataDirectory=\"$RUNNER_TEMP/dependency-check-data\"")
+                .contains("-DnvdApiKeyEnvironmentVariable=NVD_API_KEY");
+
+        Map<String, Object> save =
+                stepByName(dependencyCheck, "Save updated OWASP Dependency-Check data");
+        assertThat(save)
+                .containsEntry(
+                        "if",
+                        "github.event_name != 'pull_request' && steps.odc-cache.outputs.cache-hit != 'true'")
+                .containsEntry("uses", "actions/cache/save@v6");
+        assertThat(map(save.get("with")))
+                .containsEntry("path", "${{ runner.temp }}/dependency-check-data")
+                .containsEntry(
+                        "key",
+                        "${{ steps.odc-cache.outputs.cache-primary-key }}");
+
+        Map<String, Object> scan = stepByName(dependencyCheck, "Scan backend dependencies");
+        assertThat(scan).doesNotContainKey("continue-on-error");
+        assertThat(scan.get("run").toString())
+                .contains("org.owasp:dependency-check-maven:12.2.2:check")
+                .contains("-DautoUpdate=false")
+                .contains("-DfailBuildOnCVSS=7")
+                .contains("-DdataDirectory=\"$RUNNER_TEMP/dependency-check-data\"")
+                .contains("-DossindexAnalyzerEnabled=false");
+
+        Map<String, Object> upload =
+                maps(dependencyCheck.get("steps")).stream()
+                        .filter(step -> "actions/upload-artifact@v4".equals(step.get("uses")))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(upload).containsEntry("if", "always()");
+        assertThat(map(upload.get("with")))
+                .containsEntry("name", "backend-dependency-check")
+                .containsEntry("path", "backend/target/dependency-check-report.*");
+    }
+
     private static Path repositoryRoot() {
         Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         if (Files.isRegularFile(current.resolve("render.yaml"))) {
@@ -149,6 +220,21 @@ class DeploymentManifestTest {
     @SuppressWarnings("unchecked")
     private static List<Object> values(Object value) {
         return (List<Object>) value;
+    }
+
+    private static List<String> stepNames(Map<String, Object> job) {
+        return maps(job.get("steps")).stream()
+                .map(step -> step.get("name"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList();
+    }
+
+    private static Map<String, Object> stepByName(Map<String, Object> job, String name) {
+        return maps(job.get("steps")).stream()
+                .filter(step -> name.equals(step.get("name")))
+                .findFirst()
+                .orElseThrow();
     }
 
     private static JsonNode findRule(JsonNode rules, String source) {
