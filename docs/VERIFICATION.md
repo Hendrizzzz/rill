@@ -545,8 +545,8 @@ Vercel project configuration for the Vite frontend and same-origin API rewrite,
 and a Neon/Render/Vercel operator runbook. Git-triggered provider deployments
 are disabled so the backend can be released and verified before the frontend.
 Render startup requires certificate/hostname-verified PostgreSQL TLS with
-channel binding, uses separate Flyway and runtime credentials, and retains at
-most 100 results per account.
+channel binding and the JVM trust store, uses separate Flyway and runtime
+credentials, and retains at most 100 results per account.
 
 Completed checks:
 

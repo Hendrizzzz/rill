@@ -224,7 +224,8 @@ a shared edge limiter or private origin is required before horizontal scaling.
 Render starts Flyway inside the Spring process before opening the application
 pool. The process therefore holds both the non-superuser schema-owner secret
 and the DML-only runtime secret. The runtime pool uses only the latter, all
-database URLs require `sslmode=verify-full` and `channelBinding=require`, and
+database URLs require `sslmode=verify-full`, `channelBinding=require`, and
+pgJDBC's `DefaultJavaSSLFactory` so the container uses the JVM trust store, and
 neither secret may enter source, frontend configuration, build arguments, or
 logs. Arbitrary server-code execution could still read both secrets; accepting
 that residual risk is specific to this free topology.

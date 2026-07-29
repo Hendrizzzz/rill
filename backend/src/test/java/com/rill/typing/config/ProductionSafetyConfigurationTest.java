@@ -50,7 +50,8 @@ class ProductionSafetyConfigurationTest {
     void requiresAuthenticatedTlsForApplicationAndMigrationConnections() {
         String verified =
                 "jdbc:postgresql://ep-example-pooler.neon.tech/neondb"
-                        + "?sslmode=verify-full&channelBinding=require";
+                        + "?sslmode=verify-full&channelBinding=require"
+                        + "&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory";
 
         assertThatCode(
                         () ->
@@ -73,6 +74,62 @@ class ProductionSafetyConfigurationTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("migration")
                 .hasMessageContaining("channelBinding");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified.replace(
+                                                "&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory",
+                                                ""),
+                                        verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application")
+                .hasMessageContaining("DefaultJavaSSLFactory");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified,
+                                        verified.replace(
+                                                "&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory",
+                                                "")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("migration")
+                .hasMessageContaining("DefaultJavaSSLFactory");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified
+                                                + "&sslfactory="
+                                                + "org.postgresql.ssl.NonValidatingFactory",
+                                        verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified + "&sslmode=disable", verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified + "&channelBinding=disable", verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified.replace(
+                                                "DefaultJavaSSLFactory",
+                                                "defaultjavasslfactory"),
+                                        verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application");
     }
 
     @Test
@@ -80,7 +137,8 @@ class ProductionSafetyConfigurationTest {
         AtomicBoolean ordinaryBeanCreated = new AtomicBoolean();
         String verified =
                 "jdbc:postgresql://ep-example.neon.tech/neondb"
-                        + "?sslmode=verify-full&channelBinding=require";
+                        + "?sslmode=verify-full&channelBinding=require"
+                        + "&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory";
 
         new ApplicationContextRunner()
                 .withInitializer(
@@ -114,7 +172,8 @@ class ProductionSafetyConfigurationTest {
                                     .isInstanceOf(IllegalStateException.class)
                                     .hasMessage(
                                             "Production application database connections require "
-                                                    + "sslmode=verify-full and channelBinding=require");
+                                                    + "sslmode=verify-full, channelBinding=require, and "
+                                                    + "sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory");
                             assertThat(ordinaryBeanCreated).isFalse();
                         });
     }

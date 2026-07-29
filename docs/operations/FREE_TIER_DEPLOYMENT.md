@@ -57,9 +57,14 @@ The 0.5 GB plan cannot serve an unlimited number of accounts.
 3. Convert each URL to PostgreSQL JDBC form. Do not commit either value:
 
    ```text
-   jdbc:postgresql://<pooled-host>/<database>?sslmode=verify-full&channelBinding=require
-   jdbc:postgresql://<direct-host>/<database>?sslmode=verify-full&channelBinding=require
+   jdbc:postgresql://<pooled-host>/<database>?sslmode=verify-full&channelBinding=require&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory
+   jdbc:postgresql://<direct-host>/<database>?sslmode=verify-full&channelBinding=require&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory
    ```
+
+   `DefaultJavaSSLFactory` makes pgJDBC use the JVM trust store. Keep
+   `sslmode=verify-full`: pgJDBC still validates the certificate chain and
+   hostname, while avoiding a non-portable dependency on
+   `$HOME/.postgresql/root.crt` inside the container.
 
 4. Do not create `rill_app` with the Neon Console, CLI, or API: Neon grants
    those roles membership in `neon_superuser`. Connect to the direct hostname
