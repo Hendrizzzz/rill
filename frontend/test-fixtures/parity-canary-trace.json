@@ -1,0 +1,21 @@
+{
+  "version": "trace/1",
+  "id": "perfect-two-word-canary",
+  "config": {
+    "mode": "words",
+    "modeValue": 2,
+    "punctuation": false,
+    "numbers": false
+  },
+  "prompt": ["cat", "dog"],
+  "completionAtUs": 1200000,
+  "events": [
+    { "atUs": 0, "sequence": 0, "type": "insert", "wordIndex": 0, "grapheme": "c" },
+    { "atUs": 100000, "sequence": 1, "type": "insert", "wordIndex": 0, "grapheme": "a" },
+    { "atUs": 200000, "sequence": 2, "type": "insert", "wordIndex": 0, "grapheme": "t" },
+    { "atUs": 300000, "sequence": 3, "type": "insert", "wordIndex": 0, "grapheme": " " },
+    { "atUs": 600000, "sequence": 4, "type": "insert", "wordIndex": 1, "grapheme": "d" },
+    { "atUs": 800000, "sequence": 5, "type": "insert", "wordIndex": 1, "grapheme": "o" },
+    { "atUs": 1200000, "sequence": 6, "type": "insert", "wordIndex": 1, "grapheme": "g" }
+  ]
+}

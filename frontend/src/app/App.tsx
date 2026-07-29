@@ -64,13 +64,23 @@ function AppFrame() {
           </button>
         </nav>
       </header>
+      <div
+        className="sync-notice"
+        role={auth.syncNotice === null ? undefined : "alert"}
+        hidden={auth.syncNotice === null}
+      >
+        <span>{auth.syncNotice}</span>
+        <button type="button" onClick={auth.clearSyncNotice}>
+          dismiss
+        </button>
+      </div>
       <Routes>
         <Route path="/" element={<TypingPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <footer className="site-footer">
-        <span>escape · restart</span>
+        <span>tab · restart</span>
         <span>rill / a quiet typing instrument</span>
       </footer>
       <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />

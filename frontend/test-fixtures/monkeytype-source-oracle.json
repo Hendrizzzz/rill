@@ -1,0 +1,27 @@
+{
+  "repository": "monkeytypegame/monkeytype",
+  "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+  "license": "GPL-3.0",
+  "files": [
+    {
+      "path": "frontend/src/ts/test/events/stats.ts",
+      "sha256": "e9749f326876e04f50fb5df9a6c22e27cea99c87daa0a98d2191e1c8daeee3a4"
+    },
+    {
+      "path": "frontend/src/ts/test/events/helpers.ts",
+      "sha256": "8bb1098636fa5f48298fcdbbd66fe12eea30dd391cd3e8432ea32a87a01795a6"
+    },
+    {
+      "path": "frontend/src/ts/utils/strings.ts",
+      "sha256": "673316fa0c6557f1b2aa9ebf1cf878475bb8df2a36240f4f107a0c7e2881c24b"
+    },
+    {
+      "path": "frontend/src/ts/utils/numbers.ts",
+      "sha256": "a31ef3bbb2053486f3251cf753e64b7e2bede3232c0df4832ce744fbccfae783"
+    },
+    {
+      "path": "packages/util/src/numbers.ts",
+      "sha256": "0fa87c6040fe650202f5b9b80867b065dd831498701d1e530062035a8409642c"
+    }
+  ]
+}

@@ -1,23 +1,62 @@
 export type TestMode = "time" | "words";
+export type ContentType = "words" | "quote" | "custom" | "code";
+export type TypingLanguage = "en" | "es";
+export type CodeLanguage =
+  | "cpp"
+  | "java"
+  | "python3"
+  | "c"
+  | "csharp"
+  | "javascript"
+  | "typescript"
+  | "go";
+export type ErrorPolicy = "normal" | "strict";
+export type WordListVersion =
+  | "en-v1"
+  | "es-v1"
+  | "quote-v1"
+  | "custom-v1"
+  | "code-v1"
+  | "code-v2";
 
 export interface TestConfig {
   mode: TestMode;
-  modeValue: 10 | 15 | 25 | 30 | 50 | 60;
+  modeValue: number;
   punctuation: boolean;
   numbers: boolean;
+  contentType: ContentType;
+  language: TypingLanguage;
+  codeLanguage?: CodeLanguage;
+  errorPolicy: ErrorPolicy;
 }
 
 export interface Prompt {
   id: string;
   seed: number;
-  wordListVersion: "en-v1";
+  wordListVersion: WordListVersion;
   generatorVersion: 1;
+  language: TypingLanguage;
+  codeLanguage?: CodeLanguage;
+  sourceId?: string;
+  title?: string;
+  topic?: string;
+  lesson?: string;
+  assumptions?: string;
+  complexity?: string;
+  attribution?: string;
   words: readonly string[];
 }
 
 export interface PaceBucket {
   durationMs: number;
+  /** Insertions in this interval. Used for burst speed and consistency. */
   typedCharacters: number;
+  /** Cumulative fully-scored characters at the end of this interval. */
+  correctCharacters: number;
+  /** Cumulative retained characters at the end of this interval. */
+  rawCharacters: number;
+  /** Incorrect insertions in this interval. */
+  errors: number;
 }
 
 export interface ResultCounters {
@@ -25,6 +64,7 @@ export interface ResultCounters {
   correctAttempts: number;
   incorrectAttempts: number;
   correctCharacters: number;
+  incorrectCharacters: number;
   missingCharacters: number;
   extraAttempts: number;
   correctedErrors: number;
@@ -36,6 +76,11 @@ export interface TypingResult extends ResultCounters {
   modeValue: number;
   punctuation: boolean;
   numbers: boolean;
+  contentType: ContentType;
+  language: TypingLanguage;
+  codeLanguage?: CodeLanguage;
+  wordListVersion: WordListVersion;
+  errorPolicy: ErrorPolicy;
   durationMs: number;
   wpm: number;
   rawWpm: number;
@@ -56,6 +101,14 @@ export interface TypingCounters {
   separatorCharacters: number;
 }
 
+export interface TypingInputEvent {
+  elapsedMs: number;
+  wordIndex: number;
+  type: "insert" | "delete";
+  grapheme: string;
+  correct: boolean;
+}
+
 export interface TypingState {
   runId: string;
   status: "ready" | "running" | "completed";
@@ -68,13 +121,21 @@ export interface TypingState {
   deadline: number | null;
   completedAt: number | null;
   counters: TypingCounters;
-  paceCounts: readonly number[];
+  inputEvents: readonly TypingInputEvent[];
   result: TypingResult | null;
 }
 
 export type TypingAction =
   | { type: "insert"; grapheme: string; now: number; wallNow: number }
+  | {
+      type: "insertBatch";
+      graphemes: readonly string[];
+      now: number;
+      wallNow: number;
+    }
+  | { type: "start"; now: number }
   | { type: "backspace"; now: number; wallNow: number }
+  | { type: "deleteWordBackward"; now: number; wallNow: number }
   | { type: "tick"; now: number; wallNow: number }
   | { type: "extendPrompt"; prompt: Prompt }
   | { type: "restart"; runId: string; prompt: Prompt; config: TestConfig };

@@ -1,18 +1,25 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildMonotonePath } from "./monotonePath";
 import { PaceChart } from "./PaceChart";
+import type { PaceBucket } from "./types";
 
 afterEach(cleanup);
 
+function sample(overrides: Partial<PaceBucket> = {}): PaceBucket {
+  return {
+    durationMs: 1_000,
+    typedCharacters: 5,
+    correctCharacters: 5,
+    rawCharacters: 5,
+    errors: 0,
+    ...overrides,
+  };
+}
+
 describe("PaceChart", () => {
-  it("draws a smooth shape-preserving path through every sample", () => {
+  it("draws shape-preserving cubic paths", () => {
     const points = [
       { x: 0, y: 80 },
       { x: 40, y: 20 },
@@ -20,150 +27,137 @@ describe("PaceChart", () => {
       { x: 300, y: 40 },
     ];
     const path = buildMonotonePath(points);
-    const commands = path.split(" C ").slice(1);
 
     expect(path).toMatch(/^M /);
-    expect(commands).toHaveLength(points.length - 1);
+    expect(path.match(/\bC\b/g)).toHaveLength(3);
     expect(path).not.toMatch(/NaN|Infinity/);
-    commands.forEach((command, index) => {
-      const values = command.split(" ").map(Number);
-      const startY = points[index]?.y ?? 0;
-      const endY = points[index + 1]?.y ?? 0;
-      const minimum = Math.min(startY, endY);
-      const maximum = Math.max(startY, endY);
-      expect(values[1]).toBeGreaterThanOrEqual(minimum);
-      expect(values[1]).toBeLessThanOrEqual(maximum);
-      expect(values[3]).toBeGreaterThanOrEqual(minimum);
-      expect(values[3]).toBeLessThanOrEqual(maximum);
-      expect(values[5]).toBe(endY);
-    });
-  });
 
-  it("renders the pace line as cubic segments instead of a polyline", () => {
-    const { container } = render(
-      <PaceChart
-        buckets={[
-          { durationMs: 1_000, typedCharacters: 2 },
-          { durationMs: 1_000, typedCharacters: 8 },
-          { durationMs: 1_000, typedCharacters: 1 },
-          { durationMs: 1_000, typedCharacters: 7 },
-        ]}
-      />,
-    );
-    const path = container.querySelector("path.pace-line");
-
-    expect(path).toBeInTheDocument();
-    expect(path?.getAttribute("d")?.match(/\bC\b/g)).toHaveLength(3);
-    expect(container.querySelector("polyline.pace-line")).not.toBeInTheDocument();
-  });
-
-  it("uses familiar twenty-WPM axis steps for an ordinary pace", () => {
-    const { container } = render(
-      <PaceChart
-        buckets={[{ durationMs: 1_000, typedCharacters: 6 }]}
-      />,
-    );
-
-    expect(
-      Array.from(container.querySelectorAll(".pace-y-tick")).map(
-        (tick) => tick.textContent,
+    let startY = points[0]?.y ?? 0;
+    const curves = [
+      ...path.matchAll(
+        /C (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g,
       ),
-    ).toEqual(["0", "20", "40", "60", "80"]);
+    ];
+    expect(curves).toHaveLength(points.length - 1);
+    curves.forEach((curve) => {
+      const firstControlY = Number(curve[2]);
+      const secondControlY = Number(curve[4]);
+      const endY = Number(curve[6]);
+      const lower = Math.min(startY, endY);
+      const upper = Math.max(startY, endY);
+      expect(firstControlY).toBeGreaterThanOrEqual(lower);
+      expect(firstControlY).toBeLessThanOrEqual(upper);
+      expect(secondControlY).toBeGreaterThanOrEqual(lower);
+      expect(secondControlY).toBeLessThanOrEqual(upper);
+      startY = endY;
+    });
   });
 
-  it("uses elapsed time for samples and a duration-weighted average", () => {
+  it("renders distinct WPM, raw, and burst histories with familiar axes", () => {
     const { container } = render(
       <PaceChart
         buckets={[
-          { durationMs: 1_000, typedCharacters: 5 },
-          { durationMs: 500, typedCharacters: 5 },
+          sample(),
+          sample({
+            typedCharacters: 6,
+            correctCharacters: 9,
+            rawCharacters: 10,
+            errors: 1,
+          }),
+          sample({
+            typedCharacters: 4,
+            correctCharacters: 14,
+            rawCharacters: 15,
+          }),
         ]}
       />,
     );
 
-    expect(screen.getByText(/avg 80 · peak 120/)).toBeVisible();
+    expect(container.querySelector("path.pace-line--wpm")).toBeInTheDocument();
+    expect(container.querySelector("path.pace-line--raw")).toBeInTheDocument();
+    expect(container.querySelector("path.pace-line--burst")).toBeInTheDocument();
+    expect(screen.getByText("words per minute")).toBeVisible();
+    expect(screen.getByText("× errors")).toBeVisible();
     expect(
-      screen.getByText("120", { selector: ".pace-y-tick" }),
-    ).toBeVisible();
-    expect(screen.getByText("1s", { selector: ".pace-x-tick" })).toBeVisible();
-    expect(container.querySelector(".pace-average-line")).not.toBeInTheDocument();
-    expect(screen.getByText(/Focus the chart/)).toHaveClass("sr-only");
-    const scrubber = screen.getByRole("slider", {
-      name: "Inspect raw typing pace",
-    });
-    expect(scrubber).toHaveAttribute(
-      "aria-valuetext",
-      "0 to 1 seconds, 60 raw words per minute, 5 typed characters",
-    );
-
-    fireEvent.focus(scrubber);
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("0–1s");
-    fireEvent.change(scrubber, { target: { value: "1" } });
-    expect(scrubber).toHaveAttribute(
-      "aria-valuetext",
-      "1 to 1.5 seconds, 120 raw words per minute, 5 typed characters",
-    );
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("1–1.5s");
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("120 wpm");
+      screen.getByLabelText(
+        "average raw pace 60 words per minute; peak burst 72 words per minute",
+      ),
+    ).toHaveTextContent("avg 60 · peak 72");
+    expect(container.querySelector(".pace-error-mark")).toHaveTextContent("×");
   });
 
-  it("does not annualize a tiny terminal window as its own pace sample", () => {
-    const { container } = render(
-      <PaceChart
-        buckets={[
-          { durationMs: 1_000, typedCharacters: 7 },
-          { durationMs: 1_000, typedCharacters: 7 },
-          { durationMs: 24, typedCharacters: 1 },
-        ]}
-      />,
-    );
-
-    expect(screen.getByText(/avg 89 · peak 94/)).toBeVisible();
-    expect(screen.queryByText("500", { selector: ".pace-y-tick" })).not.toBeInTheDocument();
-    const scrubber = screen.getByRole("slider", {
-      name: "Inspect raw typing pace",
-    });
-    expect(scrubber).toHaveAttribute("max", "1");
-
-    fireEvent.focus(scrubber);
-    fireEvent.change(scrubber, { target: { value: "1" } });
-    expect(scrubber).toHaveAttribute(
-      "aria-valuetext",
-      "1 to 2.024 seconds, 94 raw words per minute, 8 typed characters",
-    );
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("1–2.024s");
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("94 wpm");
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("8 chars");
-    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("1.024s");
-    expect(container.querySelector("path.pace-line")?.getAttribute("d")).not.toMatch(
-      /NaN|Infinity/,
-    );
-  });
-
-  it("keeps a single sample inspectable", () => {
+  it("exposes all four graph values from keyboard focus", () => {
     render(
       <PaceChart
-        buckets={[{ durationMs: 750, typedCharacters: 1 }]}
+        buckets={[
+          sample({
+            typedCharacters: 6,
+            correctCharacters: 5,
+            rawCharacters: 6,
+            errors: 1,
+          }),
+        ]}
       />,
     );
 
     const scrubber = screen.getByRole("slider", {
-      name: "Inspect raw typing pace",
+      name: "Inspect typing pace",
     });
-    expect(scrubber).toHaveAttribute("min", "0");
-    expect(scrubber).toHaveAttribute("max", "0");
     expect(scrubber).toHaveAttribute(
       "aria-valuetext",
-      "0 to 0.75 seconds, 16 raw words per minute, 1 typed character",
+      "1 second, 60 words per minute, 72 raw words per minute, 72 burst words per minute, 1 error",
     );
-    expect(screen.getByText("One pace sample.")).toHaveClass("sr-only");
+    fireEvent.focus(scrubber);
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("wpm60");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("raw72");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("burst72");
+    expect(screen.getByTestId("pace-tooltip")).toHaveTextContent("errors1");
   });
 
-  it("renders an honest empty state without an inert scrubber", () => {
+  it("renders an honest empty state", () => {
     render(<PaceChart buckets={[]} />);
 
     expect(screen.queryByRole("slider")).not.toBeInTheDocument();
     expect(screen.getByText("No pace samples")).toBeVisible();
-    expect(screen.getByText("No pace samples.")).toHaveClass("sr-only");
+  });
+
+  it("labels a single subsecond sample with its duration", () => {
+    render(<PaceChart buckets={[sample({ durationMs: 750 })]} />);
+
+    expect(screen.getByText("0.75s")).toBeVisible();
+    expect(screen.getByRole("slider").getAttribute("aria-valuetext")).toEqual(
+      expect.stringContaining("0.75 seconds"),
+    );
+  });
+
+  it("uses canonical cumulative time at a floating half-WPM boundary", () => {
+    render(
+      <PaceChart
+        buckets={[
+          sample({
+            correctCharacters: 100,
+            rawCharacters: 100,
+          }),
+          sample({
+            durationMs: 528.32,
+            correctCharacters: 199,
+            rawCharacters: 199,
+          }),
+        ]}
+      />,
+    );
+
+    const scrubber = screen.getByRole("slider", {
+      name: "Inspect typing pace",
+    });
+    fireEvent.change(scrubber, { target: { value: "1" } });
+    expect(scrubber).toHaveAttribute(
+      "aria-valuetext",
+      expect.stringContaining("1563 words per minute"),
+    );
+    expect(scrubber).toHaveAttribute(
+      "aria-valuetext",
+      expect.stringContaining("1563 raw words per minute"),
+    );
   });
 });

@@ -1,0 +1,47 @@
+{
+  "source": {
+    "repository": "monkeytypegame/monkeytype",
+    "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+    "statsPath": "frontend/src/ts/test/events/stats.ts",
+    "statsSha256": "e9749f326876e04f50fb5df9a6c22e27cea99c87daa0a98d2191e1c8daeee3a4",
+    "numbersPath": "packages/util/src/numbers.ts",
+    "numbersSha256": "0fa87c6040fe650202f5b9b80867b065dd831498701d1e530062035a8409642c"
+  },
+  "vectors": [
+    {
+      "rawEndMs": 494.99,
+      "aggregateDurationMs": 490,
+      "timerBoundariesMs": []
+    },
+    {
+      "rawEndMs": 495,
+      "aggregateDurationMs": 500,
+      "timerBoundariesMs": [495]
+    },
+    {
+      "rawEndMs": 499,
+      "aggregateDurationMs": 500,
+      "timerBoundariesMs": [499]
+    },
+    {
+      "rawEndMs": 500,
+      "aggregateDurationMs": 500,
+      "timerBoundariesMs": [500]
+    },
+    {
+      "rawEndMs": 501,
+      "aggregateDurationMs": 500,
+      "timerBoundariesMs": [501]
+    },
+    {
+      "rawEndMs": 1495,
+      "aggregateDurationMs": 1500,
+      "timerBoundariesMs": [1000, 1495]
+    },
+    {
+      "rawEndMs": 1995,
+      "aggregateDurationMs": 2000,
+      "timerBoundariesMs": [1000]
+    }
+  ]
+}

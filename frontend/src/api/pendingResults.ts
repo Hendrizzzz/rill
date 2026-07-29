@@ -1,9 +1,12 @@
 import type { TypingResult } from "../features/typing/types";
-import { isTypingResult } from "../features/typing/storage";
+import {
+  isTypingResult,
+  migrateUnversionedTypingResult,
+} from "../features/typing/storage";
 import { isRetryableApiError } from "./client";
 
 interface PendingStore {
-  version: 1;
+  version: 2;
   entries: PendingEntry[];
 }
 
@@ -12,7 +15,8 @@ interface PendingEntry {
   result: TypingResult;
 }
 
-const KEY = "rill.pending-account-results.v1";
+const KEY = "rill.pending-account-results.v2";
+const LEGACY_KEY = "rill.pending-account-results.v1";
 const MAX_PENDING = 20;
 const MAX_TOTAL_PENDING = 100;
 export const PENDING_RESULTS_CHANGED_EVENT = "rill:pending-results-changed";
@@ -22,12 +26,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isPendingEntry(value: unknown): value is PendingEntry {
-  return (
-    isRecord(value) &&
-    typeof value.ownerId === "string" &&
-    isTypingResult(value.result)
-  );
+function normalizePendingEntry(value: unknown): PendingEntry | null {
+  if (!isRecord(value) || typeof value.ownerId !== "string") {
+    return null;
+  }
+  const result = migrateUnversionedTypingResult(value.result);
+  return isTypingResult(result)
+    ? { ownerId: value.ownerId, result }
+    : null;
 }
 
 function read(): PendingStore {
@@ -35,18 +41,20 @@ function read(): PendingStore {
     const parsed = JSON.parse(localStorage.getItem(KEY) ?? "null") as unknown;
     if (
       isRecord(parsed) &&
-      parsed.version === 1 &&
+      parsed.version === 2 &&
       Array.isArray(parsed.entries)
     ) {
       return {
-        version: 1,
-        entries: (parsed.entries as unknown[]).filter(isPendingEntry),
+        version: 2,
+        entries: (parsed.entries as unknown[])
+          .map(normalizePendingEntry)
+          .filter((entry): entry is PendingEntry => entry !== null),
       };
     }
   } catch {
     // Corrupt or unavailable storage is treated as an empty queue.
   }
-  return { version: 1, entries: [] };
+  return { version: 2, entries: [] };
 }
 
 function write(store: PendingStore): boolean {
@@ -63,6 +71,27 @@ export function loadPendingAccountResults(ownerId: string): TypingResult[] {
   return read().entries
     .filter((entry) => entry.ownerId === ownerId)
     .map((entry) => entry.result);
+}
+
+export function hasLegacyPendingAccountResults(ownerId: string): boolean {
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(LEGACY_KEY) ?? "null",
+    ) as unknown;
+    return (
+      isRecord(parsed) &&
+      parsed.version === 1 &&
+      Array.isArray(parsed.entries) &&
+      parsed.entries.some(
+        (entry) =>
+          isRecord(entry) &&
+          entry.ownerId === ownerId &&
+          isRecord(entry.result),
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function queueAccountResult(
@@ -88,7 +117,7 @@ export function queueAccountResult(
     return "full";
   }
   return write({
-    version: 1,
+    version: 2,
     entries: [{ ownerId, result }, ...ownerEntries, ...otherEntries],
   })
     ? "queued"

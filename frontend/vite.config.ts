@@ -1,8 +1,61 @@
 import react from "@vitejs/plugin-react";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
+const fingerprintRoots = [
+  "index.html",
+  "package.json",
+  "package-lock.json",
+  "vite.config.ts",
+  "public",
+  "src",
+] as const;
+
+function sourceFiles(path: string): string[] {
+  if (!statSync(path).isDirectory()) {
+    return [path];
+  }
+  return readdirSync(path, { withFileTypes: true })
+    .flatMap((entry) => sourceFiles(resolve(path, entry.name)))
+    .sort();
+}
+
+function sourceFingerprint(): string {
+  const root = process.cwd();
+  const hash = createHash("sha256");
+  for (const file of fingerprintRoots
+    .flatMap((path) => sourceFiles(resolve(root, path)))
+    .sort()) {
+    hash.update(relative(root, file).replaceAll("\\", "/"));
+    hash.update("\0");
+    hash.update(readFileSync(file));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+const buildId =
+  process.env.RILL_BUILD_ID ?? `source-${sourceFingerprint().slice(0, 16)}`;
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "rill-build-identity",
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          fileName: "build.json",
+          source: `${JSON.stringify({ buildId })}\n`,
+        });
+      },
+    },
+  ],
+  define: {
+    __RILL_BUILD_ID__: JSON.stringify(buildId),
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,
@@ -20,6 +73,7 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
+    assetsInlineLimit: 0,
     sourcemap: false,
     reportCompressedSize: true,
     target: "es2022",

@@ -1,9 +1,13 @@
+import type { RefObject } from "react";
+
+import { codeLanguageLabel } from "./codeCorpus";
 import type { TypingResult } from "./types";
 import { PaceChart } from "./PaceChart";
 
 interface ResultsViewProps {
   result: TypingResult;
   saveStatus: "idle" | "saved" | "queued" | "unavailable";
+  restartButtonRef: RefObject<HTMLButtonElement | null>;
   onRestart: () => void;
   onChangeTest: () => void;
 }
@@ -11,13 +15,18 @@ interface ResultsViewProps {
 export function ResultsView({
   result,
   saveStatus,
+  restartButtonRef,
   onRestart,
   onChangeTest,
 }: ResultsViewProps) {
   return (
     <section className="results" aria-labelledby="results-title">
       <div className="result-primary">
-        <p className="eyebrow">words per minute</p>
+        <p className="eyebrow">
+          {result.contentType === "code" && result.codeLanguage !== undefined
+            ? `${codeLanguageLabel(result.codeLanguage)} code · words per minute`
+            : "words per minute"}
+        </p>
         <h2 id="results-title">{Math.round(result.wpm)}</h2>
       </div>
       <dl className="result-details">
@@ -40,8 +49,8 @@ export function ResultsView({
         <div>
           <dt>characters</dt>
           <dd>
-            {result.correctCharacters}/{result.incorrectAttempts}/
-            {result.missingCharacters}/{result.extraAttempts}
+            {result.correctCharacters}/{result.incorrectCharacters}/
+            {result.extraAttempts}/{result.missingCharacters}
           </dd>
         </div>
       </dl>
@@ -57,7 +66,7 @@ export function ResultsView({
               : "saving…"}
         </p>
         <div className="result-actions">
-          <button type="button" onClick={onRestart}>
+          <button ref={restartButtonRef} type="button" onClick={onRestart}>
             again <kbd>enter</kbd>
           </button>
           <button type="button" onClick={onChangeTest}>

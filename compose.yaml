@@ -28,6 +28,7 @@ services:
       FLYWAY_USER: rill_migrator
       FLYWAY_PASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
       FLYWAY_CONNECT_RETRIES: "60"
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
       FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
     command: ["migrate"]
     volumes:

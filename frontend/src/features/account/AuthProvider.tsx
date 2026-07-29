@@ -25,14 +25,27 @@ import { AuthContext, type AuthContextValue } from "./auth-context";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [user, setUser] = useState<AccountUser | null>(null);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const activeUserId = useRef<string | null>(null);
 
   const flushFor = useCallback((nextUser: AccountUser) => {
-    void flushAccountResults(nextUser.id, async (result) => {
-      if (activeUserId.current !== nextUser.id) {
-        throw new Error("The active account changed before queue flush.");
+    setSyncNotice(null);
+    void flushAccountResults(
+      nextUser.id,
+      async (result) => {
+        if (activeUserId.current !== nextUser.id) {
+          throw new Error("The active account changed before queue flush.");
+        }
+        return saveAccountResult(result);
+      },
+    ).then(({ discarded }) => {
+      if (activeUserId.current === nextUser.id && discarded > 0) {
+        setSyncNotice(
+          discarded === 1
+            ? "One queued result could not be synced and was removed."
+            : `${String(discarded)} queued results could not be synced and were removed.`,
+        );
       }
-      return saveAccountResult(result);
     });
   }, []);
 
@@ -52,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const markOffline = useCallback(() => {
     activeUserId.current = null;
     setUser(null);
+    setSyncNotice(null);
     setStatus("offline");
   }, []);
 
@@ -87,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expireSession = () => {
       activeUserId.current = null;
       setUser(null);
+      setSyncNotice(null);
       setStatus("guest");
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
@@ -113,10 +128,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await logoutRequest();
       setUser(null);
+      setSyncNotice(null);
       setStatus("guest");
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setUser(null);
+        setSyncNotice(null);
         setStatus("guest");
         return;
       }
@@ -131,10 +148,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await deleteAccountRequest(password);
       setUser(null);
+      setSyncNotice(null);
       setStatus("guest");
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setUser(null);
+        setSyncNotice(null);
         setStatus("guest");
         return;
       }
@@ -147,13 +166,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       user,
+      syncNotice,
+      clearSyncNotice: () => setSyncNotice(null),
       signIn,
       register,
       signOut,
       deleteAccount,
       retry,
     }),
-    [deleteAccount, register, retry, signIn, signOut, status, user],
+    [deleteAccount, register, retry, signIn, signOut, status, syncNotice, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

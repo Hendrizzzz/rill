@@ -48,10 +48,16 @@ public interface TypingResultRepository extends JpaRepository<TypingResultEntity
     @Query(
             value =
                     """
-                    select distinct on (mode, mode_value, punctuation, numbers) *
+                    select distinct on (
+                        mode, mode_value, punctuation, numbers,
+                        content_type, language, code_language,
+                        word_list_version, error_policy
+                    ) *
                     from typing_result
                     where user_id = :userId
                     order by mode, mode_value, punctuation, numbers,
+                             content_type, language, code_language,
+                             word_list_version, error_policy,
                              wpm desc, accuracy desc, completed_at asc, id asc
                     """,
             nativeQuery = true)

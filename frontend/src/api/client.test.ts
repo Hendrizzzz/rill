@@ -23,11 +23,16 @@ const localResult: TypingResult = {
   modeValue: 30,
   punctuation: false,
   numbers: false,
+  contentType: "words",
+  language: "en",
+  wordListVersion: "en-v1",
+  errorPolicy: "normal",
   durationMs: 30_000,
   typedCharacters: 100,
   correctAttempts: 95,
   incorrectAttempts: 5,
   correctCharacters: 92,
+  incorrectCharacters: 3,
   missingCharacters: 1,
   extraAttempts: 2,
   correctedErrors: 3,
@@ -35,7 +40,15 @@ const localResult: TypingResult = {
   rawWpm: 40,
   accuracy: 95,
   consistency: 88,
-  paceBuckets: [{ durationMs: 1_000, typedCharacters: 3 }],
+  paceBuckets: [
+    {
+      durationMs: 1_000,
+      typedCharacters: 3,
+      correctCharacters: 3,
+      rawCharacters: 3,
+      errors: 0,
+    },
+  ],
   completedAt: "2026-07-26T00:00:00Z",
   completionReason: "time",
 };
@@ -55,11 +68,16 @@ function serverResult(overrides: Record<string, unknown> = {}) {
     modeValue: 30,
     punctuation: false,
     numbers: false,
+    contentType: "WORDS",
+    language: "EN",
+    wordListVersion: "en-v1",
+    errorPolicy: "NORMAL",
     durationMs: 30_000,
     typedCharacters: 100,
     correctAttempts: 95,
     incorrectAttempts: 5,
     correctCharacters: 92,
+    incorrectCharacters: 3,
     missingCharacters: 1,
     extraAttempts: 2,
     correctedErrors: 3,
@@ -67,8 +85,17 @@ function serverResult(overrides: Record<string, unknown> = {}) {
     rawWpm: 40,
     accuracy: 95,
     consistency: 88,
-    paceBuckets: [{ durationMs: 1_000, typedCharacters: 3 }],
+    paceBuckets: [
+      {
+        durationMs: 1_000,
+        typedCharacters: 3,
+        correctCharacters: 3,
+        rawCharacters: 3,
+        errors: 0,
+      },
+    ],
     completedAt: "2026-07-26T00:00:00Z",
+    completionReason: "TIME",
     oldestResultsPruned: 0,
     ...overrides,
   };
@@ -175,12 +202,94 @@ describe("API client", () => {
     const { saveAccountResult } = await import("./client");
 
     const saved = await saveAccountResult(localResult);
-    expect(saved).toEqual({
-      ...localResult,
-      completionReason: "finished",
-    });
+    expect(saved).toEqual(localResult);
     expect(saved).not.toHaveProperty("id");
     expect(saved).not.toHaveProperty("oldestResultsPruned");
+  });
+
+  it("round trips the code language dimension", async () => {
+    const codeResult: TypingResult = {
+      ...localResult,
+      mode: "words",
+      modeValue: 7,
+      contentType: "code",
+      language: "en",
+      codeLanguage: "go",
+      wordListVersion: "code-v2",
+      completionReason: "finished",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(guestSession))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          serverResult({
+            mode: "WORDS",
+            modeValue: 7,
+            contentType: "CODE",
+            codeLanguage: "GO",
+            wordListVersion: "code-v2",
+            completionReason: "FINISHED",
+          }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const { saveAccountResult } = await import("./client");
+
+    await expect(saveAccountResult(codeResult)).resolves.toEqual(codeResult);
+    const request = fetchMock.mock.calls[1]?.[1];
+    expect(typeof request?.body).toBe("string");
+    const body: unknown =
+      typeof request?.body === "string"
+        ? (JSON.parse(request.body) as unknown)
+        : null;
+    expect(body).toMatchObject({
+      contentType: "CODE",
+      language: "EN",
+      codeLanguage: "GO",
+      wordListVersion: "code-v2",
+    });
+  });
+
+  it("preserves a delayed code-v1 result through account sync", async () => {
+    const legacyCodeResult: TypingResult = {
+      ...localResult,
+      mode: "words",
+      modeValue: 7,
+      contentType: "code",
+      language: "en",
+      codeLanguage: "python3",
+      wordListVersion: "code-v1",
+      completionReason: "finished",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(guestSession))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          serverResult({
+            mode: "WORDS",
+            modeValue: 7,
+            contentType: "CODE",
+            codeLanguage: "PYTHON3",
+            wordListVersion: "code-v1",
+            completionReason: "FINISHED",
+          }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const { saveAccountResult } = await import("./client");
+
+    await expect(saveAccountResult(legacyCodeResult)).resolves.toEqual(
+      legacyCodeResult,
+    );
+    const body = fetchMock.mock.calls[1]?.[1]?.body;
+    expect(typeof body).toBe("string");
+    expect(
+      typeof body === "string"
+        ? (JSON.parse(body) as Record<string, unknown>).wordListVersion
+        : undefined,
+    ).toBe("code-v1");
   });
 
   it("maps a cursor-paginated result page without exposing server fields", async () => {
@@ -195,10 +304,7 @@ describe("API client", () => {
 
     await expect(loadAccountResults("current-page", 12)).resolves.toEqual({
       items: [
-        {
-          ...localResult,
-          completionReason: "finished",
-        },
+        localResult,
       ],
       nextCursor: "next-page",
     });
@@ -206,6 +312,59 @@ describe("API client", () => {
       "/api/results?limit=12&cursor=current-page",
     );
   });
+
+  it.each([
+    {
+      serverReason: "FINISHED",
+      mode: "WORDS",
+      modeValue: 10,
+      durationMs: 2_000,
+      expected: "finished",
+    },
+    {
+      serverReason: "TIME",
+      mode: "TIME",
+      modeValue: 30,
+      durationMs: 30_000,
+      expected: "time",
+    },
+    {
+      serverReason: "LIMIT",
+      mode: "WORDS",
+      modeValue: 10,
+      durationMs: 600_000,
+      expected: "limit",
+    },
+    {
+      serverReason: "PROMPT_EXHAUSTED",
+      mode: "WORDS",
+      modeValue: 10,
+      durationMs: 2_000,
+      expected: "prompt-exhausted",
+    },
+  ])(
+    "maps the $serverReason completion reason",
+    async ({ serverReason, mode, modeValue, durationMs, expected }) => {
+      const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+        jsonResponse({
+          items: [
+            serverResult({
+              completionReason: serverReason,
+              mode,
+              modeValue,
+              durationMs,
+            }),
+          ],
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const { loadAccountResults } = await import("./client");
+
+      await expect(loadAccountResults()).resolves.toMatchObject({
+        items: [{ completionReason: expected }],
+      });
+    },
+  );
 
   it("maps account totals and partitioned personal records", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
@@ -221,6 +380,10 @@ describe("API client", () => {
               modeValue: 30,
               punctuation: false,
               numbers: false,
+              contentType: "WORDS",
+              language: "EN",
+              wordListVersion: "en-v1",
+              errorPolicy: "NORMAL",
             },
             result: serverResult({ wpm: 72.5 }),
           },
@@ -235,8 +398,15 @@ describe("API client", () => {
       highestWpm: 72.5,
       records: [
         {
-          key: { mode: "time", modeValue: 30 },
-          result: { wpm: 72.5, completionReason: "finished" },
+          key: {
+            mode: "time",
+            modeValue: 30,
+            contentType: "words",
+            language: "en",
+            wordListVersion: "en-v1",
+            errorPolicy: "normal",
+          },
+          result: { wpm: 72.5, completionReason: "time" },
         },
       ],
     });

@@ -4,10 +4,14 @@ Rill is a quiet, keyboard-first typing practice application. The typing loop
 runs entirely in the browser; an optional account preserves results across
 devices through a Spring Boot API.
 
-The product includes word and timed tests, punctuation and number modifiers,
-deterministic prompts, restart shortcuts, detailed scoring, three original
-themes, guest history, account history, JSON export, and password-confirmed
-account deletion. It does not send a request for each keystroke.
+The product includes word and timed tests, English and Spanish word lists,
+attributed public-domain quotes, tab-private custom text, strict error behavior,
+punctuation and number modifiers, and an original code-learning corpus with 16
+common algorithm patterns rendered as 512 drills across C++, Java, Python 3, C,
+C#, JavaScript, TypeScript, and Go. It also includes deterministic prompts,
+restart shortcuts, detailed scoring, three original themes, guest history,
+account history, JSON export, and password-confirmed account deletion. It does
+not send a request for each keystroke.
 
 ## Stack
 
@@ -41,8 +45,8 @@ access to Flyway history before the backend starts.
 
 ## Development
 
-Use Node 24.18 or newer within the supported Node 24 line, Java 21, and Docker.
-The repository includes Maven wrappers.
+Use Node 22.22 or newer (CI uses Node 24.18), Java 21, and Docker. The
+repository includes Maven wrappers.
 
 Start PostgreSQL/backend with Compose, then run the frontend dev server:
 
@@ -75,10 +79,24 @@ npm audit --audit-level=high
 npm run typecheck
 npm run lint
 npm run test:run
+npm run test:code-corpus
 npm run build
 npx playwright install
 npm run test:e2e
 ```
+
+With the production Compose stack running, the browser performance/security
+smoke and Monkeytype epoch fingerprint are reproducible with:
+
+```text
+PERF_BASE_URL=http://127.0.0.1:8080 npm run test:perf
+npm run audit:monkeytype-epoch
+```
+
+`test:perf` uses real Playwright browser input, records before-input-to-frame
+timing, long tasks, layout shifts, network activity, CSP violations, runtime
+errors, and overflow. It is a bounded smoke measurement, not a laboratory
+benchmark.
 
 Account-lifecycle E2E runs against the full stack:
 
@@ -112,6 +130,7 @@ docs/design/         visual, responsive, motion, and accessibility direction
 docs/security/       implementation-grounded threat model
 docs/operations/     deployment, migration, backup, and recovery runbook
 docs/reviews/        specialist findings and root-agent evaluations
+docs/testing/        parity catalog, generated status, and campaign evidence
 compose.yaml         production-shaped local topology
 ```
 
@@ -127,9 +146,13 @@ multiple API replicas, add a shared limiter at the trusted ingress or in a
 shared store.
 
 See [deployment and maintenance](docs/operations/DEPLOYMENT.md),
+[zero-cost Vercel/Render/Neon deployment](docs/operations/FREE_TIER_DEPLOYMENT.md),
 [architecture](docs/architecture/ARCHITECTURE.md), and the
-[threat model](docs/security/threat-model.md). Exact local evidence and
-limitations are recorded in [verification](docs/VERIFICATION.md).
+[threat model](docs/security/threat-model.md). The original code-drill
+selection and copyright boundary are documented in the
+[code-learning corpus policy](docs/product/CODE_CORPUS.md). Exact local
+evidence and limitations are recorded in [verification](docs/VERIFICATION.md)
+and the [parity ledger](docs/testing/MONKEYTYPE_PARITY_LEDGER.md).
 
 ## Intentional release-1 limits
 

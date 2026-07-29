@@ -1,97 +1,111 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildPaceAnalysisBuckets,
-  MINIMUM_PACE_ANALYSIS_WINDOW_MS,
-} from "./paceAnalysis";
-import { buildPaceBuckets, calculateConsistency, calculateMetrics } from "./scoring";
+  bucketEndTimesMs,
+  calculateConsistency,
+  calculateMetrics,
+  calculateWpm,
+} from "./scoring";
+import type { PaceBucket } from "./types";
+
+function bucket(
+  typedCharacters: number,
+  overrides: Partial<PaceBucket> = {},
+): PaceBucket {
+  return {
+    durationMs: 1_000,
+    typedCharacters,
+    correctCharacters: typedCharacters,
+    rawCharacters: typedCharacters,
+    errors: 0,
+    ...overrides,
+  };
+}
 
 describe("typing scoring", () => {
-  it("uses final correct characters for wpm and attempts for raw wpm", () => {
+  it("separates final retained text from historical attempts", () => {
     const metrics = calculateMetrics(
       60_000,
       {
-        typedCharacters: 250,
+        typedCharacters: 240,
         correctAttempts: 230,
         incorrectAttempts: 20,
         correctCharacters: 225,
-        missingCharacters: 10,
+        incorrectCharacters: 10,
+        missingCharacters: 5,
         extraAttempts: 5,
         correctedErrors: 8,
       },
-      [{ durationMs: 1_000, typedCharacters: 4 }],
+      [bucket(4)],
     );
 
     expect(metrics).toEqual({
       wpm: 45,
-      rawWpm: 50,
-      accuracy: 88.46,
+      rawWpm: 48,
+      accuracy: 92,
       consistency: 100,
     });
   });
 
-  it("keeps zero-character pauses in consistency", () => {
+  it("returns neutral metrics when no typing attempts exist", () => {
+    expect(
+      calculateMetrics(
+        1_000,
+        {
+          typedCharacters: 0,
+          correctAttempts: 0,
+          incorrectAttempts: 0,
+          correctCharacters: 0,
+          incorrectCharacters: 0,
+          missingCharacters: 0,
+          extraAttempts: 0,
+          correctedErrors: 0,
+        },
+        [],
+      ),
+    ).toEqual({
+      wpm: 0,
+      rawWpm: 0,
+      accuracy: 100,
+      consistency: 0,
+    });
+  });
+
+  it("uses the nonlinear burst consistency mapping", () => {
+    expect(calculateConsistency([bucket(5), bucket(0)])).toBe(8.9);
+    expect(calculateConsistency([bucket(5), bucket(5)])).toBe(100);
+    expect(calculateConsistency([])).toBe(0);
+  });
+
+  it("rounds each interval burst before calculating consistency", () => {
     expect(
       calculateConsistency([
-        { durationMs: 1_000, typedCharacters: 5 },
-        { durationMs: 1_000, typedCharacters: 0 },
+        bucket(7, { durationMs: 1_000 }),
+        bucket(8, { durationMs: 1_024 }),
       ]),
-    ).toBe(0);
+    ).toBe(94.38);
   });
 
-  it("builds a normalized final partial pace bucket", () => {
-    expect(buildPaceBuckets(2_250, [4, 5, 2])).toEqual([
-      { durationMs: 1_000, typedCharacters: 4 },
-      { durationMs: 1_000, typedCharacters: 5 },
-      { durationMs: 250, typedCharacters: 2 },
-    ]);
+  it("rounds positive half-bursts away from zero like JavaScript", () => {
+    expect(
+      calculateConsistency([
+        bucket(1, { durationMs: 1_000 }),
+        bucket(1, { durationMs: 960 }),
+      ]),
+    ).toBe(96);
   });
 
-  it("coalesces an unreliable terminal window without changing its totals", () => {
-    const source = [
-      { durationMs: 1_000, typedCharacters: 7 },
-      { durationMs: 1_000, typedCharacters: 7 },
-      { durationMs: 24, typedCharacters: 1 },
-    ];
-
-    expect(buildPaceAnalysisBuckets(source)).toEqual([
-      { durationMs: 1_000, typedCharacters: 7 },
-      { durationMs: 1_024, typedCharacters: 8 },
-    ]);
-    expect(source).toEqual([
-      { durationMs: 1_000, typedCharacters: 7 },
-      { durationMs: 1_000, typedCharacters: 7 },
-      { durationMs: 24, typedCharacters: 1 },
-    ]);
-    expect(calculateConsistency(source)).toBe(94.51);
+  it("preserves the source operation order at floating half boundaries", () => {
+    expect(Math.round(calculateWpm(23, 24_000))).toBe(11);
+    expect(Math.round(calculateWpm(12, 768))).toBe(187);
   });
 
-  it("uses an explicit minimum analysis window at the threshold boundaries", () => {
+  it("reconstructs canonical graph boundaries in hundredth-millisecond ticks", () => {
     expect(
-      buildPaceAnalysisBuckets([
-        { durationMs: 1_000, typedCharacters: 5 },
-        {
-          durationMs: MINIMUM_PACE_ANALYSIS_WINDOW_MS - 1,
-          typedCharacters: 0,
-        },
+      bucketEndTimesMs([
+        ...Array.from({ length: 6 }, () => bucket(0)),
+        bucket(0, { durationMs: 680.19 }),
       ]),
-    ).toEqual([{ durationMs: 1_249, typedCharacters: 5 }]);
-    expect(
-      buildPaceAnalysisBuckets([
-        { durationMs: 1_000, typedCharacters: 5 },
-        {
-          durationMs: MINIMUM_PACE_ANALYSIS_WINDOW_MS,
-          typedCharacters: 0,
-        },
-      ]),
-    ).toEqual([
-      { durationMs: 1_000, typedCharacters: 5 },
-      { durationMs: 250, typedCharacters: 0 },
-    ]);
-    expect(
-      buildPaceAnalysisBuckets([
-        { durationMs: 24, typedCharacters: 1 },
-      ]),
-    ).toEqual([{ durationMs: 24, typedCharacters: 1 }]);
+    ).toEqual([1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 6_680.19]);
   });
 });

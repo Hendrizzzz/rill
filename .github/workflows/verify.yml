@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +18,7 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -29,6 +32,21 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw --batch-mode --no-transfer-progress verify
+      - name: Scan backend dependencies
+        working-directory: backend
+        run: |
+          ./mvnw --batch-mode --no-transfer-progress \
+            org.owasp:dependency-check-maven:12.2.2:check \
+            -Dformats=JSON,HTML \
+            -DfailBuildOnCVSS=7 \
+            -DossindexAnalyzerEnabled=false
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-check
+          path: backend/target/dependency-check-report.*
+          if-no-files-found: warn
+          retention-days: 14
 
   frontend:
     runs-on: ubuntu-latest
@@ -48,19 +66,107 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:coverage
+      - run: npm run test:code-corpus
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=chromium
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  parity-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
+      MONKEYTYPE_SOURCE_ROOT: ${{ runner.temp }}/monkeytype-oracle
+      PARITY_RUNS: "500"
+      PARITY_EVIDENCE_PATH: ${{ runner.temp }}/parity-smoke.json
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Fetch the pinned test-only Monkeytype source
+        working-directory: .
+        run: |
+          git init "$MONKEYTYPE_SOURCE_ROOT"
+          git -C "$MONKEYTYPE_SOURCE_ROOT" remote add origin https://github.com/monkeytypegame/monkeytype.git
+          git -C "$MONKEYTYPE_SOURCE_ROOT" fetch --depth 1 origin "$MONKEYTYPE_COMMIT"
+          git -C "$MONKEYTYPE_SOURCE_ROOT" checkout --detach FETCH_HEAD
+      - run: npm run parity:catalog:validate
+      - run: npm run test:parity:oracle
+      - run: npm run test:parity:campaign
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-smoke
+          path: ${{ runner.temp }}/parity-smoke.json
+          if-no-files-found: error
+
+  parity-full:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
+      MONKEYTYPE_SOURCE_ROOT: ${{ runner.temp }}/monkeytype-oracle
+      PARITY_RUNS: "10000"
+      PARITY_EVIDENCE_PATH: ${{ runner.temp }}/parity-campaign.json
+      PARITY_STATUS_PATH: ${{ runner.temp }}/PARITY_STATUS.md
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Fetch the pinned test-only Monkeytype source
+        working-directory: .
+        run: |
+          git init "$MONKEYTYPE_SOURCE_ROOT"
+          git -C "$MONKEYTYPE_SOURCE_ROOT" remote add origin https://github.com/monkeytypegame/monkeytype.git
+          git -C "$MONKEYTYPE_SOURCE_ROOT" fetch --depth 1 origin "$MONKEYTYPE_COMMIT"
+          git -C "$MONKEYTYPE_SOURCE_ROOT" checkout --detach FETCH_HEAD
+      - run: npm run test:parity:oracle
+      - run: npm run test:parity:campaign
+      - run: npm run parity:report
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-campaign
+          path: |
+            ${{ runner.temp }}/parity-campaign.json
+            ${{ runner.temp }}/PARITY_STATUS.md
+          if-no-files-found: error
 
   containers:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       RILL_POSTGRES_ADMIN_PASSWORD: ci-admin-not-for-production
       RILL_MIGRATOR_DB_PASSWORD: ci-migrator-not-for-production
       RILL_APP_DB_PASSWORD: ci-app-not-for-production
+      RILL_SPRING_PROFILES_ACTIVE: local
+      RILL_COOKIE_SECURE: "false"
     steps:
       - uses: actions/checkout@v6
+      - run: mkdir -p artifacts
       - run: docker compose config --quiet
       - run: docker compose up --build --detach --wait
       - uses: actions/setup-node@v6
@@ -70,13 +176,55 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --ignore-scripts
         working-directory: frontend
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: frontend
-      - run: npx playwright test --project=chromium --grep "account result"
+      - name: Run the production browser matrix
+        run: npx playwright test --workers=1
         working-directory: frontend
         env:
           E2E_ACCOUNT: "true"
           E2E_BASE_URL: http://127.0.0.1:8080
+      - name: Measure the production typing path
+        if: always()
+        working-directory: frontend
+        run: |
+          mkdir -p ../artifacts
+          node scripts/performance-smoke.mjs > ../artifacts/performance.json
+          cat ../artifacts/performance.json
+        env:
+          PERF_BASE_URL: http://127.0.0.1:8080
+      - name: Scan backend image
+        if: always()
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: rill-backend:latest
+          format: json
+          output: artifacts/trivy-backend.json
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+      - name: Scan web image
+        if: always()
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: rill-web:latest
+          format: json
+          output: artifacts/trivy-web.json
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-browser-and-image-evidence
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            artifacts/performance.json
+            artifacts/trivy-backend.json
+            artifacts/trivy-web.json
+          if-no-files-found: warn
+          retention-days: 14
       - if: always()
         run: docker compose logs --no-color backend web database migrate permissions
       - if: always()

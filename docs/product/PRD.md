@@ -1,7 +1,7 @@
 # Rill product requirements
 
-Status: release scope implemented and locally verified
-Last updated: 2026-07-26
+Status: release scope implemented; final verification in progress
+Last updated: 2026-07-27
 
 ## Verdict
 
@@ -26,7 +26,23 @@ The product must feel:
 - Time modes: 15, 30, and 60 seconds.
 - Word modes: 10, 25, and 50 words.
 - Optional punctuation and numbers.
-- Deterministic, seeded prompt generation from a bundled English word list.
+- Deterministic, seeded prompt generation from bundled English and Spanish word
+  lists.
+- A small, attributed corpus of public-domain English quotations.
+- Plain custom text (2–300 words, at most 2,000 characters) held only in the
+  active browser tab; prompt text is never persisted or uploaded.
+- Code practice built from 16 common interview-algorithm patterns, repeated as
+  four named drills in each of C++, Java, Python 3, C, C#, JavaScript,
+  TypeScript, and Go (512 drills total). Every implementation and teaching note
+  is authored for Rill; no third-party problem statement, editorial, or
+  submission is bundled.
+- Code practice renders source on a four-space indentation grid, automatically
+  positions the caret at the next line's first typable character, uses Enter as
+  a scored line boundary, and excludes structural indentation from typing
+  metrics. It shows the pattern, invariant, and complexity and retains the
+  standard five-characters-per-word calculation.
+- Normal and strict error policies. Strict mode requires the current word to
+  match exactly before it can be committed.
 - Start on the first printable character.
 - Correct, incorrect, extra, and missing-character presentation.
 - Backspace correction without erasing the historical accuracy penalty.
@@ -38,9 +54,9 @@ The product must feel:
 ### Results and history
 
 - Canonical WPM, raw WPM, accuracy, consistency, character counts, elapsed time, and option summary.
-- Per-second pace samples rendered as a lightweight SVG chart with truthful
-  raw-pace, character-count, and interval details on pointer hover or through a
-  single keyboard range control.
+- Monkeytype-compatible per-second WPM, raw, burst, and error samples rendered
+  as a lightweight SVG chart with interval details on pointer hover or through
+  a single keyboard range control.
 - Guest history in versioned local storage, capped at the most recent 100 tests.
 - Optional account registration, sign-in, sign-out, server-side result history, personal records, JSON data export, and account deletion.
 - Cursor-paginated history; no unbounded result response.
@@ -64,7 +80,8 @@ The product must feel:
 - Competitive leaderboards, social profiles, friends, multiplayer, or anti-cheat guarantees.
 - Email addresses, verification, password reset, OAuth, or multi-factor authentication.
 - Administrator UI.
-- Custom text uploads, arbitrary rich text, or multilingual word lists.
+- File uploads, arbitrary rich text, and human-language word lists beyond
+  English and Spanish.
 - Offline service worker/PWA caching.
 - Native mobile or desktop applications.
 - Telemetry, advertising, third-party analytics, or remote font/CDN dependencies.
@@ -78,12 +95,16 @@ Printable character attempts are counted; backspace and control keys are not.
 minutes = durationMilliseconds / 60_000
 rawWpm = typedCharacters / 5 / minutes
 wpm = correctCharacters / 5 / minutes
-accuracy = correctAttempts / (typedCharacters + missingCharacters) * 100
+accuracy = correctAttempts / (correctAttempts + incorrectAttempts) * 100
 ```
 
 - Values are rounded only for presentation. Stored values use fixed numeric precision.
-- A corrected mistake remains an incorrect historical attempt for accuracy and raw WPM. Final-position correctness, attempt correctness, missing characters, extra attempts, and corrected errors are distinct counters.
-- Consistency is server-derived from validated one-second pace buckets using the population coefficient of variation, clamped to 0–100.
+- A corrected mistake remains an incorrect historical attempt for accuracy but
+  is removed from retained-character raw WPM. Final whole-word correctness,
+  attempt correctness, incorrect characters, missing characters, extra
+  attempts, and corrected errors are distinct counters.
+- Consistency is server-derived from validated burst samples using Monkeytype's
+  non-linear coefficient-of-variation mapping.
 - For a time test, the canonical duration is the configured limit.
 - For a word test, duration runs from the first accepted character until the final target word is completed.
 - The server recalculates WPM, raw WPM, and accuracy from validated counts and duration. It does not trust client-supplied display metrics.
@@ -106,7 +127,10 @@ ready -> running -> completed
 
 ## Acceptance criteria
 
-1. A guest can complete every time and word mode, use both modifiers, restart, and see mathematically correct results.
+1. A guest can complete every time and word mode, use both modifiers, English
+   or Spanish words, attributed quotes, private custom text, all eight code
+   language choices, and strict error behavior; restart and see mathematically
+   correct results.
 2. The first printable key starts timing; navigation/modifier keys do not.
 3. The timer uses a monotonic clock (`performance.now`) and is not derived from render counts or wall-clock time.
 4. Backspace, incorrect characters, extra characters, consecutive spaces, focus loss, time expiry, and a final-word boundary have automated regression coverage.
@@ -125,10 +149,12 @@ ready -> running -> completed
 | Fragile typing state | Lost input or inconsistent restart | Pure reducer/domain functions, explicit transitions, focused regression tests |
 | Mobile keyboard incompatibility | Core feature unusable on phones | Real textarea capture, touch-to-focus, mobile Playwright/manual viewport check |
 | Client result tampering | Misleading stored records | Server-derived metrics, bounded inputs, no competitive leaderboard claim |
+| Custom text disclosure or unsafe rendering | Private content leak or script injection | Normalize and render as text, keep only in tab memory, persist result dimensions but never prompt text |
+| Incorrect or copied learning content | Users learn a wrong claim or the project republishes protected expression | Keep original implementations and notes, test corpus shape, review language-specific complexity, and exclude third-party statements/editorials/submissions |
 | Cookie/session mistakes | Account compromise | Random opaque tokens, only token hashes in DB, HttpOnly/SameSite cookies, expiry/revocation, CSRF |
 | Account endpoint abuse | Resource exhaustion/guessing | Password hashing, generic auth failures, bounded payloads, single-instance rate limit |
 | UI becoming dashboard-like | Typing area loses priority | No card grid, no decorative metrics before completion, screenshot-led visual review |
-| Scope growth | Incomplete release | Non-goals above; defer social, email, admin, PWA, and custom content |
+| Scope growth | Incomplete release | Non-goals above; defer social, email, admin, PWA, uploads, and additional languages |
 
 ## Assumptions
 
@@ -136,6 +162,12 @@ ready -> running -> completed
 - A production deployment uses HTTPS at the reverse proxy and one API instance initially.
 - Stored data is low-sensitivity account data: username, password hash, opaque-session hash, and typing results. No email, payment, health, location, or uploaded content is collected.
 - The operator supplies database credentials and secure runtime configuration outside source control.
-- English prompts are acceptable for release 1.
+- English and Spanish word practice plus English public-domain quotes are
+  acceptable for release 1; more human languages require their own reviewed
+  corpus.
+- “Popular LeetCode languages” is interpreted as the eight languages used by
+  LeetCode’s expanded editorial rollout. Rill teaches broadly known algorithms
+  but does not claim affiliation with LeetCode and does not reproduce its
+  problem text, examples, editorials, proprietary assets, or user submissions.
 - The target deployment is a public service for unrelated users. HTTPS terminates at an operator-managed ingress in front of the bundled Nginx container.
 - Permanent account loss when a password is forgotten is an explicitly accepted release-1 tradeoff because no email or recovery identifier is collected.

@@ -8,13 +8,18 @@ import {
   type ResultSummary,
 } from "../../api/client";
 import {
+  hasLegacyPendingAccountResults,
   loadPendingAccountResults,
   PENDING_RESULTS_CHANGED_EVENT,
 } from "../../api/pendingResults";
 import { useAuth } from "../account/auth-context";
 import { PaceChart } from "../typing/PaceChart";
-import { loadGuestResults } from "../typing/storage";
+import {
+  hasLegacyGuestResults,
+  loadGuestResults,
+} from "../typing/storage";
 import type { TypingResult } from "../typing/types";
+import { codeLanguageLabel } from "../typing/codeCorpus";
 
 const EMPTY_RESULTS: readonly TypingResult[] = [];
 const EMPTY_SUMMARY: ResultSummary = {
@@ -35,10 +40,22 @@ interface HistorySnapshot {
 
 function formatMode(result: TypingResult): string {
   const modifiers = [
+    result.contentType === result.mode ? "" : result.contentType,
+    result.codeLanguage === undefined
+      ? ""
+      : codeLanguageLabel(result.codeLanguage),
+    result.language === "es" ? "español" : "",
+    result.errorPolicy === "strict" ? "strict" : "",
     result.punctuation ? "punctuation" : "",
     result.numbers ? "numbers" : "",
   ].filter(Boolean);
-  return [result.mode, String(result.modeValue), ...modifiers].join(" · ");
+  const limit =
+    result.contentType === "words"
+      ? [result.mode, String(result.modeValue)]
+      : [
+          `${String(result.modeValue)} ${result.contentType === "code" ? "lines" : "words"}`,
+        ];
+  return [...limit, ...modifiers].join(" · ");
 }
 
 function recordKey(result: TypingResult): string {
@@ -47,6 +64,11 @@ function recordKey(result: TypingResult): string {
     String(result.modeValue),
     String(result.punctuation),
     String(result.numbers),
+    result.contentType,
+    result.language,
+    result.codeLanguage ?? "",
+    result.wordListVersion,
+    result.errorPolicy,
   ].join(":");
 }
 
@@ -90,6 +112,13 @@ function summarize(results: readonly TypingResult[]): ResultSummary {
         modeValue: result.modeValue,
         punctuation: result.punctuation,
         numbers: result.numbers,
+        contentType: result.contentType,
+        language: result.language,
+        wordListVersion: result.wordListVersion,
+        ...(result.codeLanguage === undefined
+          ? {}
+          : { codeLanguage: result.codeLanguage }),
+        errorPolicy: result.errorPolicy,
       },
       result,
     })),
@@ -120,6 +149,13 @@ function withPending(
           modeValue: result.modeValue,
           punctuation: result.punctuation,
           numbers: result.numbers,
+          contentType: result.contentType,
+          language: result.language,
+          wordListVersion: result.wordListVersion,
+          ...(result.codeLanguage === undefined
+            ? {}
+            : { codeLanguage: result.codeLanguage }),
+          errorPolicy: result.errorPolicy,
         },
         result,
       });
@@ -266,6 +302,10 @@ export function HistoryPage() {
     },
     [auth.user, pendingRevision],
   );
+  const hasLegacyResults =
+    auth.user === null
+      ? hasLegacyGuestResults()
+      : hasLegacyPendingAccountResults(auth.user.id);
   const serverIds = useMemo(
     () => new Set(serverResults.map((result) => result.clientResultId)),
     [serverResults],
@@ -328,6 +368,14 @@ export function HistoryPage() {
             : `Signed in as ${auth.user.username}. Results are ordered newest first.`}
         </p>
       </div>
+
+      {hasLegacyResults ? (
+        <p className="legacy-history-notice" role="status">
+          Earlier pre-release results remain stored in this browser, but their
+          older scoring data cannot be converted faithfully to the current
+          statistics.
+        </p>
+      ) : null}
 
       {state === "loading" && rows.length === 0 ? (
         <section className="empty-state" aria-live="polite">

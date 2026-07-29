@@ -1,7 +1,18 @@
-import { memo, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  Fragment,
+  memo,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 
+import { codeSyntaxKinds } from "./codeSyntax";
 import { segmentGraphemes } from "./inputAdapter";
-import type { TypingState } from "./types";
+import { leadingCodeIndentation, typableTarget } from "./targetText";
+import type { CodeLanguage, TypingState } from "./types";
 
 interface WordProps {
   index: number;
@@ -9,6 +20,9 @@ interface WordProps {
   input: readonly string[] | undefined;
   active: boolean;
   committed: boolean;
+  language: string;
+  codeLanguage?: CodeLanguage | undefined;
+  compositionText: string;
 }
 
 const PromptWord = memo(function PromptWord({
@@ -17,20 +31,30 @@ const PromptWord = memo(function PromptWord({
   input = [],
   active,
   committed,
+  language,
+  codeLanguage,
+  compositionText,
 }: WordProps) {
-  const targetCharacters = segmentGraphemes(target);
+  const targetCharacters = segmentGraphemes(target, language);
+  const syntaxKinds = useMemo(
+    () =>
+      codeLanguage === undefined
+        ? []
+        : codeSyntaxKinds(target, codeLanguage),
+    [codeLanguage, target],
+  );
   const extras = input.slice(targetCharacters.length);
   const caretIndex = input.length;
 
   return (
     <span
-      className={`prompt-word${active ? " is-active" : ""}`}
+      className="prompt-word"
       data-prompt-index={index}
       data-prompt-target={target}
     >
       {targetCharacters.map((character, index) => {
         const typed = input[index];
-        const className =
+        const stateClassName =
           typed === undefined
             ? committed
               ? "is-missing"
@@ -38,19 +62,35 @@ const PromptWord = memo(function PromptWord({
             : typed === character
               ? "is-correct"
               : "is-incorrect";
+        const className = [
+          "prompt-character",
+          stateClassName,
+          character === " " ? "is-whitespace" : "",
+          syntaxKinds[index] === undefined
+            ? ""
+            : `syntax-${syntaxKinds[index]}`,
+        ]
+          .filter(Boolean)
+          .join(" ");
         return (
-          <span
-            className="prompt-slot"
-            key={[String(index), character].join("-")}
-          >
+          <Fragment key={[String(index), character].join("-")}>
             {active && caretIndex === index ? (
-              <span className="typing-caret" />
+              <>
+                {compositionText.length > 0 ? (
+                  <span className="prompt-composition-anchor">
+                    <span className="prompt-composition">
+                      {compositionText}
+                    </span>
+                  </span>
+                ) : null}
+                <span className="typing-caret" />
+              </>
             ) : null}
-            <span className="prompt-slot-measure">{character}</span>
-            <span className={`prompt-character ${className}`}>
-              {character}
+            <span className="prompt-slot">
+              <span className="prompt-slot-measure">{character}</span>
+              <span className={className}>{character}</span>
             </span>
-          </span>
+          </Fragment>
         );
       })}
       {extras.length > 0 ? (
@@ -63,10 +103,28 @@ const PromptWord = memo(function PromptWord({
               {character}
             </span>
           ))}
-          {active ? <span className="typing-caret" /> : null}
+          {active ? (
+            <>
+              {compositionText.length > 0 ? (
+                <span className="prompt-composition-anchor">
+                  <span className="prompt-composition">
+                    {compositionText}
+                  </span>
+                </span>
+              ) : null}
+              <span className="typing-caret" />
+            </>
+          ) : null}
         </span>
       ) : active && caretIndex >= targetCharacters.length ? (
-        <span className="typing-caret" />
+        <>
+          {compositionText.length > 0 ? (
+            <span className="prompt-composition-anchor">
+              <span className="prompt-composition">{compositionText}</span>
+            </span>
+          ) : null}
+          <span className="typing-caret" />
+        </>
       ) : null}
     </span>
   );
@@ -75,9 +133,16 @@ const PromptWord = memo(function PromptWord({
 interface PromptViewProps {
   state: TypingState;
   captureRef: RefObject<HTMLTextAreaElement | null>;
+  captureFocused: boolean;
+  compositionText: string;
 }
 
-export function PromptView({ state, captureRef }: PromptViewProps) {
+export function PromptView({
+  state,
+  captureRef,
+  captureFocused,
+  compositionText,
+}: PromptViewProps) {
   const promptWindowRef = useRef<HTMLSpanElement>(null);
   const [windowStart, setWindowStart] = useState(0);
   const windowEnd = Math.min(state.prompt.words.length, windowStart + 80);
@@ -159,6 +224,58 @@ export function PromptView({ state, captureRef }: PromptViewProps) {
     windowStart,
   ]);
 
+  useLayoutEffect(() => {
+    const windowElement = promptWindowRef.current;
+    if (
+      windowElement === null ||
+      state.config.contentType !== "code"
+    ) {
+      return;
+    }
+    const alignCaret = () => {
+      const caret = windowElement.querySelector<HTMLElement>(".typing-caret");
+      if (caret === null) {
+        return;
+      }
+
+      const viewport = windowElement.getBoundingClientRect();
+      const caretBounds = caret.getBoundingClientRect();
+      const activeRow = caret.closest<HTMLElement>(".prompt-code-row");
+      const lineNumber =
+        activeRow?.querySelector<HTMLElement>(".prompt-code-line-number");
+      const leftBoundary =
+        (lineNumber?.getBoundingClientRect().right ?? viewport.left) + 12;
+      const rightInset = 16;
+      let nextScrollLeft = windowElement.scrollLeft;
+      if (caretBounds.right > viewport.right - rightInset) {
+        nextScrollLeft += caretBounds.right - (viewport.right - rightInset);
+      } else if (caretBounds.left < leftBoundary) {
+        nextScrollLeft += caretBounds.left - leftBoundary;
+      }
+
+      if (Math.abs(windowElement.scrollLeft - nextScrollLeft) > 1) {
+        windowElement.scrollTo({
+          left: Math.max(0, nextScrollLeft),
+          behavior: "auto",
+        });
+      }
+    };
+
+    alignCaret();
+    const observer = new ResizeObserver(alignCaret);
+    observer.observe(windowElement);
+    window.visualViewport?.addEventListener("resize", alignCaret);
+    return () => {
+      observer.disconnect();
+      window.visualViewport?.removeEventListener("resize", alignCaret);
+    };
+  }, [
+    captureFocused,
+    state.config.contentType,
+    state.currentInput.length,
+    state.wordIndex,
+  ]);
+
   return (
     <button
       type="button"
@@ -174,29 +291,80 @@ export function PromptView({ state, captureRef }: PromptViewProps) {
     >
       <span
         ref={promptWindowRef}
-        className="prompt-window"
+        className={[
+          "prompt-window",
+          state.config.contentType === "code" ? "prompt-window--code" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         aria-hidden="true"
+        lang={state.prompt.language}
+        dir={state.config.contentType === "code" ? "ltr" : "auto"}
       >
         {words.map((target, offset) => {
           const absoluteIndex = windowStart + offset;
+          const codeMode = state.config.contentType === "code";
+          const displayIndentation = codeMode
+            ? leadingCodeIndentation(target)
+            : 0;
+          const inputTarget = typableTarget(
+            target,
+            state.config.contentType,
+          );
+          const isCurrent =
+            absoluteIndex === state.wordIndex &&
+            state.status !== "completed";
+          const showCaret = isCurrent && captureFocused;
           const input =
             absoluteIndex < state.wordIndex
               ? state.committedWords[absoluteIndex]
               : absoluteIndex === state.wordIndex
                 ? state.currentInput
                 : undefined;
-          return (
+          const promptWord = (
             <PromptWord
-              key={[String(absoluteIndex), target].join("-")}
               index={absoluteIndex}
-              target={target}
+              target={inputTarget}
               input={input}
-              active={
-                absoluteIndex === state.wordIndex &&
-                state.status !== "completed"
-              }
+              active={showCaret}
               committed={absoluteIndex < state.wordIndex}
+              language={state.prompt.language}
+              codeLanguage={
+                codeMode
+                  ? state.prompt.codeLanguage ??
+                    state.config.codeLanguage ??
+                    "python3"
+                  : undefined
+              }
+              compositionText={showCaret ? compositionText : ""}
             />
+          );
+          return state.config.contentType === "code" ? (
+            <span
+              className="prompt-code-row"
+              data-active={isCurrent ? "true" : undefined}
+              data-source-line={target}
+              key={[String(absoluteIndex), target].join("-")}
+            >
+              <span className="prompt-code-line-number">
+                {String(absoluteIndex + 1)}
+              </span>
+              <span
+                className="prompt-code-indent"
+                data-indent-columns={displayIndentation}
+                style={
+                  {
+                    "--code-indent-columns": displayIndentation,
+                  } as CSSProperties
+                }
+                aria-hidden="true"
+              />
+              {promptWord}
+            </span>
+          ) : (
+            <Fragment key={[String(absoluteIndex), target].join("-")}>
+              {promptWord}
+            </Fragment>
           );
         })}
       </span>

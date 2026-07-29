@@ -11,10 +11,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { buildMonotonePath } from "./monotonePath";
-import {
-  buildPaceAnalysisBuckets,
-  calculateBucketWpm,
-} from "./paceAnalysis";
+import { bucketEndTimesMs, calculateWpm } from "./scoring";
 import type { PaceBucket } from "./types";
 
 interface PaceChartProps {
@@ -23,13 +20,18 @@ interface PaceChartProps {
 
 interface PlotPoint {
   index: number;
-  startMs: number;
   endMs: number;
   durationMs: number;
   typedCharacters: number;
+  wpm: number;
   rawWpm: number;
+  burst: number;
+  errors: number;
   x: number;
   y: number;
+  rawY: number;
+  burstY: number;
+  errorY: number;
 }
 
 interface AxisTick {
@@ -49,6 +51,8 @@ interface TooltipPosition {
 
 const CHART_WIDTH = 600;
 const CHART_HEIGHT = 128;
+const PLOT_LEFT = 2;
+const PLOT_RIGHT = CHART_WIDTH - 2;
 const PLOT_TOP = 8;
 const PLOT_BOTTOM = 118;
 const TOOLTIP_GAP = 12;
@@ -60,17 +64,14 @@ function formatSeconds(milliseconds: number): string {
     .replace(/\.?0+$/, "");
 }
 
-function visualInterval(point: PlotPoint): string {
-  return `${formatSeconds(point.startMs)}–${formatSeconds(point.endMs)}s`;
-}
-
 function accessibleValue(point: PlotPoint): string {
+  const seconds = formatSeconds(point.endMs);
   return [
-    `${formatSeconds(point.startMs)} to ${formatSeconds(point.endMs)} seconds`,
+    `${seconds} ${seconds === "1" ? "second" : "seconds"}`,
+    `${String(Math.round(point.wpm))} words per minute`,
     `${String(Math.round(point.rawWpm))} raw words per minute`,
-    `${String(point.typedCharacters)} typed ${
-      point.typedCharacters === 1 ? "character" : "characters"
-    }`,
+    `${String(Math.round(point.burst))} burst words per minute`,
+    `${String(point.errors)} ${point.errors === 1 ? "error" : "errors"}`,
   ].join(", ");
 }
 
@@ -80,9 +81,7 @@ function buildWpmScale(peak: number): WpmScale {
   const magnitude = 10 ** Math.floor(Math.log10(roughInterval));
   const normalized = roughInterval / magnitude;
   const multiplier =
-    [1, 2, 4, 5, 10].find(
-      (candidate) => candidate >= normalized,
-    ) ?? 10;
+    [1, 2, 4, 5, 10].find((candidate) => candidate >= normalized) ?? 10;
   const interval = multiplier * magnitude;
   return {
     interval,
@@ -91,11 +90,8 @@ function buildWpmScale(peak: number): WpmScale {
 }
 
 function timeTickInterval(totalSeconds: number): number {
-  if (totalSeconds <= 0) {
-    return 1;
-  }
   const roughInterval = totalSeconds / 6;
-  const magnitude = 10 ** Math.floor(Math.log10(roughInterval));
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(1, roughInterval)));
   const normalized = roughInterval / magnitude;
   const multiplier =
     normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
@@ -108,14 +104,8 @@ function buildTimeTicks(totalDuration: number): AxisTick[] {
     return [];
   }
   if (totalSeconds < 1) {
-    return [
-      {
-        label: `${formatSeconds(totalDuration)}s`,
-        position: 100,
-      },
-    ];
+    return [{ label: `${formatSeconds(totalDuration)}s`, position: 100 }];
   }
-
   const interval = Math.max(1, timeTickInterval(totalSeconds));
   const ticks: AxisTick[] = [];
   for (
@@ -131,43 +121,59 @@ function buildTimeTicks(totalDuration: number): AxisTick[] {
   return ticks;
 }
 
+function linePoints(
+  points: readonly PlotPoint[],
+  field: "y" | "rawY" | "burstY",
+): { x: number; y: number }[] {
+  return points.map((point) => ({ x: point.x, y: point[field] }));
+}
+
 function buildPlotPoints(
   buckets: readonly PaceBucket[],
-  rates: readonly number[],
-  totalDuration: number,
   maximum: number,
+  maximumErrors: number,
 ): PlotPoint[] {
-  const points: PlotPoint[] = [];
-  let elapsedMs = 0;
-
-  buckets.forEach((bucket, index) => {
-    const startMs = elapsedMs;
-    const endMs = startMs + bucket.durationMs;
-    elapsedMs = endMs;
-    const rawWpm = rates[index] ?? 0;
+  const endTimes = bucketEndTimesMs(buckets);
+  const totalDuration = endTimes.at(-1) ?? 0;
+  return buckets.map((bucket, index) => {
+    const elapsedMs = endTimes[index] ?? 0;
+    const wpm = calculateWpm(bucket.correctCharacters, elapsedMs);
+    const rawWpm = calculateWpm(bucket.rawCharacters, elapsedMs);
+    const burst = calculateWpm(
+      bucket.typedCharacters,
+      bucket.durationMs,
+    );
     const x =
-      buckets.length === 1 || totalDuration <= 0
+      totalDuration <= 0
         ? CHART_WIDTH / 2
-        : (((startMs + endMs) / 2) / totalDuration) * CHART_WIDTH;
-    const y =
-      PLOT_BOTTOM - (rawWpm / maximum) * (PLOT_BOTTOM - PLOT_TOP);
-    points.push({
+        : PLOT_LEFT +
+          (elapsedMs / totalDuration) * (PLOT_RIGHT - PLOT_LEFT);
+    const yFor = (value: number) =>
+      PLOT_BOTTOM - (value / maximum) * (PLOT_BOTTOM - PLOT_TOP);
+    const errorY =
+      PLOT_BOTTOM -
+      (bucket.errors / Math.max(1, maximumErrors)) *
+        (PLOT_BOTTOM - PLOT_TOP);
+    return {
       index,
-      startMs,
-      endMs,
+      endMs: elapsedMs,
       durationMs: bucket.durationMs,
       typedCharacters: bucket.typedCharacters,
+      wpm,
       rawWpm,
+      burst,
+      errors: bucket.errors,
       x,
-      y,
-    });
+      y: yFor(wpm),
+      rawY: yFor(rawWpm),
+      burstY: yFor(burst),
+      errorY,
+    };
   });
-
-  return points;
 }
 
 export function PaceChart({ buckets }: PaceChartProps) {
-  const instructionId = useId();
+  const descriptionId = useId();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [committedIndex, setCommittedIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -182,51 +188,43 @@ export function PaceChart({ buckets }: PaceChartProps) {
     if (committedIndex === null) {
       return undefined;
     }
-    const dismissCommittedPoint = (event: PointerEvent) => {
-      const target = event.target;
+    const dismiss = (event: PointerEvent) => {
       if (
-        target instanceof Node &&
+        event.target instanceof Node &&
         plotRef.current !== null &&
-        !plotRef.current.contains(target)
+        !plotRef.current.contains(event.target)
       ) {
         setCommittedIndex(null);
       }
     };
-    document.addEventListener("pointerdown", dismissCommittedPoint);
+    document.addEventListener("pointerdown", dismiss);
     return () => {
-      document.removeEventListener("pointerdown", dismissCommittedPoint);
+      document.removeEventListener("pointerdown", dismiss);
     };
   }, [committedIndex]);
 
-  const { points, average, peak, xTicks, yTicks } = useMemo(() => {
-    const analysisBuckets = buildPaceAnalysisBuckets(buckets);
-    const totalDuration = analysisBuckets.reduce(
-      (sum, bucket) => sum + bucket.durationMs,
+  const { points, xTicks, yTicks, maximumErrors, averageRaw, peakBurst } =
+    useMemo(() => {
+    const totalDuration = bucketEndTimesMs(buckets).at(-1) ?? 0;
+    const preliminary = buildPlotPoints(buckets, 1, 1);
+    const peak = preliminary.reduce(
+      (maximum, point) =>
+        Math.max(maximum, point.wpm, point.rawWpm, point.burst),
       0,
     );
-    const totalCharacters = analysisBuckets.reduce(
-      (sum, bucket) => sum + bucket.typedCharacters,
+    const errorPeak = buckets.reduce(
+      (maximum, bucket) => Math.max(maximum, bucket.errors),
       0,
     );
-    const rates = analysisBuckets.map(calculateBucketWpm);
-    const scale = buildWpmScale(
-      rates.length > 0 ? Math.max(...rates) : 0,
-    );
+    const scale = buildWpmScale(peak);
     const nextPoints = buildPlotPoints(
-      analysisBuckets,
-      rates,
-      totalDuration,
+      buckets,
       scale.maximum,
+      errorPeak,
     );
     const intervalCount = Math.round(scale.maximum / scale.interval);
-
     return {
       points: nextPoints,
-      average:
-        totalDuration > 0
-          ? (totalCharacters * 12_000) / totalDuration
-          : 0,
-      peak: rates.length > 0 ? Math.max(...rates) : 0,
       xTicks: buildTimeTicks(totalDuration),
       yTicks: Array.from({ length: intervalCount + 1 }, (_, index) => {
         const value = scale.interval * index;
@@ -238,6 +236,25 @@ export function PaceChart({ buckets }: PaceChartProps) {
           position: (y / CHART_HEIGHT) * 100,
         };
       }),
+      maximumErrors: errorPeak,
+      averageRaw:
+        totalDuration <= 0
+          ? 0
+          : Math.round(
+              calculateWpm(
+                buckets.reduce(
+                  (total, bucket) => total + bucket.typedCharacters,
+                  0,
+                ),
+                totalDuration,
+              ),
+            ),
+      peakBurst: Math.round(
+        nextPoints.reduce(
+          (maximum, point) => Math.max(maximum, point.burst),
+          0,
+        ),
+      ),
     };
   }, [buckets]);
 
@@ -251,7 +268,9 @@ export function PaceChart({ buckets }: PaceChartProps) {
   const activePoint =
     activeIndex === null ? undefined : points[activeIndex];
   const selectedPoint = points[safeSelectedIndex];
-  const pathData = buildMonotonePath(points);
+  const wpmPath = buildMonotonePath(linePoints(points, "y"));
+  const rawPath = buildMonotonePath(linePoints(points, "rawY"));
+  const burstPath = buildMonotonePath(linePoints(points, "burstY"));
 
   const nearestPointForClientX = (
     clientX: number,
@@ -273,24 +292,16 @@ export function PaceChart({ buckets }: PaceChartProps) {
   const selectNearestPoint = (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
-    const nearest = nearestPointForClientX(
-      event.clientX,
-      event.currentTarget,
+    setHoverIndex(
+      nearestPointForClientX(event.clientX, event.currentTarget)?.index ?? null,
     );
-    if (nearest === undefined) {
-      return;
-    }
-    setHoverIndex(nearest.index);
   };
 
   const commitPointAt = (
     clientX: number,
     currentTarget: HTMLDivElement,
   ) => {
-    const nearest = nearestPointForClientX(
-      clientX,
-      currentTarget,
-    );
+    const nearest = nearestPointForClientX(clientX, currentTarget);
     if (nearest === undefined) {
       return;
     }
@@ -321,29 +332,23 @@ export function PaceChart({ buckets }: PaceChartProps) {
     if (activePoint === undefined) {
       return undefined;
     }
-
-    const updateTooltipPosition = () => {
-      const plot = plotRef.current;
-      const tooltip = tooltipRef.current;
-      if (plot === null || tooltip === null) {
-        return;
-      }
-
+    const plot = plotRef.current;
+    const tooltip = tooltipRef.current;
+    if (plot === null || tooltip === null) {
+      return undefined;
+    }
+    const updatePosition = () => {
       const plotBounds = plot.getBoundingClientRect();
       const tooltipBounds = tooltip.getBoundingClientRect();
       const anchorX = plotBounds.left + (activeLeft / 100) * plotBounds.width;
       const anchorY = plotBounds.top + (activeTop / 100) * plotBounds.height;
       const maximumLeft = Math.max(
         TOOLTIP_VIEWPORT_MARGIN,
-        window.innerWidth -
-          tooltipBounds.width -
-          TOOLTIP_VIEWPORT_MARGIN,
+        window.innerWidth - tooltipBounds.width - TOOLTIP_VIEWPORT_MARGIN,
       );
       const maximumTop = Math.max(
         TOOLTIP_VIEWPORT_MARGIN,
-        window.innerHeight -
-          tooltipBounds.height -
-          TOOLTIP_VIEWPORT_MARGIN,
+        window.innerHeight - tooltipBounds.height - TOOLTIP_VIEWPORT_MARGIN,
       );
       const left = Math.min(
         maximumLeft,
@@ -352,196 +357,241 @@ export function PaceChart({ buckets }: PaceChartProps) {
           anchorX - tooltipBounds.width / 2,
         ),
       );
-      const preferredAbove =
-        anchorY - tooltipBounds.height - TOOLTIP_GAP;
-      const preferredBelow = anchorY + TOOLTIP_GAP;
-      const unclampedTop =
-        preferredAbove >= TOOLTIP_VIEWPORT_MARGIN
-          ? preferredAbove
-          : preferredBelow + tooltipBounds.height <=
+      const above = anchorY - tooltipBounds.height - TOOLTIP_GAP;
+      const below = anchorY + TOOLTIP_GAP;
+      const preferredTop =
+        above >= TOOLTIP_VIEWPORT_MARGIN
+          ? above
+          : below + tooltipBounds.height <=
               window.innerHeight - TOOLTIP_VIEWPORT_MARGIN
-            ? preferredBelow
+            ? below
             : anchorY - tooltipBounds.height / 2;
-      const top = Math.min(
-        maximumTop,
-        Math.max(TOOLTIP_VIEWPORT_MARGIN, unclampedTop),
-      );
-
-      setTooltipPosition({ left, top });
+      setTooltipPosition({
+        left,
+        top: Math.min(
+          maximumTop,
+          Math.max(TOOLTIP_VIEWPORT_MARGIN, preferredTop),
+        ),
+      });
     };
-
-    updateTooltipPosition();
-    window.addEventListener("resize", updateTooltipPosition);
-    window.addEventListener("scroll", updateTooltipPosition, true);
+    updatePosition();
+    let animationFrame = 0;
+    const updateAfterLayout = () => {
+      updatePosition();
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(updatePosition);
+    };
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateAfterLayout);
+    resizeObserver?.observe(plot);
+    resizeObserver?.observe(tooltip);
+    window.addEventListener("resize", updateAfterLayout);
+    window.visualViewport?.addEventListener("resize", updateAfterLayout);
+    window.addEventListener("scroll", updatePosition, true);
     return () => {
-      window.removeEventListener("resize", updateTooltipPosition);
-      window.removeEventListener("scroll", updateTooltipPosition, true);
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateAfterLayout);
+      window.visualViewport?.removeEventListener("resize", updateAfterLayout);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [activeLeft, activePoint, activeTop]);
 
   return (
     <>
-      <figure className="pace-figure">
-      <div className={`pace-chart-shell${focused ? " is-focused" : ""}`}>
-        <div className="pace-y-axis" aria-hidden="true">
-          <span className="pace-y-title">raw wpm</span>
-          {yTicks.map((tick) => (
-            <span
-              className="pace-y-tick"
-              key={tick.label}
-              style={{ top: `${String(tick.position)}%` }}
-            >
-              {tick.label}
-            </span>
-          ))}
-        </div>
-
-        <div
-          ref={plotRef}
-          className="pace-plot"
-          onPointerDown={selectNearestPoint}
-          onPointerMove={selectNearestPoint}
-          onPointerUp={commitNearestTouchPoint}
-          onClick={commitNearestPoint}
-          onPointerLeave={() => {
-            setHoverIndex(null);
-          }}
-          onPointerCancel={() => {
-            setHoverIndex(null);
-          }}
-        >
-          <svg
-            className="pace-chart"
-            viewBox={[
-              "0",
-              "0",
-              String(CHART_WIDTH),
-              String(CHART_HEIGHT),
-            ].join(" ")}
-            aria-hidden="true"
-            focusable="false"
-            preserveAspectRatio="none"
-          >
-            {yTicks.map((tick) => {
-              const y = (tick.position / 100) * CHART_HEIGHT;
-              return (
-                <line
-                  className="pace-grid-line"
-                  key={tick.label}
-                  x1="0"
-                  y1={y}
-                  x2={CHART_WIDTH}
-                  y2={y}
-                />
-              );
-            })}
-            <line
-              className="pace-axis-line"
-              x1="0"
-              y1={PLOT_TOP}
-              x2="0"
-              y2={PLOT_BOTTOM}
-            />
-            {activePoint === undefined ? null : (
-              <line
-                className="pace-active-line"
-                x1={activePoint.x}
-                y1={PLOT_TOP}
-                x2={activePoint.x}
-                y2={PLOT_BOTTOM}
-              />
-            )}
-            {points.length > 1 ? (
-              <path className="pace-line" d={pathData} />
-            ) : null}
-          </svg>
-
-          <div className="pace-points" aria-hidden="true">
-            {points.map((point) => (
+      <figure className="pace-figure" aria-describedby={descriptionId}>
+        <div className={`pace-chart-shell${focused ? " is-focused" : ""}`}>
+          <div className="pace-y-axis" aria-hidden="true">
+            <span className="pace-y-title">words per minute</span>
+            {yTicks.map((tick) => (
               <span
-                className="pace-point"
-                key={String(point.index)}
-                style={{
-                  left: `${String((point.x / CHART_WIDTH) * 100)}%`,
-                  top: `${String((point.y / CHART_HEIGHT) * 100)}%`,
-                }}
-              />
+                className="pace-y-tick"
+                key={tick.label}
+                style={{ top: `${String(tick.position)}%` }}
+              >
+                {tick.label}
+              </span>
             ))}
           </div>
 
-          {activePoint === undefined ? null : (
-            <span
-              className="pace-active-point"
+          <div
+            ref={plotRef}
+            className="pace-plot"
+            onPointerDown={selectNearestPoint}
+            onPointerMove={selectNearestPoint}
+            onPointerUp={commitNearestTouchPoint}
+            onClick={commitNearestPoint}
+            onPointerLeave={() => {
+              setHoverIndex(null);
+            }}
+            onPointerCancel={() => {
+              setHoverIndex(null);
+            }}
+          >
+            <svg
+              className="pace-chart"
+              viewBox={`0 0 ${String(CHART_WIDTH)} ${String(CHART_HEIGHT)}`}
               aria-hidden="true"
-              style={{
-                left: `${String(activeLeft)}%`,
-                top: `${String(activeTop)}%`,
-              }}
-            />
-          )}
-
-          {points.length > 0 ? (
-            <input
-              ref={scrubberRef}
-              className="pace-scrubber"
-              type="range"
-              min="0"
-              max={String(Math.max(0, points.length - 1))}
-              step="1"
-              value={safeSelectedIndex}
-              aria-label="Inspect raw typing pace"
-              aria-describedby={instructionId}
-              aria-valuetext={
-                selectedPoint === undefined
-                  ? "No pace sample"
-                  : accessibleValue(selectedPoint)
-              }
-              onChange={(event) => {
-                setHoverIndex(null);
-                setSelectedIndex(Number(event.currentTarget.value));
-              }}
-              onKeyDown={() => {
-                setHoverIndex(null);
-              }}
-              onFocus={() => {
-                setFocused(true);
-              }}
-              onBlur={() => {
-                setFocused(false);
-                setHoverIndex(null);
-              }}
-            />
-          ) : (
-            <p className="pace-empty">No pace samples</p>
-          )}
-        </div>
-
-        <div className="pace-x-axis" aria-hidden="true">
-          {xTicks.map((tick) => (
-            <span
-              className="pace-x-tick"
-              key={tick.label}
-              style={{
-                left: `clamp(0.75rem, ${String(tick.position)}%, calc(100% - 0.75rem))`,
-              }}
+              focusable="false"
+              preserveAspectRatio="none"
             >
-              {tick.label}
-            </span>
-          ))}
+              {yTicks.map((tick) => {
+                const y = (tick.position / 100) * CHART_HEIGHT;
+                return (
+                  <line
+                    className="pace-grid-line"
+                    key={tick.label}
+                    x1="0"
+                    y1={y}
+                    x2={CHART_WIDTH}
+                    y2={y}
+                  />
+                );
+              })}
+              <line
+                className="pace-axis-line"
+                x1="0"
+                y1={PLOT_TOP}
+                x2="0"
+                y2={PLOT_BOTTOM}
+              />
+              {activePoint === undefined ? null : (
+                <line
+                  className="pace-active-line"
+                  x1={activePoint.x}
+                  y1={PLOT_TOP}
+                  x2={activePoint.x}
+                  y2={PLOT_BOTTOM}
+                />
+              )}
+              {points.length > 1 ? (
+                <>
+                  <path className="pace-line pace-line--burst" d={burstPath} />
+                  <path className="pace-line pace-line--raw" d={rawPath} />
+                  <path className="pace-line pace-line--wpm" d={wpmPath} />
+                </>
+              ) : null}
+            </svg>
+
+            <div className="pace-points" aria-hidden="true">
+              {points.map((point) => (
+                <span
+                  className="pace-point"
+                  key={String(point.index)}
+                  style={{
+                    left: `${String((point.x / CHART_WIDTH) * 100)}%`,
+                    top: `${String((point.y / CHART_HEIGHT) * 100)}%`,
+                  }}
+                />
+              ))}
+              {points
+                .filter((point) => point.errors > 0)
+                .map((point) => (
+                  <span
+                    className="pace-error-mark"
+                    key={`error-${String(point.index)}`}
+                    style={{
+                      left: `${String((point.x / CHART_WIDTH) * 100)}%`,
+                      top: `${String((point.errorY / CHART_HEIGHT) * 100)}%`,
+                    }}
+                  >
+                    ×
+                  </span>
+                ))}
+            </div>
+
+            {activePoint === undefined ? null : (
+              <span
+                className="pace-active-point"
+                aria-hidden="true"
+                style={{
+                  left: `${String(activeLeft)}%`,
+                  top: `${String(activeTop)}%`,
+                }}
+              />
+            )}
+
+            {points.length > 0 ? (
+              <input
+                ref={scrubberRef}
+                className="pace-scrubber"
+                type="range"
+                min="0"
+                max={String(points.length - 1)}
+                step="1"
+                value={safeSelectedIndex}
+                aria-label="Inspect typing pace"
+                aria-valuetext={
+                  selectedPoint === undefined
+                    ? "No pace sample"
+                    : accessibleValue(selectedPoint)
+                }
+                onChange={(event) => {
+                  setHoverIndex(null);
+                  setSelectedIndex(Number(event.currentTarget.value));
+                }}
+                onKeyDown={() => {
+                  setHoverIndex(null);
+                }}
+                onFocus={() => {
+                  setFocused(true);
+                }}
+                onBlur={() => {
+                  setFocused(false);
+                  setHoverIndex(null);
+                }}
+              />
+            ) : (
+              <p className="pace-empty">No pace samples</p>
+            )}
+          </div>
+
+          {maximumErrors > 0 ? (
+            <div className="pace-error-axis" aria-hidden="true">
+              <span
+                className="pace-error-tick"
+                style={{ top: `${String((PLOT_TOP / CHART_HEIGHT) * 100)}%` }}
+              >
+                {String(maximumErrors)}
+              </span>
+              <span
+                className="pace-error-tick"
+                style={{ top: `${String((PLOT_BOTTOM / CHART_HEIGHT) * 100)}%` }}
+              >
+                0
+              </span>
+              <span className="pace-error-title">errors</span>
+            </div>
+          ) : null}
+
+          <div className="pace-x-axis" aria-hidden="true">
+            {xTicks.map((tick) => (
+              <span
+                className="pace-x-tick"
+                key={tick.label}
+                style={{
+                  left: `clamp(0.75rem, ${String(tick.position)}%, calc(100% - 0.75rem))`,
+                }}
+              >
+                {tick.label}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
-      <figcaption>
-        <span>
-          avg {Math.round(average)} · peak {Math.round(peak)}
-        </span>
-        <span id={instructionId} className="sr-only">
-          {points.length > 1
-            ? "Focus the chart and use arrow keys, Home, or End to inspect samples."
-            : points.length === 1
-              ? "One pace sample."
-              : "No pace samples."}
-        </span>
-      </figcaption>
+        <figcaption id={descriptionId} className="pace-legend">
+          <span
+            className="pace-summary"
+            aria-label={`average raw pace ${String(averageRaw)} words per minute; peak burst ${String(peakBurst)} words per minute`}
+          >
+            avg {String(averageRaw)} · peak {String(peakBurst)}
+          </span>
+          <span className="pace-legend__wpm">wpm</span>
+          <span className="pace-legend__raw">raw</span>
+          <span className="pace-legend__burst">burst</span>
+          <span className="pace-legend__errors">× errors</span>
+        </figcaption>
       </figure>
       {activePoint === undefined
         ? null
@@ -558,22 +608,23 @@ export function PaceChart({ buckets }: PaceChartProps) {
                   tooltipPosition === null ? "hidden" : "visible",
               }}
             >
-              <p>{visualInterval(activePoint)}</p>
+              <p>{formatSeconds(activePoint.endMs)}s</p>
               <dl>
                 <div>
-                  <dt>raw pace</dt>
-                  <dd>{Math.round(activePoint.rawWpm)} wpm</dd>
+                  <dt>wpm</dt>
+                  <dd>{Math.round(activePoint.wpm)}</dd>
                 </div>
                 <div>
-                  <dt>typed</dt>
-                  <dd>
-                    {activePoint.typedCharacters}{" "}
-                    {activePoint.typedCharacters === 1 ? "char" : "chars"}
-                  </dd>
+                  <dt>raw</dt>
+                  <dd>{Math.round(activePoint.rawWpm)}</dd>
                 </div>
                 <div>
-                  <dt>window</dt>
-                  <dd>{formatSeconds(activePoint.durationMs)}s</dd>
+                  <dt>burst</dt>
+                  <dd>{Math.round(activePoint.burst)}</dd>
+                </div>
+                <div>
+                  <dt>errors</dt>
+                  <dd>{activePoint.errors}</dd>
                 </div>
               </dl>
             </div>,

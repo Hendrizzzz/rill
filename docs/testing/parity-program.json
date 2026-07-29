@@ -1,0 +1,119 @@
+{
+  "schema": "rill-parity-program/1",
+  "oracle": {
+    "repository": "monkeytypegame/monkeytype",
+    "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+    "license": "GPL-3.0",
+    "checkoutPolicy": "external test-only checkout; never bundled or imported by production"
+  },
+  "evidence": {
+    "defaultPath": "docs/testing/evidence/parity-campaign/latest.json",
+    "sourceFiles": [
+      "docs/testing/parity-program.json",
+      "frontend/package-lock.json",
+      "frontend/parity-tests/monkeytypeCampaign.test.ts",
+      "frontend/parity-tests/support/parityHarness.ts",
+      "frontend/parity-tests/support/traceGenerator.ts",
+      "frontend/scripts/monkeytype-oracle-runner.mjs",
+      "frontend/scripts/render-parity-status.mjs",
+      "frontend/src/features/typing/reducer.ts",
+      "frontend/src/features/typing/resultStats.ts",
+      "frontend/src/features/typing/scoring.ts",
+      "frontend/src/features/typing/types.ts",
+      "frontend/test-fixtures/monkeytype-source-oracle.json",
+      "frontend/tsconfig.parity.json",
+      "frontend/vitest.campaign.config.ts"
+    ]
+  },
+  "lanes": [
+    {
+      "id": "exact-engine",
+      "name": "Exact numerical parity",
+      "blocking": true,
+      "claim": "The supported shared trace contract produces equal retained counters, metrics, and graph samples, except the separately documented TM-023 and TM-024 exact-second graph corrections.",
+      "cases": [
+        {
+          "id": "ENGINE-001",
+          "name": "Pinned full-field canary",
+          "command": "npm run test:parity:oracle"
+        },
+        {
+          "id": "ENGINE-002",
+          "name": "10,000-case seeded campaign",
+          "command": "npm run test:parity:campaign"
+        },
+        {
+          "id": "ENGINE-003",
+          "name": "Every hundredth millisecond in three rollover windows",
+          "command": "npm run test:parity:campaign"
+        },
+        {
+          "id": "ENGINE-004",
+          "name": "Comparator mutation sentinel and failure replay/shrinking",
+          "command": "npm run test:parity:campaign"
+        },
+        {
+          "id": "ENGINE-005",
+          "name": "Post-boundary terminal-event correction and mutation sentinels",
+          "command": "npm run test:parity:campaign"
+        }
+      ]
+    },
+    {
+      "id": "live-browser",
+      "name": "Public-site integration",
+      "blocking": false,
+      "claim": "Representative trusted-browser workflows are compared against each run's own captured trace; public Monkeytype is not treated as an exact clock oracle.",
+      "cases": [
+        {
+          "id": "LIVE-001",
+          "name": "Representative perfect word test",
+          "command": "in-app Browser capture"
+        },
+        {
+          "id": "LIVE-002",
+          "name": "Representative correction and retained-error behavior",
+          "command": "in-app Browser capture"
+        },
+        {
+          "id": "LIVE-003",
+          "name": "Result graph hover, axes, and visible values",
+          "command": "in-app Browser capture"
+        }
+      ]
+    },
+    {
+      "id": "rill-quality",
+      "name": "Rill quality, security, and deployment",
+      "blocking": true,
+      "claim": "Rill's own release contract is verified independently of Monkeytype feature or visual identity.",
+      "cases": [
+        {
+          "id": "RILL-001",
+          "name": "Frontend typecheck, lint, unit tests, coverage, and production build",
+          "command": "npm run typecheck && npm run lint && npm run test:coverage && npm run build"
+        },
+        {
+          "id": "RILL-002",
+          "name": "Clean Spring/PostgreSQL integration verification",
+          "command": "./mvnw --batch-mode --no-transfer-progress clean verify"
+        },
+        {
+          "id": "RILL-003",
+          "name": "Owned production container health and build fingerprint",
+          "command": "docker compose up --build --detach --wait"
+        },
+        {
+          "id": "RILL-004",
+          "name": "Browser interaction, accessibility, responsive, and console checks",
+          "command": "Playwright and in-app Browser"
+        },
+        {
+          "id": "RILL-005",
+          "name": "Dependency and production-header review",
+          "command": "npm audit --audit-level=high plus HTTP inspection"
+        }
+      ]
+    }
+  ]
+}

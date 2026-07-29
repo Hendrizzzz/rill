@@ -11,6 +11,8 @@ if (root === null) {
   throw new Error("Rill could not find its application root.");
 }
 
+document.documentElement.dataset.rillBuildId = __RILL_BUILD_ID__;
+
 createRoot(root).render(
   <StrictMode>
     <App />

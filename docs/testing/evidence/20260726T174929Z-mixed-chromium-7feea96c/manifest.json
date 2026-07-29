@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "runId": "20260726T174929Z-mixed-chromium-7feea96c",
+  "localDate": "2026-07-27",
+  "timeZone": "Asia/Manila",
+  "rill": {
+    "baseCommit": "528e07f68a381351c61cb5c4c9b303adf84ecd8c",
+    "revision": "WORKTREE"
+  },
+  "monkeytype": {
+    "sourceCommit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+    "liveCapturedAt": "2026-07-26T17:49:29.113Z",
+    "visibleVersion": "v26.28.0",
+    "url": "https://monkeytype.com/",
+    "browser": "Chromium 151.0.7922.34",
+    "html": {
+      "bytes": 96372,
+      "sha256": "f93825397392351ec74415497f4b99cd9fe243571f311c52f197cf2753059c1c"
+    },
+    "mainAsset": {
+      "url": "https://monkeytype.com/js/monkeytype.BXyo3E1j.js",
+      "bytes": 772779,
+      "sha256": "2e8cf1a2fa9f734f433fbbf3700081e3222373ddad9e3e5fd75068dab8f7486b"
+    }
+  },
+  "ledger": {
+    "total": 311,
+    "pass": 131,
+    "blocked": 164,
+    "notApplicable": 16,
+    "other": 0
+  },
+  "finalChecks": {
+    "frontendUnit": {
+      "node": "24.18.0",
+      "filesPassed": 11,
+      "testsPassed": 85,
+      "failed": 0
+    },
+    "backendIntegration": {
+      "testsPassed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    "productionBrowser": {
+      "passed": 82,
+      "skipped": 10,
+      "failed": 0,
+      "workers": 1
+    },
+    "accountLifecycle": {
+      "passed": 1,
+      "failed": 0,
+      "resultPostStatus": 201
+    }
+  },
+  "artifacts": [
+    {
+      "path": "docs/testing/MONKEYTYPE_PARITY_LEDGER.md",
+      "bytes": 85209,
+      "sha256": "e75f76bd9c8b22840dcaf21ea5fc179fe1fea74a69eb80bdc17e721561ed466b"
+    },
+    {
+      "path": "docs/testing/evidence/20260726T174929Z-mixed-chromium-7feea96c/run.md",
+      "bytes": 6576,
+      "sha256": "060fbcbde6566d4a0c48b183d60fecfb082964e0d834148a530fb8ca60b09cca"
+    },
+    {
+      "path": "docs/testing/evidence/20260726T174929Z-mixed-chromium-7feea96c/live-comparison.md",
+      "bytes": 1847,
+      "sha256": "6cb0ca6862c2f6ae9cc7594cfd7467e290bcb66857b84300992785cbd2958945"
+    },
+    {
+      "path": "docs/testing/evidence/20260726T174929Z-mixed-chromium-7feea96c/security-performance.md",
+      "bytes": 3898,
+      "sha256": "79fd7ccc05ff5f5c9aa892b2e007db1eec2d99a078a4cf07af082d424b0658db"
+    },
+    {
+      "path": "docs/testing/evidence/20260726T174929Z-mixed-chromium-7feea96c/specialist-reviews.md",
+      "bytes": 3998,
+      "sha256": "75202449d8a850c1fc458368b9f68c97dd4a8cba39feb912cbbd6b7ff97da4ff"
+    },
+    {
+      "path": "frontend/src/features/typing/parityModel.test.ts",
+      "bytes": 20694,
+      "sha256": "e88faa9ecb9ef48626cef1cc34be074332f89940d94961f7addfbb7407c1d20e"
+    },
+    {
+      "path": "frontend/scripts/performance-smoke.mjs",
+      "bytes": 9240,
+      "sha256": "217b909b41a5b3f02fe6ed973f8ab45915829c7bde19931c2221904cef191603"
+    },
+    {
+      "path": "frontend/scripts/capture-monkeytype-epoch.mjs",
+      "bytes": 1416,
+      "sha256": "9249209a28ec8c830e2e8aa89cafdbce02326ad7592fb3099e6a5728d37df069"
+    },
+    {
+      "path": "backend/target/dependency-check-report.json",
+      "bytes": 705982,
+      "sha256": "9e70c40a60237ed45f796354cc0c42ce520f7ed5906d985222c687b5d8df8642",
+      "generated": true
+    }
+  ]
+}

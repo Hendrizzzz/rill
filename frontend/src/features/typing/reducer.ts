@@ -1,4 +1,14 @@
-import { buildPaceBuckets, calculateMetrics } from "./scoring";
+import {
+  buildPaceBuckets,
+  countCharacters,
+  normalizeEventElapsedMs,
+  normalizeTestDurationMs,
+} from "./resultStats";
+import {
+  normalizeGraphemeForTarget,
+  segmentGraphemes,
+} from "./inputAdapter";
+import { calculateMetrics } from "./scoring";
 import {
   WORD_TEST_LIMIT_MS,
   type Prompt,
@@ -9,6 +19,7 @@ import {
   type TypingResult,
   type TypingState,
 } from "./types";
+import { typableTarget } from "./targetText";
 
 const EMPTY_COUNTERS: TypingCounters = {
   typedCharacters: 0,
@@ -19,6 +30,7 @@ const EMPTY_COUNTERS: TypingCounters = {
   correctedErrors: 0,
   separatorCharacters: 0,
 };
+const MAX_EXTRA_GRAPHEMES = 21;
 
 export function createTypingState(
   config: TestConfig,
@@ -37,28 +49,24 @@ export function createTypingState(
     deadline: null,
     completedAt: null,
     counters: EMPTY_COUNTERS,
-    paceCounts: [],
+    inputEvents: [],
     result: null,
   };
 }
 
 function currentTarget(state: TypingState): string {
-  return state.prompt.words[state.wordIndex] ?? "";
+  return typableTarget(
+    state.prompt.words[state.wordIndex] ?? "",
+    state.config.contentType,
+  );
 }
 
-function recordPace(
-  paceCounts: readonly number[],
-  startedAt: number,
-  now: number,
-): number[] {
-  const elapsed = Math.max(0, now - startedAt);
-  const bucketIndex = Math.max(0, Math.ceil(elapsed / 1_000) - 1);
-  const next = [...paceCounts];
-  while (next.length <= bucketIndex) {
-    next.push(0);
-  }
-  next[bucketIndex] = (next[bucketIndex] ?? 0) + 1;
-  return next;
+function currentTargetCharacters(state: TypingState): string[] {
+  return segmentGraphemes(currentTarget(state), state.prompt.language);
+}
+
+function targetSeparator(state: TypingState): " " | "\n" {
+  return state.config.contentType === "code" ? "\n" : " ";
 }
 
 function startIfReady(state: TypingState, now: number): TypingState {
@@ -76,26 +84,6 @@ function startIfReady(state: TypingState, now: number): TypingState {
   };
 }
 
-function countAlignedCharacters(state: TypingState): number {
-  let correct = state.counters.separatorCharacters;
-  state.committedWords.forEach((input, wordIndex) => {
-    const target = state.prompt.words[wordIndex] ?? "";
-    input.forEach((grapheme, index) => {
-      if (target[index] === grapheme) {
-        correct += 1;
-      }
-    });
-  });
-
-  const target = currentTarget(state);
-  state.currentInput.forEach((grapheme, index) => {
-    if (target[index] === grapheme) {
-      correct += 1;
-    }
-  });
-  return correct;
-}
-
 function complete(
   state: TypingState,
   at: number,
@@ -106,19 +94,39 @@ function complete(
     return state;
   }
 
-  const durationMs =
+  const rawDurationMs =
     state.config.mode === "time" && reason === "time"
       ? state.config.modeValue * 1_000
-      : Math.max(1, Math.round(at - state.startedAt));
-  const completedAt = state.startedAt + durationMs;
-  const paceBuckets = buildPaceBuckets(durationMs, state.paceCounts);
+      : normalizeEventElapsedMs(at - state.startedAt);
+  const durationMs =
+    state.config.mode === "time" && reason === "time"
+      ? rawDurationMs
+      : Math.max(1, normalizeTestDurationMs(rawDurationMs));
+  const completedAt = state.startedAt + rawDurationMs;
+  const paceBuckets = buildPaceBuckets(
+    durationMs,
+    state.inputEvents,
+    state.prompt,
+    state.config,
+    rawDurationMs,
+  );
+  const characterStats = countCharacters(
+    state.inputEvents,
+    state.prompt,
+    state.config,
+    state.config.mode === "time" || reason === "limit",
+  );
   const resultCounters: ResultCounters = {
-    typedCharacters: state.counters.typedCharacters,
+    typedCharacters:
+      characterStats.allCorrect +
+      characterStats.incorrect +
+      characterStats.extra,
     correctAttempts: state.counters.correctAttempts,
     incorrectAttempts: state.counters.incorrectAttempts,
-    correctCharacters: countAlignedCharacters(state),
-    missingCharacters: state.counters.missingCharacters,
-    extraAttempts: state.counters.extraAttempts,
+    correctCharacters: characterStats.correctWord,
+    incorrectCharacters: characterStats.incorrect,
+    missingCharacters: characterStats.missed,
+    extraAttempts: characterStats.extra,
     correctedErrors: state.counters.correctedErrors,
   };
   const metrics = calculateMetrics(durationMs, resultCounters, paceBuckets);
@@ -128,6 +136,13 @@ function complete(
     modeValue: state.config.modeValue,
     punctuation: state.config.punctuation,
     numbers: state.config.numbers,
+    contentType: state.config.contentType,
+    language: state.config.language,
+    wordListVersion: state.prompt.wordListVersion,
+    ...(state.config.contentType === "code"
+      ? { codeLanguage: state.config.codeLanguage ?? "python3" }
+      : {}),
+    errorPolicy: state.config.errorPolicy,
     durationMs,
     ...resultCounters,
     ...metrics,
@@ -174,18 +189,53 @@ function commitWord(
   }
 
   const target = currentTarget(state);
-  const missing = Math.max(0, target.length - state.currentInput.length);
+  const targetCharacters = currentTargetCharacters(state);
+  if (
+    state.config.errorPolicy === "strict" &&
+    state.currentInput.join("") !== target
+  ) {
+    return state;
+  }
+  const missing = Math.max(
+    0,
+    targetCharacters.length - state.currentInput.length,
+  );
   const isFinalWord =
     state.config.mode === "words" &&
     state.wordIndex === state.prompt.words.length - 1;
 
+  const startedAt = state.startedAt ?? now;
+  const spaceIsCorrect =
+    state.currentInput.length === targetCharacters.length;
+  const withSpaceEvent = {
+    ...state,
+    counters: {
+      ...state.counters,
+      typedCharacters: state.counters.typedCharacters + 1,
+      correctAttempts:
+        state.counters.correctAttempts + (spaceIsCorrect ? 1 : 0),
+      incorrectAttempts:
+        state.counters.incorrectAttempts + (spaceIsCorrect ? 0 : 1),
+    },
+    inputEvents: [
+      ...state.inputEvents,
+      {
+        elapsedMs: normalizeEventElapsedMs(now - startedAt),
+        wordIndex: state.wordIndex,
+        type: "insert" as const,
+        grapheme: targetSeparator(state),
+        correct: spaceIsCorrect,
+      },
+    ],
+  };
+
   if (isFinalWord) {
     const committed = {
-      ...state,
+      ...withSpaceEvent,
       committedWords: [...state.committedWords, state.currentInput],
       currentInput: [],
       counters: {
-        ...state.counters,
+        ...withSpaceEvent.counters,
         missingCharacters: state.counters.missingCharacters + missing,
       },
     };
@@ -196,20 +246,16 @@ function commitWord(
     return complete(state, now, wallNow, "prompt-exhausted");
   }
 
-  const startedAt = state.startedAt ?? now;
   return {
-    ...state,
+    ...withSpaceEvent,
     committedWords: [...state.committedWords, state.currentInput],
     currentInput: [],
     wordIndex: state.wordIndex + 1,
     counters: {
-      ...state.counters,
-      typedCharacters: state.counters.typedCharacters + 1,
-      correctAttempts: state.counters.correctAttempts + 1,
+      ...withSpaceEvent.counters,
       missingCharacters: state.counters.missingCharacters + missing,
       separatorCharacters: state.counters.separatorCharacters + 1,
     },
-    paceCounts: recordPace(state.paceCounts, startedAt, now),
   };
 }
 
@@ -228,19 +274,38 @@ function insertGrapheme(
     return expired;
   }
 
-  if (grapheme === " ") {
+  const currentIndex = expired.currentInput.length;
+  if (
+    grapheme === "\u2026" &&
+    currentTargetCharacters(expired)[currentIndex] !== "\u2026"
+  ) {
+    return [".", ".", "."].reduce(
+      (state, period) => insertGrapheme(state, period, now, wallNow),
+      expired,
+    );
+  }
+
+  if (grapheme === targetSeparator(expired)) {
     return commitWord(expired, now, wallNow);
   }
 
   const state = startIfReady(expired, now);
   const target = currentTarget(state);
+  const targetCharacters = currentTargetCharacters(state);
   const index = state.currentInput.length;
-  const isCorrect = target[index] === grapheme;
-  const isExtra = index >= target.length;
+  if (index >= targetCharacters.length + MAX_EXTRA_GRAPHEMES) {
+    return state;
+  }
+  const normalizedGrapheme = normalizeGraphemeForTarget(
+    grapheme,
+    targetCharacters[index],
+  );
+  const isCorrect = targetCharacters[index] === normalizedGrapheme;
+  const isExtra = index >= targetCharacters.length;
   const startedAt = state.startedAt ?? now;
   const next: TypingState = {
     ...state,
-    currentInput: [...state.currentInput, grapheme],
+    currentInput: [...state.currentInput, normalizedGrapheme],
     counters: {
       ...state.counters,
       typedCharacters: state.counters.typedCharacters + 1,
@@ -249,7 +314,16 @@ function insertGrapheme(
         state.counters.incorrectAttempts + (isCorrect ? 0 : 1),
       extraAttempts: state.counters.extraAttempts + (isExtra ? 1 : 0),
     },
-    paceCounts: recordPace(state.paceCounts, startedAt, now),
+    inputEvents: [
+      ...state.inputEvents,
+      {
+        elapsedMs: normalizeEventElapsedMs(now - startedAt),
+        wordIndex: state.wordIndex,
+        type: "insert",
+        grapheme: normalizedGrapheme,
+        correct: isCorrect,
+      },
+    ],
   };
 
   const isExactFinalWord =
@@ -257,6 +331,18 @@ function insertGrapheme(
     next.wordIndex === next.prompt.words.length - 1 &&
     next.currentInput.join("") === target;
   return isExactFinalWord ? complete(next, now, wallNow, "finished") : next;
+}
+
+function insertBatch(
+  original: TypingState,
+  graphemes: readonly string[],
+  now: number,
+  wallNow: number,
+): TypingState {
+  return graphemes.reduce(
+    (state, grapheme) => insertGrapheme(state, grapheme, now, wallNow),
+    original,
+  );
 }
 
 function backspace(
@@ -276,20 +362,32 @@ function backspace(
   if (state.currentInput.length === 0) {
     const previousWordIndex = state.wordIndex - 1;
     const previousInput = state.committedWords.at(-1);
-    const previousTarget = state.prompt.words[previousWordIndex];
+    const previousSourceTarget = state.prompt.words[previousWordIndex];
     if (
       previousWordIndex < 0 ||
       previousInput === undefined ||
-      previousTarget === undefined ||
-      previousInput.join("") === previousTarget
+      previousSourceTarget === undefined
     ) {
       return state;
     }
+    const previousTarget = typableTarget(
+      previousSourceTarget,
+      state.config.contentType,
+    );
+    if (previousInput.join("") === previousTarget) {
+      return state;
+    }
 
+    const previousTargetCharacters = segmentGraphemes(
+      previousTarget,
+      state.prompt.language,
+    );
     const previousMissing = Math.max(
       0,
-      previousTarget.length - previousInput.length,
+      previousTargetCharacters.length - previousInput.length,
     );
+    const correctedSeparator =
+      previousInput.length !== previousTargetCharacters.length;
     return {
       ...state,
       wordIndex: previousWordIndex,
@@ -305,13 +403,27 @@ function backspace(
           0,
           state.counters.separatorCharacters - 1,
         ),
+        correctedErrors:
+          state.counters.correctedErrors + (correctedSeparator ? 1 : 0),
       },
+      inputEvents: [
+        ...state.inputEvents,
+        {
+          elapsedMs: normalizeEventElapsedMs(
+            now - (state.startedAt ?? now),
+          ),
+          wordIndex: previousWordIndex,
+          type: "delete",
+          grapheme: targetSeparator(state),
+          correct: !correctedSeparator,
+        },
+      ],
     };
   }
 
   const index = state.currentInput.length - 1;
   const grapheme = state.currentInput[index] ?? "";
-  const target = currentTarget(state);
+  const target = currentTargetCharacters(state);
   const corrected = index >= target.length || target[index] !== grapheme;
 
   return {
@@ -322,7 +434,71 @@ function backspace(
       correctedErrors:
         state.counters.correctedErrors + (corrected ? 1 : 0),
     },
+    inputEvents: [
+      ...state.inputEvents,
+      {
+        elapsedMs: normalizeEventElapsedMs(now - (state.startedAt ?? now)),
+        wordIndex: state.wordIndex,
+        type: "delete",
+        grapheme,
+        correct: corrected,
+      },
+    ],
   };
+}
+
+function deleteWordBackward(
+  original: TypingState,
+  now: number,
+  wallNow: number,
+): TypingState {
+  if (original.status !== "running") {
+    return original;
+  }
+
+  let state = original;
+  if (state.currentInput.length === 0) {
+    const previous = backspace(state, now, wallNow);
+    if (previous === state) {
+      return state;
+    }
+    state = previous;
+  }
+
+  if (state.config.contentType === "code") {
+    while (
+      state.status === "running" &&
+      state.currentInput.at(-1) === " "
+    ) {
+      state = backspace(state, now, wallNow);
+    }
+
+    const lastGrapheme = state.currentInput.at(-1);
+    if (lastGrapheme === undefined) {
+      return state;
+    }
+    const tokenClass = /[\p{L}\p{N}_]/u.test(lastGrapheme)
+      ? "identifier"
+      : "symbol";
+    while (state.status === "running" && state.currentInput.length > 0) {
+      const grapheme = state.currentInput.at(-1) ?? "";
+      const currentClass = /[\p{L}\p{N}_]/u.test(grapheme)
+        ? "identifier"
+        : grapheme === " "
+          ? "space"
+          : "symbol";
+      if (currentClass !== tokenClass) {
+        break;
+      }
+      state = backspace(state, now, wallNow);
+    }
+    return state;
+  }
+
+  while (state.status === "running" && state.currentInput.length > 0) {
+    state = backspace(state, now, wallNow);
+  }
+  return state;
 }
 
 export function typingReducer(
@@ -337,8 +513,19 @@ export function typingReducer(
         action.now,
         action.wallNow,
       );
+    case "insertBatch":
+      return insertBatch(
+        state,
+        action.graphemes,
+        action.now,
+        action.wallNow,
+      );
+    case "start":
+      return startIfReady(state, action.now);
     case "backspace":
       return backspace(state, action.now, action.wallNow);
+    case "deleteWordBackward":
+      return deleteWordBackward(state, action.now, action.wallNow);
     case "tick":
       return completeIfExpired(state, action.now, action.wallNow);
     case "extendPrompt":

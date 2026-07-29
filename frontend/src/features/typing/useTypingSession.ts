@@ -23,9 +23,31 @@ function newRunId(): string {
   return crypto.randomUUID();
 }
 
+function buildRun(config: TestConfig, customText?: string) {
+  const prompt = generatePrompt(
+    config,
+    createPromptSeed(),
+    undefined,
+    customText,
+  );
+  const effectiveConfig =
+    config.contentType === "words"
+      ? config
+      : {
+          ...config,
+          mode: "words" as const,
+          modeValue: prompt.words.length,
+          punctuation: false,
+          numbers: false,
+          language: prompt.language,
+        };
+  return { config: effectiveConfig, prompt };
+}
+
 function makeInitialState() {
   const config = loadTestConfig();
-  return createTypingState(config, generatePrompt(config, createPromptSeed()), newRunId());
+  const run = buildRun(config);
+  return createTypingState(run.config, run.prompt, newRunId());
 }
 
 export function useTypingSession() {
@@ -36,13 +58,21 @@ export function useTypingSession() {
     "idle" | "saved" | "queued" | "unavailable"
   >("idle");
   const persistedId = useRef<string | null>(null);
+  const customText = useRef("");
 
-  const insert = useCallback((grapheme: string) => {
+  const insert = useCallback((graphemes: readonly string[]) => {
     dispatch({
-      type: "insert",
-      grapheme,
+      type: "insertBatch",
+      graphemes,
       now: performance.now(),
       wallNow: Date.now(),
+    });
+  }, []);
+
+  const start = useCallback(() => {
+    dispatch({
+      type: "start",
+      now: performance.now(),
     });
   }, []);
 
@@ -54,28 +84,42 @@ export function useTypingSession() {
     });
   }, []);
 
+  const deleteWordBackward = useCallback(() => {
+    dispatch({
+      type: "deleteWordBackward",
+      now: performance.now(),
+      wallNow: Date.now(),
+    });
+  }, []);
+
   const restart = useCallback(() => {
-    const prompt = generatePrompt(state.config, createPromptSeed());
+    const run = buildRun(state.config, customText.current);
     persistedId.current = null;
     setSaveStatus("idle");
     dispatch({
       type: "restart",
       runId: newRunId(),
-      config: state.config,
-      prompt,
+      config: run.config,
+      prompt: run.prompt,
     });
   }, [state.config]);
 
   const changeConfig = useCallback(
-    (next: TestConfig) => {
-      saveTestConfig(next);
+    (next: TestConfig, nextCustomText?: string) => {
+      if (next.contentType === "custom") {
+        customText.current = nextCustomText ?? customText.current;
+      } else {
+        customText.current = "";
+      }
+      const run = buildRun(next, customText.current);
+      saveTestConfig(run.config);
       persistedId.current = null;
       setSaveStatus("idle");
       dispatch({
         type: "restart",
         runId: newRunId(),
-        config: next,
-        prompt: generatePrompt(next, createPromptSeed()),
+        config: run.config,
+        prompt: run.prompt,
       });
     },
     [],
@@ -83,6 +127,7 @@ export function useTypingSession() {
 
   useEffect(() => {
     if (
+      state.config.contentType === "words" &&
       state.config.mode === "time" &&
       state.prompt.words.length - state.wordIndex < 60
     ) {
@@ -189,7 +234,9 @@ export function useTypingSession() {
     remainingMs,
     saveStatus,
     insert,
+    start,
     backspace,
+    deleteWordBackward,
     restart,
     changeConfig,
   };

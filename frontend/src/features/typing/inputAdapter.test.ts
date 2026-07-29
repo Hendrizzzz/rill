@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { segmentGraphemes, translateBeforeInput } from "./inputAdapter";
+import {
+  normalizeGraphemeForTarget,
+  segmentGraphemes,
+  translateBeforeInput,
+} from "./inputAdapter";
 
 describe("typing input adapter", () => {
   it("translates physical/mobile text insertion into graphemes", () => {
@@ -10,17 +14,24 @@ describe("typing input adapter", () => {
     });
   });
 
-  it("allows empty and unrecognised insert events without scoring", () => {
+  it("blocks empty and unrecognised mutation events without scoring", () => {
     expect(translateBeforeInput("insertText", null, false)).toEqual({
-      kind: "allow",
+      kind: "block",
     });
     expect(translateBeforeInput("formatBold", null, false)).toEqual({
-      kind: "allow",
+      kind: "block",
     });
   });
 
   it("keeps a joined emoji as one committed grapheme", () => {
     expect(segmentGraphemes("👩‍💻")).toEqual(["👩‍💻"]);
+  });
+
+  it("normalizes decomposed text before segmenting it", () => {
+    expect(translateBeforeInput("insertText", "e\u0301", false)).toEqual({
+      kind: "insert",
+      graphemes: ["é"],
+    });
   });
 
   it("falls back to Unicode code points when Segmenter is unavailable", () => {
@@ -51,6 +62,48 @@ describe("typing input adapter", () => {
     expect(translateBeforeInput("deleteContentBackward", null, false)).toEqual({
       kind: "backspace",
     });
+  });
+
+  it("distinguishes native whole-word deletion from one-character deletion", () => {
+    expect(translateBeforeInput("deleteWordBackward", null, false)).toEqual({
+      kind: "deleteWordBackward",
+    });
+  });
+
+  it.each([
+    "\u00a0",
+    "\u1680",
+    "\u2002",
+    "\u2003",
+    "\u2004",
+    "\u2007",
+    "\u2008",
+    "\u2009",
+    "\u200a",
+    "\u200b",
+    "\u202f",
+    "\u3000",
+    "\ufeff",
+  ])("normalizes typable Unicode separator %s to a regular space", (data) => {
+    expect(translateBeforeInput("insertText", data, false)).toEqual({
+      kind: "insert",
+      graphemes: [" "],
+    });
+  });
+
+  it.each([
+    ["\u2019", "'"],
+    ["'", "\u2018"],
+    ["\u201c", '"'],
+    ["\u2014", "-"],
+    ["-", "\u2013"],
+    ["\u201a", ","],
+  ])("normalizes typographic %s to the expected %s", (input, target) => {
+    expect(normalizeGraphemeForTarget(input, target)).toBe(target);
+  });
+
+  it("does not normalize typographic input when the target is unrelated", () => {
+    expect(normalizeGraphemeForTarget("\u2014", "x")).toBe("\u2014");
   });
 
   it.each(["insertFromPaste", "insertFromDrop"])(

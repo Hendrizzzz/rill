@@ -15,9 +15,9 @@ Rill uses a modular monorepo with a React single-page application, a Spring Boot
 | Test database | PostgreSQL 18 Testcontainers | Exercise the real migrations, constraints, timestamp, index, and concurrency behavior |
 | Auth | Revocable opaque sessions in HttpOnly cookies; token hashes in PostgreSQL | Avoid browser bearer-token storage; support logout/revocation and multiple app instances |
 | CSRF | Spring Security token repository plus required request header | Cookie auth needs an explicit CSRF control; SameSite is defense in depth |
-| Deployment | Nginx static frontend/reverse proxy + Spring API + PostgreSQL via Compose | Same public origin, small images, clear runtime separation |
+| Deployment | Same-origin browser edge + Spring API + PostgreSQL. Compose uses Nginx; the zero-cost profile uses a Vercel external rewrite, Render, and Neon. | Preserve host-only cookies and CSRF while allowing either an operator-owned or free hobby topology |
 | Client state | React reducer/hooks and small context providers | Domain is compact; a global state library would add little value |
-| Charts | Hand-authored SVG plus native range scrubber | Keep one simple series lightweight while exposing every point to pointer, keyboard, touch, and assistive technology |
+| Charts | Hand-authored SVG plus native range scrubber | Keep four lightweight measured series dependency-free while exposing every point to pointer, keyboard, touch, and assistive technology |
 
 No third-party runtime script, analytics SDK, UI kit, state library, or animation library is used.
 
@@ -98,7 +98,7 @@ flowchart LR
 
 ### `result`
 
-- Validate mode, mode value, modifiers, duration, character counts, consistency, and pace samples.
+- Validate mode, mode value, modifiers, duration, character counts, and pace samples.
 - Recalculate WPM/raw WPM/accuracy on the server.
 - Persist an immutable result for the authenticated user.
 - Return cursor-paginated history and aggregate records.
@@ -143,10 +143,15 @@ flowchart LR
 | `mode` | varchar(8) | `TIME` or `WORDS` |
 | `mode_value` | smallint | allowlisted by service |
 | `punctuation` / `numbers` | boolean | non-null |
+| `content_type` | varchar(8) | `WORDS`, `QUOTE`, `CUSTOM`, or `CODE` |
+| `language` | varchar(2) | `EN` or `ES`; quotes and code are English |
+| `code_language` | varchar(16), nullable | required for `CODE`; eight allowlisted programming languages |
+| `error_policy` | varchar(8) | `NORMAL` or `STRICT` |
 | `duration_ms` | integer | bounded |
-| `typed_characters` | integer | printable attempts, bounded |
+| `typed_characters` | integer | retained printable characters, bounded |
 | `correct_attempts` / `incorrect_attempts` | integer | historical input precision, bounded |
-| `correct_characters` | integer | final aligned correct text, bounded |
+| `correct_characters` | integer | whole-word credited text, bounded |
+| `incorrect_characters` | integer | retained substitutions, bounded |
 | `missing_characters` / `extra_attempts` | integer | distinct error categories, bounded |
 | `corrected_errors` | integer | bounded |
 | `wpm` / `raw_wpm` | numeric(8,2) | server-derived |

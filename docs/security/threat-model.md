@@ -1,7 +1,7 @@
 # Rill threat model
 
 Status: implementation-grounded release-1 model; local verification complete
-Last updated: 2026-07-26
+Last updated: 2026-07-30
 
 ## Assumption-validation check-in
 
@@ -12,8 +12,10 @@ Last updated: 2026-07-26
 - Competitive integrity is out of scope: stored personal results may be client-tampered, so Rill makes no leaderboard or anti-cheat claim.
 
 The target context is a public service for unrelated users. HTTPS terminates at
-an operator-managed ingress; only bundled Nginx is publicly reachable inside
-the Compose topology. The implementation and runtime checks below were reviewed
+an operator-managed ingress in the Compose topology or at Vercel in the
+documented zero-cost topology. In both cases the browser sees one origin:
+`/api` is reverse-proxied to Spring rather than exposed as a browser-visible
+cross-origin API. The implementation and runtime checks below were reviewed
 against this boundary.
 
 ## Executive summary
@@ -42,7 +44,7 @@ No service-context question remains open for release 1. Infrastructure-provider 
 ### Primary components
 
 - Browser SPA: untrusted execution environment; owns live typing state and guest preferences/history.
-- Nginx: public HTTP termination point in the repository deployment; serves static assets and same-origin proxying.
+- Browser edge: Nginx in Compose or Vercel in the zero-cost topology; serves static assets and same-origin `/api` proxying.
 - Spring Boot API: security boundary for authentication, authorization, validation, score derivation, and persistence.
 - PostgreSQL: operator-controlled persistence for users, session hashes, and results.
 - CI/build tooling: developer-controlled dependency/build inputs; separate from production runtime.
@@ -192,6 +194,7 @@ this model does not treat planned CI runs as executed evidence.
 | --- | --- |
 | Fabricated private scores | Accepted because there is no public competition; ranges and formulas are still server-validated. |
 | Single-instance rate limiting | Accepted for one API instance. A shared edge/store limiter is required before horizontal scaling. |
+| Targeted username lockout | Ten failed attempts can delay that username for up to 15 minutes. The edge IP limiter reduces single-source abuse but not distributed attempts; an internet-scale deployment should use shared source-plus-account progressive throttling and monitor lockout rates. |
 | No password recovery or MFA | Accepted for the no-email release-1 scope and disclosed to users/operators. |
 | No in-repository TLS/host hardening | Owned by the documented operator-managed ingress/platform boundary. |
 | Browser extensions or compromised client device | Outside the web application's control; HttpOnly cookies reduce ordinary script exposure. |
@@ -207,3 +210,28 @@ this model does not treat planned CI runs as executed evidence.
   controls have automated negative tests.
 - Deployment-platform responsibilities and release-1 accepted risks are
   explicit rather than presented as application guarantees.
+
+## Zero-cost topology addendum
+
+The Vercel rewrite preserves one browser-visible origin, but the Render API
+hostname is still public. A caller can bypass Vercel and consume Render or Neon
+free-tier quota. Spring authentication, CSRF checks, request bounds, validation,
+and process-local rate limits still apply; they do not create a private origin
+or a distributed denial-of-service boundary. This availability risk is accepted
+for the single-instance hobby deployment. Provider usage must be monitored, and
+a shared edge limiter or private origin is required before horizontal scaling.
+
+Render starts Flyway inside the Spring process before opening the application
+pool. The process therefore holds both the non-superuser schema-owner secret
+and the DML-only runtime secret. The runtime pool uses only the latter, all
+database URLs require `sslmode=verify-full` and `channelBinding=require`, and
+neither secret may enter source, frontend configuration, build arguments, or
+logs. Arbitrary server-code execution could still read both secrets; accepting
+that residual risk is specific to this free topology.
+
+Provider Git-triggered deployments are disabled. Releases are manual and
+backend-first because a failed or backward-incompatible Flyway migration cannot
+be rolled back by Render health gating after it changes the shared database.
+Future schema changes must use expand/contract releases, with an operator backup
+and public-origin smoke checks as documented in
+`docs/operations/FREE_TIER_DEPLOYMENT.md`.

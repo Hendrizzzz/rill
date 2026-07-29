@@ -2,9 +2,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PromptView } from "./PromptView";
 import { ResultsView } from "./ResultsView";
+import { leadingCodeIndentation, typableTarget } from "./targetText";
 import { TestControls } from "./TestControls";
 import { TypingCapture } from "./TypingCapture";
 import { useTypingSession } from "./useTypingSession";
+
+const MODIFIER_KEYS = new Set([
+  "Alt",
+  "AltGraph",
+  "CapsLock",
+  "Control",
+  "Fn",
+  "FnLock",
+  "Hyper",
+  "Meta",
+  "NumLock",
+  "OS",
+  "Scroll",
+  "ScrollLock",
+  "Shift",
+  "Super",
+  "Symbol",
+  "SymbolLock",
+]);
 
 export function TypingPage() {
   const {
@@ -13,14 +33,24 @@ export function TypingPage() {
     remainingMs,
     saveStatus,
     insert,
+    start,
     backspace,
+    deleteWordBackward,
     restart,
     changeConfig,
   } = useTypingSession();
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const firstControlRef = useRef<HTMLButtonElement>(null);
+  const restartButtonRef = useRef<HTMLButtonElement>(null);
   const [notice, setNotice] = useState("");
+  const [compositionText, setCompositionText] = useState("");
+  const [captureFocused, setCaptureFocused] = useState(false);
   const currentWord = state.prompt.words[state.wordIndex] ?? "";
+  const leadingSpaceCount = leadingCodeIndentation(currentWord);
+  const currentTypableTarget = typableTarget(
+    currentWord,
+    state.config.contentType,
+  );
   const controlsDisabled = state.status === "running";
 
   const focusCapture = useCallback(() => {
@@ -73,6 +103,52 @@ export function TypingPage() {
     };
   }, [restartAndFocus, state.status]);
 
+  useEffect(() => {
+    if (state.status === "completed") {
+      return undefined;
+    }
+
+    const recoverTypingFocus = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (
+        event.code === "Space" &&
+        (activeElement === document.body ||
+          activeElement === document.documentElement)
+      ) {
+        event.preventDefault();
+        return;
+      }
+      if (
+        event.defaultPrevented ||
+        captureRef.current === document.activeElement ||
+        event.ctrlKey ||
+        event.metaKey ||
+        MODIFIER_KEYS.has(event.key) ||
+        ["Enter", "Escape", " ", "Tab"].includes(event.key)
+      ) {
+        return;
+      }
+      if (
+        document.querySelector("dialog[open]") !== null ||
+        (activeElement instanceof Element &&
+          activeElement.matches(
+            'input, textarea, select, [contenteditable="true"]',
+          ))
+      ) {
+        return;
+      }
+
+      captureRef.current?.focus({ preventScroll: true });
+      event.preventDefault();
+      setNotice("Typing input refocused. Press the key again.");
+    };
+
+    document.addEventListener("keydown", recoverTypingFocus);
+    return () => {
+      document.removeEventListener("keydown", recoverTypingFocus);
+    };
+  }, [state.status]);
+
   const changeTest = () => {
     restart();
     requestAnimationFrame(() => {
@@ -89,8 +165,8 @@ export function TypingPage() {
             firstControlRef={firstControlRef}
             config={state.config}
             disabled={controlsDisabled}
-            onChange={(config) => {
-              changeConfig(config);
+            onChange={(config, customText) => {
+              changeConfig(config, customText);
               focusCapture();
             }}
           />
@@ -121,44 +197,154 @@ export function TypingPage() {
                 : [(elapsedMs / 1_000).toFixed(1), " elapsed"].join("")}
             </span>
           </div>
-          <PromptView
-            key={state.runId}
-            state={state}
-            captureRef={captureRef}
-          />
+          {state.config.contentType === "code" ? (
+            <section
+              className="code-workbench"
+              data-capture-focused={captureFocused ? "true" : undefined}
+              aria-labelledby="code-exercise-title"
+            >
+              <header className="code-prompt-intro">
+                <div className="code-prompt-title">
+                  <p>{state.prompt.attribution}</p>
+                  <h2 id="code-exercise-title">{state.prompt.title}</h2>
+                </div>
+                <div className="code-prompt-learning">
+                  <p>{state.prompt.lesson}</p>
+                  <small>Assumes {state.prompt.assumptions}.</small>
+                </div>
+                <dl className="code-prompt-facts">
+                  <div>
+                    <dt>pattern</dt>
+                    <dd>{state.prompt.topic}</dd>
+                  </div>
+                  <div>
+                    <dt>cost</dt>
+                    <dd>{state.prompt.complexity}</dd>
+                  </div>
+                </dl>
+              </header>
+              <PromptView
+                key={state.runId}
+                state={state}
+                captureRef={captureRef}
+                captureFocused={captureFocused}
+                compositionText={compositionText}
+              />
+              <footer className="code-editor-status" aria-hidden="true">
+                <span>spaces: 4</span>
+                <span>
+                  line {String(state.wordIndex + 1)} of{" "}
+                  {String(state.prompt.words.length)}
+                </span>
+              </footer>
+            </section>
+          ) : (
+            <>
+              {state.prompt.attribution ? (
+                <p className="prompt-attribution">
+                  {state.prompt.attribution}
+                </p>
+              ) : null}
+              <PromptView
+                key={state.runId}
+                state={state}
+                captureRef={captureRef}
+                captureFocused={captureFocused}
+                compositionText={compositionText}
+              />
+            </>
+          )}
+          <div className="test-restart-row">
+            <button
+              ref={restartButtonRef}
+              type="button"
+              className="test-restart"
+              aria-label="Restart test"
+              title="Restart test"
+              onClick={restartAndFocus}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M19 7v5h-5" />
+                <path d="M18.1 12a6.5 6.5 0 1 1-1.9-4.6L19 10" />
+              </svg>
+            </button>
+          </div>
           <div className="typing-accessibility">
             <p id="typing-instructions">
               {state.status === "ready"
-                ? "Start typing to begin. Press Escape to restart. Tab moves to controls."
+                ? "Start typing to begin. Press Tab then Enter to restart. Escape also restarts. Use Shift plus Tab to move back through the prompt and test controls."
                 : "Typing test in progress. Elapsed time continues if focus leaves the input."}{" "}
+              {state.config.errorPolicy === "strict"
+                ? "Strict errors are on; correct the current word before continuing. "
+                : ""}
               {state.config.mode === "time"
                 ? `${String(state.config.modeValue)} second test.`
-                : `${String(state.config.modeValue)} word test.`}
+                : state.config.contentType === "code"
+                  ? `${String(state.prompt.words.length)} line code exercise. Press Enter after each line. Leading indentation is automatic.`
+                : `${String(state.prompt.words.length)} word test.`}
             </p>
             <p id="current-target" aria-live="polite" aria-atomic="true">
-              Current word: {currentWord}.{" "}
-              {state.config.mode === "time"
-                ? `${String(Math.ceil((remainingMs ?? state.config.modeValue * 1_000) / 1_000))} seconds remaining.`
-                : `Word ${String(state.wordIndex + 1)} of ${String(state.config.modeValue)}.`}
+              {state.config.contentType === "code" ? (
+                <>
+                  Current line, automatically indented{" "}
+                  {String(leadingSpaceCount)}{" "}
+                  {leadingSpaceCount === 1 ? "space" : "spaces"}:{" "}
+                  <span lang={state.prompt.language} dir="auto">
+                    {currentTypableTarget}
+                  </span>
+                </>
+              ) : (
+                <>
+                  Current word:{" "}
+                  <span lang={state.prompt.language} dir="auto">
+                    {currentWord}
+                  </span>
+                </>
+              )}
+              .
+              {state.config.mode === "words"
+                ? ` ${state.config.contentType === "code" ? "Line" : "Word"} ${String(state.wordIndex + 1)} of ${String(state.prompt.words.length)}.`
+                : null}
             </p>
+            {state.config.mode === "time" ? (
+              <p role="timer" aria-live="off" aria-atomic="true">
+                {String(
+                  Math.ceil(
+                    (remainingMs ?? state.config.modeValue * 1_000) / 1_000,
+                  ),
+                )}{" "}
+                seconds remaining.
+              </p>
+            ) : null}
           </div>
         </>
       ) : state.result !== null ? (
         <ResultsView
           result={state.result}
           saveStatus={saveStatus}
+          restartButtonRef={restartButtonRef}
           onRestart={restartAndFocus}
           onChangeTest={changeTest}
         />
       ) : null}
       <TypingCapture
+        key={state.runId}
         captureRef={captureRef}
         status={state.status}
+        codeMode={state.config.contentType === "code"}
+        runId={state.runId}
         currentWordId="current-target"
         instructionsId="typing-instructions"
         onInsert={insert}
+        onStart={start}
         onBackspace={backspace}
+        onDeleteWordBackward={deleteWordBackward}
+        onCompositionChange={setCompositionText}
+        onFocusChange={setCaptureFocused}
         onRestart={restartAndFocus}
+        onNavigateToRestart={() => {
+          restartButtonRef.current?.focus({ preventScroll: true });
+        }}
         onNotice={setNotice}
       />
       <p className="sr-only" role="status" aria-live="polite">

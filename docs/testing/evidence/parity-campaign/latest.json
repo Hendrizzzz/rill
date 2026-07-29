@@ -1,0 +1,94 @@
+{
+  "version": "rill-parity-campaign/1",
+  "generatedAt": "2026-07-27T20:32:27.613Z",
+  "seed": 20260727,
+  "requestedRuns": 10000,
+  "executedRuns": 10000,
+  "replayTrace": null,
+  "source": {
+    "repository": "monkeytypegame/monkeytype",
+    "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+    "adapter": "trace-1-to-monkeytype-event-log-2",
+    "durationResult": "official getTestDurationMs canonicalized to integer milliseconds; official metrics retain the source floating value"
+  },
+  "harness": {
+    "rillSourceSha256": "6eb310f603183abfa80509ef02c6db4630ff203ff500fce8682eda56356961d3",
+    "tooling": {
+      "node": "v22.20.0",
+      "vitest": "4.1.10",
+      "fastCheck": "4.9.0"
+    }
+  },
+  "traceSchema": "trace/1",
+  "resultSchema": "result/1",
+  "timestampUnit": "integer microseconds",
+  "timestampTieBreak": "ascending explicit sequence",
+  "comparedFields": [
+    "durationMs",
+    "counters.typedCharacters",
+    "counters.correctAttempts",
+    "counters.incorrectAttempts",
+    "counters.correctCharacters",
+    "counters.incorrectCharacters",
+    "counters.missingCharacters",
+    "counters.extraAttempts",
+    "metrics.wpm",
+    "metrics.rawWpm",
+    "metrics.accuracy",
+    "metrics.consistency",
+    "graph.boundariesMs",
+    "graph.wpm",
+    "graph.raw",
+    "graph.burst",
+    "graph.errors"
+  ],
+  "classifications": {
+    "equal": 8219,
+    "rill-rollover-correction": 1757,
+    "rill-terminal-rollover-correction": 24,
+    "different": 0
+  },
+  "allowlist": {
+    "rules": [
+      {
+        "id": "TM-023",
+        "description": "Rill retains one normalized final graph bucket when a word test rounds upward to an exact second by at most 5ms; all non-graph fields and graph prefixes must match."
+      },
+      {
+        "id": "TM-024",
+        "description": "Rill includes terminal input in the existing final graph bucket when a word test rounds downward to an exact second by less than 5ms; only recomputed consistency and the recomputed final WPM/raw/burst sample may differ."
+      }
+    ]
+  },
+  "coverage": {
+    "content:numbers": 4253,
+    "content:punctuation": 4200,
+    "duration:long": 4177,
+    "duration:rollover-window": 1757,
+    "duration:subsecond": 1356,
+    "duration:terminal-rollover-window": 24,
+    "mode:time": 4177,
+    "mode:words": 5823,
+    "strategy:corrected-extra": 5182,
+    "strategy:corrected-substitution": 5210,
+    "strategy:missing-suffix": 5193,
+    "strategy:perfect": 6798,
+    "strategy:retained-extra": 5214,
+    "strategy:retained-substitution": 5177,
+    "timing:back-loaded": 1774,
+    "timing:bursts": 1704,
+    "timing:duplicate": 1751,
+    "timing:exact-second": 1730,
+    "timing:exact-second-event": 2858,
+    "timing:front-loaded": 1577,
+    "timing:uniform": 3215
+  },
+  "missingCoverage": [],
+  "firstFailure": null,
+  "shrink": null,
+  "replayCommands": {
+    "powershell": "$env:PARITY_REPLAY_TRACE='<trace.json>'; npm.cmd run test:parity:campaign",
+    "posix": "PARITY_REPLAY_TRACE='<trace.json>' npm run test:parity:campaign"
+  },
+  "campaignDigest": "077a6ac82e1972284a1ac865554b5a74d39fcd8bf6aed6a60f5e6ef8b15a2e50"
+}

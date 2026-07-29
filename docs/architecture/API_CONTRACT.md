@@ -1,7 +1,7 @@
 # Rill HTTP and persistence contract
 
 Status: normative release-1 contract
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## General rules
 
@@ -149,43 +149,125 @@ Request:
   "modeValue": 10,
   "punctuation": false,
   "numbers": false,
+  "contentType": "WORDS",
+  "language": "EN",
+  "codeLanguage": null,
+  "wordListVersion": "en-v1",
+  "errorPolicy": "NORMAL",
   "durationMs": 1000,
   "typedCharacters": 7,
   "correctAttempts": 6,
   "incorrectAttempts": 1,
   "correctCharacters": 5,
+  "incorrectCharacters": 1,
   "missingCharacters": 2,
   "extraAttempts": 0,
   "correctedErrors": 1,
+  "completionReason": "FINISHED",
   "paceBuckets": [
-    { "durationMs": 1000, "typedCharacters": 7 }
+    {
+      "durationMs": 1000,
+      "typedCharacters": 7,
+      "correctCharacters": 5,
+      "rawCharacters": 7,
+      "errors": 1
+    }
   ]
 }
 ```
 
 Bounds and invariants:
 
-- mode/value: `TIME` with 15/30/60 or `WORDS` with 10/25/50;
+- `contentType`: `WORDS`, `QUOTE`, `CUSTOM`, or `CODE`; `language`: `EN` or
+  `ES`; `errorPolicy`: `NORMAL` or `STRICT`;
+- `codeLanguage` must be null for non-code results. `CODE` requires `language`
+  `EN` and one of `CPP`, `JAVA`, `PYTHON3`, `C`, `CSHARP`, `JAVASCRIPT`,
+  `TYPESCRIPT`, or `GO`;
+- `wordListVersion` is the corpus/scoring contract identity: `en-v1` or
+  `es-v1` for word lists, `quote-v1`, `custom-v1`, or `code-v1`/`code-v2`.
+  It must match the content dimensions. Current clients send it; an omitted
+  value is accepted only for pre-V8 compatibility. Omitted code results are
+  classified as legacy `code-v1`; other omitted values are inferred from their
+  content/language dimensions;
+- `WORDS` content uses `TIME` with 15/30/60 or `WORDS` with 10/25/50;
+- `QUOTE`, `CUSTOM`, and `CODE` use `WORDS` mode with the actual prompt word or
+  line count from 2–300, and both modifiers false. The bundled quote and code
+  corpora use `language: EN`;
+- completion reason: `FINISHED`, `TIME`, `LIMIT`, or `PROMPT_EXHAUSTED`.
+  `TIME` is valid only for time mode, `FINISHED` only for word mode, `LIMIT`
+  only for a 600,000ms word result, and `PROMPT_EXHAUSTED` for either mode;
+- `completionReason` may be omitted only for pre-V4 client compatibility. The
+  server then infers `TIME` for time mode and `FINISHED` for word mode. Current
+  clients always send the explicit value;
 - time-mode duration equals the mode value multiplied by 1,000 milliseconds;
-- word-mode duration: 250–600,000ms;
-- 1–600 pace buckets; all non-final durations 1,000ms; final 1–1,000ms;
-- bucket durations sum to `durationMs`;
-- bucket typed counts sum to `typedCharacters`;
+- word-mode duration: 250–600,000ms on a 10ms grid;
+- 0–600 pace buckets; `durationMs` is finite, 0.01–1,000ms, has at most
+  hundredth-millisecond precision, and every non-final bucket is 1,000ms;
+- time-mode bucket durations sum to `durationMs`;
+- word-mode bucket durations cover all complete seconds and include the raw
+  final interval when it crosses the reference's rounded half-second boundary
+  (495ms is included; 494.99ms is omitted). Relative to the rounded aggregate,
+  the complete raw graph duration is in the exact `-5.00ms` through `+4.99ms`
+  window;
+- for a whole-second aggregate, the canonical Rill payload covers the full
+  duration. The server also accepts the pinned reference's legacy rollover
+  shape that is shorter by exactly one second, so historical/imported
+  `1.995s -> 2.00s` data remains readable. Rill itself does not emit that
+  lossy shape;
+- interval insertion totals do not exceed historical attempts, and equal them
+  when the complete duration is represented;
+- interval error totals do not exceed historical incorrect attempts;
 - each character counter is 0–50,000;
-- `typedCharacters = correctAttempts + incorrectAttempts`;
+- `typedCharacters <= correctAttempts + incorrectAttempts`;
 - `correctCharacters <= typedCharacters`;
-- `extraAttempts <= incorrectAttempts`;
-- `correctedErrors <= typedCharacters`;
+- `incorrectCharacters <= typedCharacters`;
+- `extraAttempts <= typedCharacters`;
+- `correctCharacters + incorrectCharacters + extraAttempts <= typedCharacters`;
+- `correctedErrors <= incorrectAttempts`;
+- each bucket has `errors <= typedCharacters` and
+  `correctCharacters <= rawCharacters`;
+- when buckets represent the complete duration, insertion/error totals equal
+  historical attempt totals and the final cumulative correct/raw values equal
+  the result counters;
 - a completed/persisted result has at least one typed character.
 
-The server derives WPM, raw WPM, accuracy, consistency, and `completedAt`.
-The submitted pace buckets remain canonical and exact. When the final bucket is
-shorter than 250ms and has a predecessor, the server combines those two buckets
-only for consistency analysis; the response still returns the unchanged raw
-buckets. This prevents a few milliseconds at a second boundary from receiving
-the statistical weight of a full sample.
+The server derives WPM, raw WPM, historical-attempt accuracy, burst consistency,
+and `completedAt`. Pace buckets are the Monkeytype-compatible chart samples:
+interval insertion/error counts plus cumulative correct/raw counts at each
+represented boundary.
 
-First creation: `201` with canonical `TypingResult`.
+The frontend and backend scoring schema deploy atomically. Historical database
+rows whose pace JSON predates cumulative/error fields return an empty pace array
+instead of fabricated graph lines; their aggregate result fields remain
+available. Browser v1 data stays under its original storage key. Guest result
+payloads use version 4 (v3 and v2 are migrated); pending account payloads use
+version 2.
+
+V3 replaces V1's attempt-equality checks. V4 persists completion reason and
+adds the stricter `correctedErrors <= incorrectAttempts` constraint. The
+combined final-shape and corrected-error checks are `NOT VALID`: PostgreSQL
+enforces them for every new or updated row, while legacy V1 rows whose old
+counters cannot be reconstructed do not block deployment.
+
+V4 infers `TIME` for historical time-mode rows and `FINISHED` for historical
+word-mode rows. Historical `LIMIT` and `PROMPT_EXHAUSTED` cannot be recovered
+from the old schema; future results preserve the exact reason end to end.
+
+V5 persists content type, language, and error policy, defaults historical rows
+to `WORDS`/`EN`/`NORMAL`, and includes those dimensions in record partitions.
+V6 recomputes persisted WPM/raw WPM/accuracy using source-compatible
+floating-point operation and rounding order. It temporarily suspends and
+atomically restores both legacy `NOT VALID` counter checks so intentionally
+preserved V1 rows can be updated without changing their counters.
+V7 adds `CODE` and nullable `code_language`, requires a code language only for
+code results, and includes it in personal-record partitions.
+V8 persists `word_list_version`, backfills historical code rows as `code-v1`
+and other rows from their content/language dimensions, and partitions records
+by the version so results from different corpus/scoring contracts do not
+compete.
+
+First creation: `201` with canonical `TypingResult`, including the persisted
+`completionReason` and `wordListVersion`.
 
 An identical retry for the same authenticated user and `clientResultId`: `200` with the originally stored result. A reused id with different raw fields: `409 RESULT_IDEMPOTENCY_CONFLICT`.
 
@@ -209,7 +291,9 @@ retention notice.
 
 ### `GET /api/results/summary`
 
-Returns total retained runs, total practice milliseconds, highest WPM, average accuracy, and records partitioned by `(mode, modeValue, punctuation, numbers)`.
+Returns total retained runs, total practice milliseconds, highest WPM, average
+accuracy, and records partitioned by `(mode, modeValue, punctuation, numbers,
+contentType, language, codeLanguage, wordListVersion, errorPolicy)`.
 
 Record tie-breaker: WPM descending, accuracy descending, earliest `completedAt`.
 

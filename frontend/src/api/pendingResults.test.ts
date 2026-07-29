@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   flushAccountResults,
+  hasLegacyPendingAccountResults,
+  loadPendingAccountResults,
   queueAccountResult,
 } from "./pendingResults";
 import { ApiError } from "./client";
 import type { TypingResult } from "../features/typing/types";
 
-const KEY = "rill.pending-account-results.v1";
+const KEY = "rill.pending-account-results.v2";
 
 function result(clientResultId: string): TypingResult {
   return {
@@ -16,11 +18,16 @@ function result(clientResultId: string): TypingResult {
     modeValue: 10,
     punctuation: false,
     numbers: false,
+    contentType: "words",
+    language: "en",
+    wordListVersion: "en-v1",
+    errorPolicy: "normal",
     durationMs: 1_000,
     typedCharacters: 5,
     correctAttempts: 5,
     incorrectAttempts: 0,
     correctCharacters: 5,
+    incorrectCharacters: 0,
     missingCharacters: 0,
     extraAttempts: 0,
     correctedErrors: 0,
@@ -28,7 +35,15 @@ function result(clientResultId: string): TypingResult {
     rawWpm: 60,
     accuracy: 100,
     consistency: 100,
-    paceBuckets: [{ durationMs: 1_000, typedCharacters: 5 }],
+    paceBuckets: [
+      {
+        durationMs: 1_000,
+        typedCharacters: 5,
+        correctCharacters: 5,
+        rawCharacters: 5,
+        errors: 0,
+      },
+    ],
     completedAt: "2026-07-26T00:00:00Z",
     completionReason: "finished",
   };
@@ -46,7 +61,7 @@ describe("pending account results", () => {
     localStorage.setItem(
       KEY,
       JSON.stringify({
-        version: 1,
+        version: 2,
         entries: [
           { ownerId: "account-a", result: { clientResultId: "incomplete" } },
         ],
@@ -75,6 +90,71 @@ describe("pending account results", () => {
     expect(storedEntries()).toEqual([
       { ownerId: "account-b", result: result("b-1") },
     ]);
+  });
+
+  it("preserves and reports incompatible pre-release pending results", () => {
+    localStorage.setItem(
+      "rill.pending-account-results.v1",
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            ownerId: "account-a",
+            result: {
+              clientResultId: "legacy",
+              paceBuckets: [{ durationMs: 1_000, typedCharacters: 5 }],
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(hasLegacyPendingAccountResults("account-a")).toBe(true);
+    expect(hasLegacyPendingAccountResults("account-b")).toBe(false);
+    expect(queueAccountResult("account-a", result("current"))).toBe("queued");
+    expect(localStorage.getItem("rill.pending-account-results.v1")).toContain(
+      "legacy",
+    );
+  });
+
+  it("migrates an unversioned code queue entry without relabeling it", () => {
+    const legacyCode: Record<string, unknown> = {
+      ...result("legacy-code"),
+      contentType: "code",
+      codeLanguage: "python3",
+    };
+    Reflect.deleteProperty(legacyCode, "wordListVersion");
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        version: 2,
+        entries: [{ ownerId: "account-a", result: legacyCode }],
+      }),
+    );
+
+    expect(loadPendingAccountResults("account-a")).toEqual([
+      { ...legacyCode, wordListVersion: "code-v1" },
+    ]);
+  });
+
+  it("rejects an explicit invalid corpus version instead of relabeling it", () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        version: 2,
+        entries: [
+          {
+            ownerId: "account-a",
+            result: {
+              ...result("invalid-version"),
+              wordListVersion: "bogus",
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(loadPendingAccountResults("account-a")).toEqual([]);
   });
 
   it("stops after a failed save and retains unsent entries", async () => {

@@ -1,7 +1,107 @@
 # Rill verification record
 
-Date: 2026-07-26
-Status: repository release scope verified within the available local environment
+## Authoritative current-worktree verification
+
+Run date: 2026-07-28 (Asia/Manila)
+Source binding: base commit `528e07f68a381351c61cb5c4c9b303adf84ecd8c`
+plus the current documented worktree; production frontend build ID
+`source-ac056b5a46cb9436`.
+
+This section supersedes every older numerical status or environment limitation
+below it. The remaining sections are retained as dated engineering history and
+must not be read as the current release result.
+
+### Current blocking gates
+
+- Frontend: `npm run typecheck` and `npm run lint` passed with zero warnings;
+  `npm run test:run` passed 229 tests in 15 files; `npm run build` transformed
+  101 modules and produced 355.20 kB JavaScript (106.15 kB gzip) and 26.99 kB
+  CSS (6.33 kB gzip).
+- `npm run test:code-corpus` validated all 512 generated drills structurally.
+  JavaScript passed 64/64 parse checks and 33 behavior cases; TypeScript passed
+  64/64 strict semantic checks and the same 33 behavior cases; Python 3 passed
+  64/64 compile checks; Java passed 64/64 compile checks in a standard-library
+  wrapper. C, C++, C#, and Go were explicitly skipped because usable local
+  compiler/SDK toolchains were unavailable.
+- Backend: `.\mvnw.cmd --batch-mode --no-transfer-progress clean verify`
+  returned `BUILD SUCCESS`; 40 tests passed with zero
+  failures/errors/skips against PostgreSQL 18.4 through Testcontainers and
+  Flyway V1-V7. Both an empty schema and a populated V1-to-V7 upgrade path
+  completed. All eight code-language enums round-tripped through the API. A
+  diagnostic compile with `-Dmaven.compiler.showDeprecation=true` identified
+  two deprecated Jackson test calls; they were replaced, and the final
+  diagnostic clean verify emitted no source deprecation warning. Remaining
+  Java 25 notices come from Maven Guice and Mockito/Byte Buddy test tooling.
+- Production browser matrix:
+  `npx playwright test e2e/typing.spec.ts e2e/typing-behavior.spec.ts
+  --workers=1 --reporter=line` against the isolated
+  `http://127.0.0.1:4173` preview ran 148 cases across Chromium, Firefox,
+  WebKit, and mobile Chromium: 138 passed, 10 capability-specific skips, zero
+  failed.
+  The skips are the disabled live-account lifecycle (four projects),
+  touch-only coverage outside mobile Chromium (three), and Chromium-only
+  forced-colors coverage (three).
+- Code-mode browser coverage includes language switching, literal-space
+  geometry, visible whitespace errors, Enter-only line progression, final-line
+  completion, editor-like token deletion, screen-reader indentation text,
+  internal horizontal caret following at 320 px, result/history persistence,
+  four viewport sizes, and axe analysis.
+- `npm audit --audit-level=high` reported zero vulnerabilities. `git diff
+  --check` found no whitespace errors. A focused debug/private-key/TODO scan
+  found no source matches; explanatory verification prose was the only TODO
+  text match.
+
+### Current performance and interaction evidence
+
+An independent frontend reviewer ran a bounded headless-Chromium code-mode
+smoke at 320 by 568 pixels over a 322-character Python drill. Its 311
+before-input-to-next-frame samples measured 7.5 ms median, 14.0 ms p95, and
+14.9 ms maximum, with zero long tasks, zero keystroke network requests, and no
+document-level horizontal overflow. This is a single local synthetic run, not
+a low-end-device or production latency benchmark.
+
+No Computer Use automation was used. Playwright/browser automation exercised
+the isolated preview; existing Compose services and other Codex sessions were
+not stopped, restarted, or reconfigured. Temporary PostgreSQL Testcontainers
+were automatically removed after the Maven processes exited.
+
+### Current claim limits
+
+- The local Node runtime was `v22.20.0`, below the repository's supported
+  `>=22.22.0` floor. All stated local frontend commands passed, and CI is pinned
+  to Node 24.18, but the updated workflow was not run on GitHub.
+- C, C++, C#, and Go snippets received static review but no local compiler
+  execution. C++ signed/unsigned warnings identified by independent review were
+  fixed, but only a CI/host with working toolchains can close these skips.
+- There are 16 distinct algorithm patterns, four intentionally repeated
+  function-name drills per language, and eight languages: 512 drills, not 512
+  distinct algorithms.
+- History/export retain the code language and statistics, not the exact
+  exercise ID; per-algorithm progression is deferred.
+- No physical mobile keyboard, real screen reader, low-end-device benchmark,
+  public TLS deployment, off-host restore, distributed rate limiter, or
+  multi-user load test was available.
+- The earlier pinned-Monkeytype 10,000-trace parity campaign and broader
+  Dependency-Check/Compose security evidence remain recorded below but were not
+  rerun for this code-learning increment.
+- No commit, push, deployment, or GitHub Actions execution is claimed.
+
+Historical release run date: 2026-07-26
+
+Historical reconciliation date: 2026-07-27
+
+Status: historical release evidence plus a conservative current-worktree audit
+
+Git staging was attempted after the final command rerun but the managed
+workspace denied creation of `.git/index.lock`; no final commit is claimed. The
+tested application/source/spec state is bound to base commit `528e07f…` plus
+source snapshot SHA-256
+`3793a78ddd60218686469d3d42ee5f2e372b7f67891a5d90cc447760f74db1bd`.
+
+The 2026-07-26 sections below are date-bounded historical evidence. They do not
+automatically prove the later worktree. Their historical reconciliation is the
+[final parity reconciliation](testing/evidence/20260726T190914Z-final-mixed-8b4dce69/run.md):
+312 rows, 37 `PASS`, 258 `BLOCKED`, 16 `N/A`, and one intentional `DIFF`.
 
 The host was native Windows PowerShell, not the expected WSL2 environment.
 Long-running commands were announced and serialized. Production images use
@@ -34,9 +134,9 @@ Results:
 - coverage gates passed for API/queue and deterministic typing modules; total
   source coverage was 43.88% lines because rendered UI is intentionally covered
   primarily by Playwright rather than shallow unit tests;
-- Vite production output after the terminal pace-window fix:
-  JavaScript 285.00 KiB raw / 90.28 KiB gzip; CSS 23.03 KiB raw /
-  7.48 KiB gzip.
+- Latest Vite production output after the Monkeytype parity work:
+  JavaScript 288.90 KiB raw / 91.29 KiB gzip; CSS 24.52 KiB raw /
+  7.77 KiB gzip.
 
 ### Backend
 
@@ -52,11 +152,32 @@ cases.
 Host Java 25 emitted Maven/Mockito future-compatibility agent warnings. They did
 not occur in the Java 21 production image build and were not suppressed.
 
+### Monkeytype-parity patch recheck
+
+After the scoring/graph changes and specialist audit fixes, the native host ran:
+
+```text
+npm run typecheck
+npm run lint
+npm test -- --run
+npm run build
+.\mvnw.cmd test
+```
+
+Results: typecheck/lint/build passed; Vitest passed 72 tests in 10 files; Maven
+passed 27 tests with zero failures/errors/skips. Testcontainers created clean
+PostgreSQL 18.4 database, validated and applied Flyway V1–V3, and exercised the
+corrected-input constraint, legacy-graph fallback, and JavaScript-compatible
+half-burst rounding. A separate upgrade fixture populated V1 with a legacy
+counter combination before migrating through V3, proving the new constraint
+does not block existing rows.
+
 ## Browser and interaction evidence
 
 Against the built Compose/Nginx/Spring/PostgreSQL application:
 
-- latest full guest matrix: 52 passed, 4 account-only cases correctly skipped
+- latest full guest matrix: 61 passed, 7 project-specific/account cases
+  correctly skipped
   across Chromium, Firefox, WebKit, and mobile Chromium;
 - pending account result with server failure: 4 passed, one per browser project;
 - complete account lifecycle in Chromium/local profile: 1 passed;
@@ -78,12 +199,23 @@ Against the built Compose/Nginx/Spring/PostgreSQL application:
 - result Enter restart and smooth-path pointer/keyboard exploration passed in
   all four browser projects (8 passed). The real-touch tooltip regression
   passed twice consecutively in development and twice against production.
-- the deterministic terminal-window regression first reproduced `avg 89 · peak
-  500` in Vitest, then passed against production in Chromium, Firefox, WebKit,
-  and mobile Chromium (4 passed). The same raw 24ms tail now renders as part of
-  a 1.024s analysis window with `avg 89 · peak 94`; its tooltip, accessible
-  value, Y scale, and historical `94.5%` consistency agree. Browser console
-  inspection reported no warnings or errors.
+- exploratory Browser comparisons against Monkeytype covered perfect,
+  substitution, corrected, missed, and extra-character interaction shapes,
+  but the sites used different generated prompts and independently sampled
+  timestamps. Those observations are not controlled metric-parity evidence and
+  are recorded as such in the campaign ledger. Timing boundary behavior is
+  instead checked by executing the relevant functions extracted from the
+  pinned Monkeytype source checkout;
+- the former tiny-tail 500-WPM point is omitted using the reference's rounded
+  half-second graph cutoff (494.99ms omitted, 495ms retained). Rill deliberately
+  preserves a full bucket at the reference's lossy 1.995s rollover and records
+  that intentional difference. Pointer inspection showed a contained tooltip, visible
+  WPM/error axes, and all WPM/raw/burst/error series. Browser console inspection
+  reported no warnings or errors;
+- a focused Chromium Playwright rerun passed four chart/history cases after an
+  initial run exposed and corrected three stale test defects: a strict locator
+  that now matched three paths, an ambiguous `100%` assertion, and an API route
+  glob that also intercepted Vite's `/src/api/` modules.
 
 The browser cases cover keyboard completion/restart, wrong character rendering,
 repeated Backspace, native `InputEvent` paste rejection, prompt/config focus,
@@ -110,8 +242,9 @@ collapse back to the post-substitution layout after Backspace.
 At an empty word boundary, the same regression proves one Backspace reopens an
 imperfect previous word without deleting its final glyph, while an exactly
 aligned previous word stays locked. Reducer cases cover substitution, missing,
-and extra forms and prove that reopening reverses only provisional missing and
-separator state while retaining historical attempt counters.
+and extra forms and prove that reopening reverses provisional missing and
+separator state, counts removal of an incorrect separator as a correction, and
+retains historical attempt counters.
 Tooltip containment is checked on both viewport axes. A WPM-scale unit case
 proves `0/20/40/60/80` ticks for a 72-WPM peak.
 The pace line is a dependency-free, shape-preserving monotone cubic path. It
@@ -119,7 +252,8 @@ passes through each measured sample while keeping every Bézier control point
 inside its adjacent values, so the visual cannot invent an unmeasured peak or
 dip. Hover, touch, and keyboard details remain anchored to actual samples.
 
-Final visual captures:
+Historical visual captures (useful inspection artifacts, not proof of the
+current final revision):
 
 - `artifacts/visual/final-history-desktop.png` (1440×900);
 - `artifacts/visual/final-history-mobile.png` (390×844);
@@ -150,7 +284,7 @@ gate completed, and database/backend/web became healthy. Runtime checks showed:
 - `rill_migrator`: not superuser, cannot create databases/roles;
 - `rill_app`: cannot create schema objects, can DML application tables, cannot
   DML `flyway_schema_history`;
-- one migration, zero users, and zero results after the destructive E2E account
+- three migrations, zero users, and zero results after the destructive E2E account
   cleanup;
 - backend user `rill`, web user `101`, read-only roots, `privileged=false`,
   all capabilities dropped, `no-new-privileges=true`;
@@ -162,6 +296,11 @@ gate completed, and database/backend/web became healthy. Runtime checks showed:
   were present;
 - hostile `Origin` received no `Access-Control-Allow-Origin`;
 - the four overlapping API headers each appeared exactly once.
+
+The later parity release also rebuilt the live stack over an existing V2
+database. Flyway validated three migrations and applied V3 successfully; the
+database, backend, and web containers became healthy, and the public health
+endpoint returned HTTP 200 with `status: UP`.
 
 The first readiness polling harness timed out because each failed DB health
 probe waited for the configured connection timeout. A corrected single probe
@@ -224,3 +363,230 @@ hardware, networks, assistive technology, or production traffic.
   was run.
 - UI modules remain lightly covered by Vitest; the behavior is exercised through
   the production Playwright matrix instead.
+
+## 2026-07-27 exhaustive parity campaign
+
+The current campaign is recorded row by row in
+[`testing/MONKEYTYPE_PARITY_LEDGER.md`](testing/MONKEYTYPE_PARITY_LEDGER.md).
+Its current evidence bundle is
+[`testing/evidence/20260726T190914Z-final-mixed-8b4dce69/run.md`](testing/evidence/20260726T190914Z-final-mixed-8b4dce69/run.md).
+
+The reconciled 312-row disposition is 37 `PASS`, 258 `BLOCKED`, 16 `N/A`, and
+one `DIFF`, with no unreviewed row. The one difference is deliberate: at raw
+1995 ms, pinned Monkeytype source drops the normalized 2000 ms timer boundary,
+while Rill retains it. This is regression-tested and disclosed as `TM-023`.
+
+The blocked rows include exact cross-site trace replay, final-revision
+Playwright and performance execution, PostgreSQL/Testcontainers integration,
+physical mobile input, named screen readers, supported-Node reruns, and current
+OWASP data refresh. This campaign therefore does not claim that all edge cases
+ran or that Rill and Monkeytype are numerically identical.
+
+Latest completed commands:
+
+```text
+npm run lint
+# exit 0, zero warnings
+
+npm run typecheck
+# exit 0
+
+npm test -- --run
+# 12 files, 115 tests passed
+
+npm run build
+# exit 0; Vite 8.1.5 production build
+
+npm run test:coverage
+# 12 files, 115 tests passed; configured thresholds passed
+
+npm run audit:monkeytype-timing
+# 7/7 timing vectors matched pinned source commit 7feea96…
+
+.\mvnw.cmd --batch-mode --no-transfer-progress package "-Dmaven.test.skip=true"
+# BUILD SUCCESS; executable jar built; tests skipped
+
+npm audit --audit-level=high
+# 0 vulnerabilities
+```
+
+The host Node was 22.20.0, below the declared 22.22.0 floor. Downloading the
+supported Node runtime failed, so the final 115-test suite was not rerun on the
+supported runtime. A prior-revision Node 24 run remains historical only.
+
+The final Playwright command reported 96 failures before any test body because
+the browser process could not spawn (`EPERM`). The performance script was
+blocked by the same launch restriction. Testcontainers compiled but could not
+access `\\.\pipe\docker_engine`; OWASP Dependency-Check could not establish
+the loopback connection needed for its updater. None of those attempts is
+represented as a product failure or a passing current check.
+
+The backend wrapper package succeeded, but `mvn clean` could not delete the
+existing `backend/target` through the managed sandbox. A current clean-state
+backend build is therefore also not claimed.
+
+Trusted in-app Browser checks completed against port 8080, but a final
+reinspection proved that URL served an older bundle. Browser policy then
+rejected navigation to the isolated final-build preview. Those interactions are
+retained as exploratory evidence only; no final-worktree browser row is marked
+pass. Live Monkeytype `v26.28.0` was inspected, but an identical
+prompt/event/timestamp trace was not captured across both products.
+
+Full commands, current evidence, historical boundaries, limitations, and
+specialist adjudications are in the current campaign bundle.
+
+## 2026-07-28 IDE-style code editor verification
+
+This increment makes leading code indentation structural rather than typed:
+authored two-space template levels are emitted as four-space levels, the caret
+starts after that indentation, and the synthetic spaces do not enter input
+events, attempts, WPM, raw pace, accuracy, or graph buckets. Internal spaces
+remain ordinary scored input. The corpus identity is `code-v2`.
+
+The editor presentation was informed by a live inspection of LeetCode's code
+surface (fixed-width type, quiet gutter, restrained syntax hierarchy, strong
+cursor, and compact metadata). Rill retains its own typography, palette,
+layout, components, copy, source, and assets.
+
+Completed commands from `frontend/`:
+
+```text
+npm.cmd run test:code-corpus
+# exit 0
+# JavaScript: 64/64 parsed; 33 behavior cases passed
+# TypeScript: 64/64 strict semantic checks; 33 behavior cases passed
+# Python 3: 64/64 compiled
+# Java: 64/64 compiled in a java.util wrapper
+# C, C++, C#, and Go skipped because those host toolchains were unavailable
+
+npm.cmd run test:run
+# 18 files, 247 tests passed
+
+npm.cmd run typecheck
+# exit 0
+
+npm.cmd run lint
+# exit 0, zero warnings
+
+npm.cmd run build
+# exit 0; Vite 8.1.5 production build, 103 modules transformed
+
+npm.cmd audit --omit=dev
+# 0 vulnerabilities reported
+
+$env:E2E_BASE_URL='http://127.0.0.1:4174'; npm.cmd run test:e2e
+# 138 passed, 10 capability/environment skips, 0 failed (2.2 minutes)
+# Chromium, Firefox, WebKit, and mobile Chromium
+
+$env:PERF_BASE_URL='http://127.0.0.1:4174'; npm.cmd run test:perf
+# input-to-frame p50 7.1 ms, p95 15.5 ms, max 15.6 ms
+# max event duration 24 ms; 0 long tasks, keystroke requests, runtime errors,
+# CSP violations, and document-overflow findings
+
+$env:PERF_MODE='code'; npm.cmd run test:perf
+# 215-character Python drill, 208 measured beforeinput frames
+# input-to-frame p50 7.3 ms, p95 14.7 ms, max 15.4 ms
+# max event duration 32 ms; 0 long tasks, keystroke requests, runtime errors,
+# CSP violations, and document-overflow findings
+
+.\mvnw.cmd --batch-mode --no-transfer-progress package -DskipTests
+# BUILD SUCCESS; 38 main and 4 test sources compiled, executable jar packaged
+# tests explicitly skipped to avoid starting or changing the user's Docker stack
+```
+
+The ten Playwright skips are expected guards: touch-only exploration does not
+run in the three desktop projects; forced-colors coverage runs only where the
+engine exposes that capability; and the four account lifecycle variants
+require the opt-in account E2E environment. The guest persistence path and
+signed-in-unavailable fallback still ran.
+
+Manual browser checks on the isolated production preview verified direct typing
+at four- and eight-space structural levels, Ctrl+Backspace without indentation
+loss, fixed 16 px prompt type, internal horizontal containment on narrow
+screens, no document overflow, and active-line/caret visibility at 1920, 1440,
+1024, 768, 390, and 320 CSS pixels. The browser console contained no errors or
+warnings.
+
+Two bugs were found during this verification rather than hidden:
+
+- Chromium, Firefox, and WebKit rendered literal indentation whitespace at an
+  unreliable width. The editor now gives the structural spacer an explicit
+  `indent-columns * 1ch` width; the cross-engine geometry regression passes.
+- The initial paper-theme code metadata color measured about 4.02:1 in the axe
+  run. The semantic token was darkened and the full accessibility/browser
+  matrix then passed.
+- A final visual audit measured the paper error color at 4.4917:1. It was
+  darkened to `#b23832` (about 4.764:1 on the code surface), and active error
+  contrast plus axe now run in every theme.
+- A wide-to-narrow WebKit run sampled before asynchronous resize alignment.
+  The editor already observes both element and visual-viewport resize; the
+  regression now waits for the complete visibility condition and passes in all
+  four projects.
+- Stored pre-field account queues were filtered by the new corpus-version
+  validator. Missing versions now migrate by dimension (`code` becomes
+  `code-v1`), explicit invalid versions remain rejected, and delayed `code-v1`
+  payloads retain that identity through the API.
+- Results now persist `wordListVersion` as their corpus/scoring contract. V8
+  backfills historical rows and personal-record keys include the version, so
+  `code-v1` and `code-v2` cannot compete.
+
+Both ordinary words and the code-mode syntax layer were measured on the local
+Chromium production preview. These are synthetic local smoke measurements, not
+production latency guarantees or a concurrent-user load test. Physical mobile
+keyboards and real screen readers remain unverified. The V8 migration and new
+backend API integration assertions compiled but were not executed against
+PostgreSQL because this run deliberately did not start or alter the user's
+Docker services.
+
+## 2026-07-30 zero-cost deployment preparation
+
+The repository now contains a Render Blueprint for the Spring Boot API, a
+Vercel project configuration for the Vite frontend and same-origin API rewrite,
+and a Neon/Render/Vercel operator runbook. Git-triggered provider deployments
+are disabled so the backend can be released and verified before the frontend.
+Render startup requires certificate/hostname-verified PostgreSQL TLS with
+channel binding, uses separate Flyway and runtime credentials, and retains at
+most 100 results per account.
+
+Completed checks:
+
+```text
+.\mvnw.cmd '-Dtest=DeploymentManifestTest,ProductionSafetyConfigurationTest,SecurityConfigurationTest' test
+# 6 tests passed; BUILD SUCCESS
+
+npm.cmd run typecheck
+# exit 0
+
+npm.cmd run lint
+# exit 0
+
+npm.cmd run test:run
+# 18 files, 247 tests passed
+
+npm.cmd run build
+# Vite 8.1.5, 103 modules; 361.00 kB JS (107.87 kB gzip);
+# 30.90 kB CSS (7.13 kB gzip)
+
+npm.cmd audit
+# 0 vulnerabilities
+
+.\mvnw.cmd package -DskipTests
+# BUILD SUCCESS
+
+.\mvnw.cmd org.owasp:dependency-check-maven:12.2.2:check
+# BUILD SUCCESS; report contained 49 dependencies and 0 identified
+# vulnerabilities. OSS Index was disabled and no NVD API key was configured.
+
+$env:E2E_BASE_URL='http://127.0.0.1:4174'; npm.cmd run test:e2e -- --project=chromium
+# 35 passed, 2 expected capability/account skips, 0 failed
+```
+
+The browser run used an isolated production preview on port 4174. Its exact
+process was stopped afterward and the port was confirmed released. Port 4173,
+Docker, and the user's other running sessions were not changed.
+
+The deployment manifests are structurally tested but have not yet been
+accepted by the providers. No Neon project, Render service, Vercel project, or
+public hostname is claimed verified until provider authentication, deployment,
+and the public-origin checks in
+`docs/operations/FREE_TIER_DEPLOYMENT.md` complete.

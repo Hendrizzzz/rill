@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: rill-typewriting-api
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/Hendrizzzz/typewriting
+    branch: main
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health/readiness
+    maxShutdownDelaySeconds: 30
+    autoDeployTrigger: "off"
+    buildFilter:
+      paths:
+        - backend/**
+        - .dockerignore
+        - render.yaml
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: RILL_COOKIE_SECURE
+        value: "true"
+      - key: RILL_FLYWAY_ENABLED
+        value: "true"
+      - key: RILL_REQUIRE_VERIFIED_DATABASE_TLS
+        value: "true"
+      - key: RILL_MAX_RESULTS_PER_ACCOUNT
+        value: "100"
+      - key: RILL_MAX_SESSIONS_PER_ACCOUNT
+        value: "5"
+      - key: RILL_DATABASE_MAX_POOL_SIZE
+        value: "5"
+      - key: RILL_DATABASE_MIN_IDLE
+        value: "0"
+      - key: RILL_DATABASE_URL
+        sync: false
+      - key: RILL_DATABASE_USERNAME
+        sync: false
+      - key: RILL_DATABASE_PASSWORD
+        sync: false
+      - key: RILL_FLYWAY_URL
+        sync: false
+      - key: RILL_FLYWAY_USERNAME
+        sync: false
+      - key: RILL_FLYWAY_PASSWORD
+        sync: false

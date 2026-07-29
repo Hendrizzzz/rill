@@ -1,11 +1,14 @@
 package com.rill.typing.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class ProductionSafetyConfigurationTest {
 
@@ -41,6 +44,79 @@ class ProductionSafetyConfigurationTest {
                                                 List.of("https://unexpected.example"))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("same-origin");
+    }
+
+    @Test
+    void requiresAuthenticatedTlsForApplicationAndMigrationConnections() {
+        String verified =
+                "jdbc:postgresql://ep-example-pooler.neon.tech/neondb"
+                        + "?sslmode=verify-full&channelBinding=require";
+
+        assertThatCode(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified, verified.replace("-pooler", "")))
+                .doesNotThrowAnyException();
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified.replace("verify-full", "require"), verified))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("application")
+                .hasMessageContaining("verify-full");
+
+        assertThatThrownBy(
+                        () ->
+                                ProductionSafetyConfiguration.validateDatabaseTransport(
+                                        verified, verified.replace("&channelBinding=require", "")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("migration")
+                .hasMessageContaining("channelBinding");
+    }
+
+    @Test
+    void rejectsUnverifiedDatabaseTransportBeforeOrdinaryBeansAreCreated() {
+        AtomicBoolean ordinaryBeanCreated = new AtomicBoolean();
+        String verified =
+                "jdbc:postgresql://ep-example.neon.tech/neondb"
+                        + "?sslmode=verify-full&channelBinding=require";
+
+        new ApplicationContextRunner()
+                .withInitializer(
+                        context -> context.getEnvironment().setActiveProfiles("prod"))
+                .withPropertyValues(
+                        "rill.deployment.require-verified-database-tls=true",
+                        "spring.datasource.url="
+                                + verified.replace("verify-full", "require"),
+                        "spring.flyway.url=" + verified)
+                .withUserConfiguration(ProductionSafetyConfiguration.class)
+                .withBean(
+                        RillProperties.class,
+                        () ->
+                                properties(
+                                        new RillProperties.Cookie(
+                                                "RILL_SESSION",
+                                                true,
+                                                Duration.ofDays(7),
+                                                Duration.ofMinutes(15)),
+                                        List.of()))
+                .withBean(
+                        "ordinaryBean",
+                        Object.class,
+                        () -> {
+                            ordinaryBeanCreated.set(true);
+                            return new Object();
+                        })
+                .run(
+                        context -> {
+                            assertThat(context.getStartupFailure())
+                                    .isInstanceOf(IllegalStateException.class)
+                                    .hasMessage(
+                                            "Production application database connections require "
+                                                    + "sslmode=verify-full and channelBinding=require");
+                            assertThat(ordinaryBeanCreated).isFalse();
+                        });
     }
 
     private static RillProperties properties(

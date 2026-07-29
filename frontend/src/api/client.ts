@@ -1,4 +1,8 @@
-import type { TypingResult } from "../features/typing/types";
+import type {
+  CodeLanguage,
+  TypingResult,
+  WordListVersion,
+} from "../features/typing/types";
 
 export interface AccountUser {
   id: string;
@@ -23,6 +27,11 @@ export interface ResultRecord {
     modeValue: number;
     punctuation: boolean;
     numbers: boolean;
+    contentType: TypingResult["contentType"];
+    language: TypingResult["language"];
+    codeLanguage?: CodeLanguage;
+    wordListVersion: WordListVersion;
+    errorPolicy: TypingResult["errorPolicy"];
   };
   result: TypingResult;
 }
@@ -38,8 +47,30 @@ export interface ResultSummary {
 export const SESSION_EXPIRED_EVENT = "rill:session-expired";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-interface ServerResult extends Omit<TypingResult, "mode" | "completionReason"> {
+interface ServerResult
+  extends Omit<
+    TypingResult,
+    | "mode"
+    | "completionReason"
+    | "contentType"
+    | "language"
+    | "codeLanguage"
+    | "errorPolicy"
+  > {
   mode: "TIME" | "WORDS";
+  contentType: "WORDS" | "QUOTE" | "CUSTOM" | "CODE";
+  language: "EN" | "ES";
+  codeLanguage?:
+    | "CPP"
+    | "JAVA"
+    | "PYTHON3"
+    | "C"
+    | "CSHARP"
+    | "JAVASCRIPT"
+    | "TYPESCRIPT"
+    | "GO";
+  errorPolicy: "NORMAL" | "STRICT";
+  completionReason: "FINISHED" | "TIME" | "LIMIT" | "PROMPT_EXHAUSTED";
   oldestResultsPruned: number;
 }
 
@@ -156,6 +187,49 @@ function readNumber(record: Record<string, unknown>, key: string): number {
   return value;
 }
 
+function isServerCodeLanguage(
+  value: unknown,
+): value is NonNullable<ServerResult["codeLanguage"]> {
+  return (
+    value === "CPP" ||
+    value === "JAVA" ||
+    value === "PYTHON3" ||
+    value === "C" ||
+    value === "CSHARP" ||
+    value === "JAVASCRIPT" ||
+    value === "TYPESCRIPT" ||
+    value === "GO"
+  );
+}
+
+function isWordListVersion(value: unknown): value is WordListVersion {
+  return (
+    value === "en-v1" ||
+    value === "es-v1" ||
+    value === "quote-v1" ||
+    value === "custom-v1" ||
+    value === "code-v1" ||
+    value === "code-v2"
+  );
+}
+
+function wordListVersionMatchesServerDimensions(
+  contentType: unknown,
+  language: unknown,
+  wordListVersion: unknown,
+): wordListVersion is WordListVersion {
+  if (!isWordListVersion(wordListVersion)) return false;
+  if (contentType === "WORDS") {
+    return wordListVersion === (language === "ES" ? "es-v1" : "en-v1");
+  }
+  if (contentType === "QUOTE") return wordListVersion === "quote-v1";
+  if (contentType === "CUSTOM") return wordListVersion === "custom-v1";
+  return (
+    contentType === "CODE" &&
+    (wordListVersion === "code-v1" || wordListVersion === "code-v2")
+  );
+}
+
 function readServerResult(value: unknown): ServerResult {
   if (
     !isRecord(value) ||
@@ -163,6 +237,24 @@ function readServerResult(value: unknown): ServerResult {
     (value.mode !== "TIME" && value.mode !== "WORDS") ||
     typeof value.punctuation !== "boolean" ||
     typeof value.numbers !== "boolean" ||
+    (value.contentType !== "WORDS" &&
+      value.contentType !== "QUOTE" &&
+      value.contentType !== "CUSTOM" &&
+      value.contentType !== "CODE") ||
+    (value.language !== "EN" && value.language !== "ES") ||
+    (value.contentType === "CODE"
+      ? !isServerCodeLanguage(value.codeLanguage)
+      : value.codeLanguage !== undefined && value.codeLanguage !== null) ||
+    !wordListVersionMatchesServerDimensions(
+      value.contentType,
+      value.language,
+      value.wordListVersion,
+    ) ||
+    (value.errorPolicy !== "NORMAL" && value.errorPolicy !== "STRICT") ||
+    (value.completionReason !== "FINISHED" &&
+      value.completionReason !== "TIME" &&
+      value.completionReason !== "LIMIT" &&
+      value.completionReason !== "PROMPT_EXHAUSTED") ||
     typeof value.completedAt !== "string" ||
     !Array.isArray(value.paceBuckets)
   ) {
@@ -175,6 +267,9 @@ function readServerResult(value: unknown): ServerResult {
     return {
       durationMs: readNumber(bucket, "durationMs"),
       typedCharacters: readNumber(bucket, "typedCharacters"),
+      correctCharacters: readNumber(bucket, "correctCharacters"),
+      rawCharacters: readNumber(bucket, "rawCharacters"),
+      errors: readNumber(bucket, "errors"),
     };
   });
   return {
@@ -183,11 +278,19 @@ function readServerResult(value: unknown): ServerResult {
     modeValue: readNumber(value, "modeValue"),
     punctuation: value.punctuation,
     numbers: value.numbers,
+    contentType: value.contentType,
+    language: value.language,
+    ...(isServerCodeLanguage(value.codeLanguage)
+      ? { codeLanguage: value.codeLanguage }
+      : {}),
+    wordListVersion: value.wordListVersion,
+    errorPolicy: value.errorPolicy,
     durationMs: readNumber(value, "durationMs"),
     typedCharacters: readNumber(value, "typedCharacters"),
     correctAttempts: readNumber(value, "correctAttempts"),
     incorrectAttempts: readNumber(value, "incorrectAttempts"),
     correctCharacters: readNumber(value, "correctCharacters"),
+    incorrectCharacters: readNumber(value, "incorrectCharacters"),
     missingCharacters: readNumber(value, "missingCharacters"),
     extraAttempts: readNumber(value, "extraAttempts"),
     correctedErrors: readNumber(value, "correctedErrors"),
@@ -195,6 +298,7 @@ function readServerResult(value: unknown): ServerResult {
     rawWpm: readNumber(value, "rawWpm"),
     accuracy: readNumber(value, "accuracy"),
     consistency: readNumber(value, "consistency"),
+    completionReason: value.completionReason,
     paceBuckets,
     completedAt: value.completedAt,
     oldestResultsPruned: readNumber(value, "oldestResultsPruned"),
@@ -361,14 +465,23 @@ function toServerPayload(result: TypingResult) {
     modeValue: result.modeValue,
     punctuation: result.punctuation,
     numbers: result.numbers,
+    contentType: result.contentType.toUpperCase(),
+    language: result.language.toUpperCase(),
+    codeLanguage: result.codeLanguage?.toUpperCase() ?? null,
+    wordListVersion: result.wordListVersion,
+    errorPolicy: result.errorPolicy.toUpperCase(),
     durationMs: result.durationMs,
     typedCharacters: result.typedCharacters,
     correctAttempts: result.correctAttempts,
     incorrectAttempts: result.incorrectAttempts,
     correctCharacters: result.correctCharacters,
+    incorrectCharacters: result.incorrectCharacters,
     missingCharacters: result.missingCharacters,
     extraAttempts: result.extraAttempts,
     correctedErrors: result.correctedErrors,
+    completionReason: result.completionReason
+      .replace("-", "_")
+      .toUpperCase(),
     paceBuckets: result.paceBuckets,
   };
 }
@@ -380,11 +493,22 @@ function fromServerResult(result: ServerResult): TypingResult {
     modeValue: result.modeValue,
     punctuation: result.punctuation,
     numbers: result.numbers,
+    contentType: result.contentType.toLowerCase() as TypingResult["contentType"],
+    language: result.language.toLowerCase() as TypingResult["language"],
+    ...(result.codeLanguage === undefined
+      ? {}
+      : {
+          codeLanguage:
+            result.codeLanguage.toLowerCase() as CodeLanguage,
+        }),
+    wordListVersion: result.wordListVersion,
+    errorPolicy: result.errorPolicy.toLowerCase() as TypingResult["errorPolicy"],
     durationMs: result.durationMs,
     typedCharacters: result.typedCharacters,
     correctAttempts: result.correctAttempts,
     incorrectAttempts: result.incorrectAttempts,
     correctCharacters: result.correctCharacters,
+    incorrectCharacters: result.incorrectCharacters,
     missingCharacters: result.missingCharacters,
     extraAttempts: result.extraAttempts,
     correctedErrors: result.correctedErrors,
@@ -394,7 +518,9 @@ function fromServerResult(result: ServerResult): TypingResult {
     consistency: result.consistency,
     paceBuckets: result.paceBuckets,
     completedAt: result.completedAt,
-    completionReason: "finished",
+    completionReason: result.completionReason
+      .toLowerCase()
+      .replace("_", "-") as TypingResult["completionReason"],
   };
 }
 
@@ -448,7 +574,23 @@ export async function loadAccountSummary(): Promise<ResultSummary> {
       !isRecord(record.key) ||
       (record.key.mode !== "TIME" && record.key.mode !== "WORDS") ||
       typeof record.key.punctuation !== "boolean" ||
-      typeof record.key.numbers !== "boolean"
+      typeof record.key.numbers !== "boolean" ||
+      (record.key.contentType !== "WORDS" &&
+        record.key.contentType !== "QUOTE" &&
+        record.key.contentType !== "CUSTOM" &&
+        record.key.contentType !== "CODE") ||
+      (record.key.language !== "EN" && record.key.language !== "ES") ||
+      (record.key.contentType === "CODE"
+        ? !isServerCodeLanguage(record.key.codeLanguage)
+        : record.key.codeLanguage !== undefined &&
+          record.key.codeLanguage !== null) ||
+      !wordListVersionMatchesServerDimensions(
+        record.key.contentType,
+        record.key.language,
+        record.key.wordListVersion,
+      ) ||
+      (record.key.errorPolicy !== "NORMAL" &&
+        record.key.errorPolicy !== "STRICT")
     ) {
       throw malformedResponse();
     }
@@ -458,6 +600,18 @@ export async function loadAccountSummary(): Promise<ResultSummary> {
         modeValue: readNumber(record.key, "modeValue"),
         punctuation: record.key.punctuation,
         numbers: record.key.numbers,
+        contentType:
+          record.key.contentType.toLowerCase() as TypingResult["contentType"],
+        language: record.key.language.toLowerCase() as TypingResult["language"],
+        wordListVersion: record.key.wordListVersion,
+        ...(isServerCodeLanguage(record.key.codeLanguage)
+          ? {
+              codeLanguage:
+                record.key.codeLanguage.toLowerCase() as CodeLanguage,
+            }
+          : {}),
+        errorPolicy:
+          record.key.errorPolicy.toLowerCase() as TypingResult["errorPolicy"],
       },
       result: fromServerResult(readServerResult(record.result)),
     };

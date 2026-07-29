@@ -17,18 +17,29 @@ import com.rill.typing.auth.RillPrincipal;
 import com.rill.typing.auth.SessionService;
 import com.rill.typing.auth.UserAccount;
 import com.rill.typing.common.ApiException;
+import com.rill.typing.result.CompletionReason;
+import com.rill.typing.result.ContentType;
+import com.rill.typing.result.CodeLanguage;
+import com.rill.typing.result.ErrorPolicy;
 import com.rill.typing.result.ResultDtos;
 import com.rill.typing.result.TestMode;
+import com.rill.typing.result.TypingLanguage;
 import com.rill.typing.result.TypingResultRepository;
 import com.rill.typing.result.TypingResultService;
 import jakarta.servlet.http.Cookie;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +47,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Container;
@@ -64,6 +76,8 @@ class ApiIntegrationTest {
     @Autowired AuthSessionRepository sessionRepository;
     @Autowired TypingResultService resultService;
     @Autowired TypingResultRepository resultRepository;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired DataSource dataSource;
 
     @Test
     void sessionBootstrapCreatesCsrfCookieAndRejectsMissingCsrf() throws Exception {
@@ -204,7 +218,7 @@ class ApiIntegrationTest {
                         .andExpect(jsonPath("$.clientResultId").value(clientResultId.toString()))
                         .andExpect(jsonPath("$.wpm").value(12.0))
                         .andExpect(jsonPath("$.rawWpm").value(16.8))
-                        .andExpect(jsonPath("$.accuracy").value(66.67))
+                .andExpect(jsonPath("$.accuracy").value(85.71))
                         .andExpect(jsonPath("$.consistency").value(0.0))
                         .andReturn();
         client.accept(created);
@@ -230,7 +244,7 @@ class ApiIntegrationTest {
     }
 
     @Test
-    void tinyTerminalPaceWindowIsCombinedForConsistencyAnalysis() throws Exception {
+    void tinyTerminalPaceWindowIsOmittedFromTheChart() throws Exception {
         Client client = registeredClient("pace_window");
         UUID clientResultId = UUID.randomUUID();
 
@@ -245,32 +259,905 @@ class ApiIntegrationTest {
                                           "modeValue":10,
                                           "punctuation":false,
                                           "numbers":false,
-                                          "durationMs":2024,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
+                                          "durationMs":2020,
                                           "typedCharacters":15,
                                           "correctAttempts":15,
                                           "incorrectAttempts":0,
                                           "correctCharacters":15,
+                                          "incorrectCharacters":0,
                                           "missingCharacters":0,
                                           "extraAttempts":0,
                                           "correctedErrors":0,
                                           "paceBuckets":[
-                                            {"durationMs":1000,"typedCharacters":7},
-                                            {"durationMs":1000,"typedCharacters":7},
-                                            {"durationMs":24,"typedCharacters":1}
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":7,
+                                              "correctCharacters":7,
+                                              "rawCharacters":7,
+                                              "errors":0
+                                            },
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":7,
+                                              "correctCharacters":14,
+                                              "rawCharacters":14,
+                                              "errors":0
+                                            }
                                           ]
                                         }
                                         """
                                                 .formatted(clientResultId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rawWpm").value(88.93))
-                .andExpect(jsonPath("$.consistency").value(94.51))
-                .andExpect(jsonPath("$.paceBuckets.length()").value(3))
-                .andExpect(jsonPath("$.paceBuckets[2].durationMs").value(24))
-                .andExpect(jsonPath("$.paceBuckets[2].typedCharacters").value(1));
+                .andExpect(jsonPath("$.rawWpm").value(89.11))
+                .andExpect(jsonPath("$.consistency").value(100.0))
+                .andExpect(jsonPath("$.paceBuckets.length()").value(2));
 
         client.perform(get("/api/results").param("limit", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].consistency").value(94.51));
+                .andExpect(jsonPath("$.items[0].consistency").value(100.0));
+    }
+
+    @Test
+    void canonicalRolloverBucketRetainsTheTerminalCharacter() throws Exception {
+        Client client = registeredClient("rollover_terminal");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "clientResultId":"%s",
+                                          "mode":"WORDS",
+                                          "modeValue":10,
+                                          "punctuation":false,
+                                          "numbers":false,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
+                                          "durationMs":2000,
+                                          "typedCharacters":3,
+                                          "correctAttempts":3,
+                                          "incorrectAttempts":0,
+                                          "correctCharacters":3,
+                                          "incorrectCharacters":0,
+                                          "missingCharacters":0,
+                                          "extraAttempts":0,
+                                          "correctedErrors":0,
+                                          "paceBuckets":[
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":2,
+                                              "correctCharacters":2,
+                                              "rawCharacters":2,
+                                              "errors":0
+                                            },
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":1,
+                                              "correctCharacters":3,
+                                              "rawCharacters":3,
+                                              "errors":0
+                                            }
+                                          ]
+                                        }
+                                        """
+                                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.typedCharacters").value(3))
+                .andExpect(jsonPath("$.paceBuckets.length()").value(2))
+                .andExpect(jsonPath("$.paceBuckets[1].typedCharacters").value(1))
+                .andExpect(jsonPath("$.paceBuckets[1].correctCharacters").value(3));
+    }
+
+    @Test
+    void correctedInputPersistsWithMoreAttemptsThanRetainedCharacters() throws Exception {
+        Client client = registeredClient("corrected_input");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "clientResultId":"%s",
+                                          "mode":"WORDS",
+                                          "modeValue":10,
+                                          "punctuation":false,
+                                          "numbers":false,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
+                                          "durationMs":2000,
+                                          "typedCharacters":3,
+                                          "correctAttempts":3,
+                                          "incorrectAttempts":1,
+                                          "correctCharacters":3,
+                                          "incorrectCharacters":0,
+                                          "missingCharacters":0,
+                                          "extraAttempts":0,
+                                          "correctedErrors":1,
+                                          "paceBuckets":[
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":1,
+                                              "correctCharacters":0,
+                                              "rawCharacters":1,
+                                              "errors":1
+                                            },
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":3,
+                                              "correctCharacters":3,
+                                              "rawCharacters":3,
+                                              "errors":0
+                                            }
+                                          ]
+                                        }
+                                        """
+                                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.typedCharacters").value(3))
+                .andExpect(jsonPath("$.incorrectAttempts").value(1))
+                .andExpect(jsonPath("$.correctedErrors").value(1))
+                .andExpect(jsonPath("$.accuracy").value(75.0));
+    }
+
+    @Test
+    void completionReasonRoundTripsThroughAccountHistory() throws Exception {
+        Client client = registeredClient("completion_reason");
+        List<CompletionCase> cases =
+                List.of(
+                        new CompletionCase(TestMode.WORDS, 10, 2000, CompletionReason.FINISHED),
+                        new CompletionCase(
+                                TestMode.WORDS,
+                                10,
+                                2000,
+                                CompletionReason.PROMPT_EXHAUSTED),
+                        new CompletionCase(TestMode.TIME, 15, 15_000, CompletionReason.TIME),
+                        new CompletionCase(
+                                TestMode.WORDS, 10, 600_000, CompletionReason.LIMIT));
+
+        for (CompletionCase completion : cases) {
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(completionResultJson(UUID.randomUUID(), completion)))
+                    .andExpect(status().isCreated())
+                    .andExpect(
+                            jsonPath("$.completionReason")
+                                    .value(completion.reason().name()));
+
+            client.perform(get("/api/results").param("limit", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(
+                            jsonPath("$.items[0].completionReason")
+                                    .value(completion.reason().name()));
+        }
+    }
+
+    @Test
+    void fractionalWordGraphTailRoundTrips() throws Exception {
+        Client client = registeredClient("fractional_tail");
+        CompletionCase completion =
+                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+        String payload = completionResultJson(UUID.randomUUID(), completion, 500.49);
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMs").value(500))
+                .andExpect(jsonPath("$.paceBuckets[0].durationMs").value(500.49));
+
+        client.perform(get("/api/results").param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].paceBuckets[0].durationMs").value(500.49));
+
+        CompletionCase afterWholeSecond =
+                new CompletionCase(TestMode.WORDS, 10, 1_530, CompletionReason.FINISHED);
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        completionResultJson(
+                                                UUID.randomUUID(),
+                                                afterWholeSecond,
+                                                534.56)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.paceBuckets[1].durationMs").value(534.56));
+
+        client.perform(get("/api/results").param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].paceBuckets[1].durationMs").value(534.56));
+    }
+
+    @Test
+    void paceBucketDurationBeyondHundredthPrecisionIsRejected() throws Exception {
+        Client client = registeredClient("fractional_precision");
+        CompletionCase completion =
+                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        completionResultJson(
+                                                UUID.randomUUID(), completion, 500.491)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void rawGraphDurationAtNextAggregateBoundaryIsRejected() throws Exception {
+        Client client = registeredClient("aggregate_boundary");
+        CompletionCase completion =
+                new CompletionCase(TestMode.WORDS, 10, 500, CompletionReason.FINISHED);
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        completionResultJson(
+                                                UUID.randomUUID(), completion, 505.0)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void impossibleCompletionReasonCombinationsAreRejected() throws Exception {
+        Client client = registeredClient("completion_invalid");
+        List<CompletionCase> invalid =
+                List.of(
+                        new CompletionCase(
+                                TestMode.TIME, 15, 15_000, CompletionReason.FINISHED),
+                        new CompletionCase(TestMode.WORDS, 10, 2000, CompletionReason.TIME),
+                        new CompletionCase(TestMode.WORDS, 10, 2000, CompletionReason.LIMIT));
+
+        for (CompletionCase completion : invalid) {
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(completionResultJson(UUID.randomUUID(), completion)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Test
+    void wordDurationOffTenMillisecondGridIsRejected() throws Exception {
+        Client client = registeredClient("duration_grid");
+        CompletionCase completion =
+                new CompletionCase(TestMode.WORDS, 10, 4_999, CompletionReason.FINISHED);
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(completionResultJson(UUID.randomUUID(), completion)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void correctedErrorsCannotExceedIncorrectAttempts() throws Exception {
+        Client client = registeredClient("corrected_bound");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "clientResultId":"%s",
+                                          "mode":"WORDS",
+                                          "modeValue":10,
+                                          "punctuation":false,
+                                          "numbers":false,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
+                                          "durationMs":2000,
+                                          "typedCharacters":3,
+                                          "correctAttempts":3,
+                                          "incorrectAttempts":0,
+                                          "correctCharacters":3,
+                                          "incorrectCharacters":0,
+                                          "missingCharacters":0,
+                                          "extraAttempts":0,
+                                          "correctedErrors":1,
+                                          "completionReason":"FINISHED",
+                                          "paceBuckets":[
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":3,
+                                              "correctCharacters":3,
+                                              "rawCharacters":3,
+                                              "errors":0
+                                            },
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":0,
+                                              "correctCharacters":3,
+                                              "rawCharacters":3,
+                                              "errors":0
+                                            }
+                                          ]
+                                        }
+                                        """
+                                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void burstHalfValuesUseJavascriptCompatibleRounding() throws Exception {
+        Client client = registeredClient("burst_rounding");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "clientResultId":"%s",
+                                          "mode":"WORDS",
+                                          "modeValue":10,
+                                          "punctuation":false,
+                                          "numbers":false,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
+                                          "durationMs":1960,
+                                          "typedCharacters":2,
+                                          "correctAttempts":2,
+                                          "incorrectAttempts":0,
+                                          "correctCharacters":2,
+                                          "incorrectCharacters":0,
+                                          "missingCharacters":0,
+                                          "extraAttempts":0,
+                                          "correctedErrors":0,
+                                          "paceBuckets":[
+                                            {
+                                              "durationMs":1000,
+                                              "typedCharacters":1,
+                                              "correctCharacters":1,
+                                              "rawCharacters":1,
+                                              "errors":0
+                                            },
+                                            {
+                                              "durationMs":960,
+                                              "typedCharacters":1,
+                                              "correctCharacters":2,
+                                              "rawCharacters":2,
+                                              "errors":0
+                                            }
+                                          ]
+                                        }
+                                        """
+                                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.consistency").value(96.0));
+    }
+
+    @Test
+    void sourceArithmeticOrderAndJavascriptRoundingArePreserved() throws Exception {
+        Client client = registeredClient("metric_order");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                3_840,
+                                                33,
+                                                33,
+                                                0,
+                                                33,
+                                                0,
+                                                List.of(
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 8, 8, 8, 0),
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 8, 16, 16, 0),
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 8, 24, 24, 0),
+                                                        new ResultDtos.PaceBucket(
+                                                                840, 9, 33, 33, 0)))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wpm").value(103.12))
+                .andExpect(jsonPath("$.rawWpm").value(103.12));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                1_000,
+                                                160,
+                                                23,
+                                                137,
+                                                23,
+                                                137,
+                                                List.of(
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 160, 23, 160, 137)))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accuracy").value(14.37));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                1_000,
+                                                800,
+                                                29,
+                                                771,
+                                                29,
+                                                771,
+                                                List.of(
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 800, 29, 800, 771)))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accuracy").value(3.63));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                1_770,
+                                                28,
+                                                28,
+                                                0,
+                                                28,
+                                                0,
+                                                List.of(
+                                                        new ResultDtos.PaceBucket(
+                                                                1_000, 16, 16, 16, 0),
+                                                        new ResultDtos.PaceBucket(
+                                                                768, 12, 28, 28, 0)))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.consistency").value(98.68));
+    }
+
+    @Test
+    void contentLanguageAndErrorPolicyRoundTripAndPartitionRecords()
+            throws Exception {
+        Client client = registeredClient("test_dimensions");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.QUOTE,
+                                                TypingLanguage.EN,
+                                                ErrorPolicy.STRICT)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contentType").value("QUOTE"))
+                .andExpect(jsonPath("$.language").value("EN"))
+                .andExpect(jsonPath("$.wordListVersion").value("quote-v1"))
+                .andExpect(jsonPath("$.errorPolicy").value("STRICT"));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.CUSTOM,
+                                                TypingLanguage.ES,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contentType").value("CUSTOM"))
+                .andExpect(jsonPath("$.language").value("ES"))
+                .andExpect(jsonPath("$.wordListVersion").value("custom-v1"));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.CODE,
+                                                TypingLanguage.EN,
+                                                CodeLanguage.PYTHON3,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contentType").value("CODE"))
+                .andExpect(jsonPath("$.language").value("EN"))
+                .andExpect(jsonPath("$.codeLanguage").value("PYTHON3"))
+                .andExpect(jsonPath("$.wordListVersion").value("code-v2"))
+                .andExpect(jsonPath("$.oldestResultsPruned").value(1));
+
+        MvcResult summary =
+                client.perform(get("/api/results/summary"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.records.length()").value(2))
+                        .andReturn();
+        int matchingCodeRecords = 0;
+        for (JsonNode record :
+                json.readTree(summary.getResponse().getContentAsString()).get("records")) {
+            JsonNode key = record.get("key");
+            if ("CODE".equals(key.get("contentType").stringValue())
+                    && "PYTHON3".equals(key.get("codeLanguage").stringValue())
+                    && "code-v2".equals(key.get("wordListVersion").stringValue())) {
+                matchingCodeRecords++;
+            }
+        }
+        assertThat(matchingCodeRecords).isEqualTo(1);
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.QUOTE,
+                                                TypingLanguage.ES,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.CODE,
+                                                TypingLanguage.EN,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void everyCodeLanguageRoundTripsThroughTheResultApi() throws Exception {
+        Client client = registeredClient("code_languages");
+
+        for (CodeLanguage language : CodeLanguage.values()) {
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            dimensionedResultJson(
+                                                    UUID.randomUUID(),
+                                                    ContentType.CODE,
+                                                    TypingLanguage.EN,
+                                                    language,
+                                                    ErrorPolicy.NORMAL)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.contentType").value("CODE"))
+                    .andExpect(jsonPath("$.language").value("EN"))
+                    .andExpect(jsonPath("$.codeLanguage").value(language.name()))
+                    .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+        }
+    }
+
+    @Test
+    void corpusVersionsPartitionOtherwiseIdenticalCodeRecords() throws Exception {
+        Client client = registeredClient("code_versions");
+        UUID legacyResult = UUID.randomUUID();
+        String legacyBody =
+                dimensionedResultJson(
+                                legacyResult,
+                                ContentType.CODE,
+                                TypingLanguage.EN,
+                                CodeLanguage.PYTHON3,
+                                ErrorPolicy.NORMAL)
+                        .replace(
+                                "\"wordListVersion\":\"code-v2\"",
+                                "\"wordListVersion\":\"code-v1\"");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(legacyBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("code-v1"));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                legacyResult,
+                                                ContentType.CODE,
+                                                TypingLanguage.EN,
+                                                CodeLanguage.PYTHON3,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RESULT_IDEMPOTENCY_CONFLICT"));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        dimensionedResultJson(
+                                                UUID.randomUUID(),
+                                                ContentType.CODE,
+                                                TypingLanguage.EN,
+                                                CodeLanguage.PYTHON3,
+                                                ErrorPolicy.NORMAL)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+
+        client.perform(get("/api/results/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.records.length()").value(2))
+                .andExpect(
+                        jsonPath(
+                                "$.records[*].key.wordListVersion",
+                                org.hamcrest.Matchers.containsInAnyOrder(
+                                        "code-v1", "code-v2")));
+
+        String invalidVersion =
+                dimensionedResultJson(
+                                UUID.randomUUID(),
+                                ContentType.CODE,
+                                TypingLanguage.EN,
+                                CodeLanguage.PYTHON3,
+                                ErrorPolicy.NORMAL)
+                        .replace(
+                                "\"wordListVersion\":\"code-v2\"",
+                                "\"wordListVersion\":\"en-v1\"");
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(invalidVersion))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        Client legacyClient = registeredClient("code_version_omitted");
+        String omittedVersion =
+                dimensionedResultJson(
+                                UUID.randomUUID(),
+                                ContentType.CODE,
+                                TypingLanguage.EN,
+                                CodeLanguage.PYTHON3,
+                                ErrorPolicy.NORMAL)
+                        .replace("\"wordListVersion\":\"code-v2\",", "");
+        legacyClient.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(omittedVersion))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("code-v1"));
+    }
+
+    @Test
+    void legacyPaceJsonFallsBackToNoGraphInsteadOfInventingZeroLines()
+            throws Exception {
+        Client client = registeredClient("legacy_pace");
+        UUID resultId = UUID.randomUUID();
+
+        MvcResult created =
+                client.perform(
+                                post("/api/results")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(resultJson(resultId, 7, 6, 1)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        double persistedConsistency =
+                json.readTree(created.getResponse().getContentAsString())
+                        .get("consistency")
+                        .doubleValue();
+        jdbc.update(
+                "UPDATE typing_result SET pace_buckets_json = ?"
+                        + " WHERE client_result_id = ?",
+                """
+                [{"durationMs":1000,"typedCharacters":7}]
+                """,
+                resultId);
+
+        client.perform(get("/api/results").param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].wpm").value(12.0))
+                .andExpect(
+                        jsonPath("$.items[0].consistency")
+                                .value(persistedConsistency))
+                .andExpect(jsonPath("$.items[0].paceBuckets").isEmpty());
+    }
+
+    @Test
+    void populatedV1SchemaUpgradesWithoutRewritingLegacyResultCounters() {
+        String schema =
+                "upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        UUID userId = UUID.randomUUID();
+        UUID boundaryResultId = UUID.randomUUID();
+        try {
+            jdbc.execute("CREATE SCHEMA " + schema);
+            Flyway.configure()
+                    .dataSource(dataSource)
+                    .defaultSchema(schema)
+                    .schemas(schema)
+                    .locations("classpath:db/migration")
+                    .target(MigrationVersion.fromVersion("1"))
+                    .load()
+                    .migrate();
+            jdbc.update(
+                    """
+                    INSERT INTO %s.app_user (
+                        id, username, username_normalized, password_hash, created_at
+                    ) VALUES (?, 'legacy_user', 'legacy_user', '{bcrypt}legacy', now())
+                    """
+                            .formatted(schema),
+                    userId);
+            jdbc.update(
+                    """
+                    -- This row is valid under V1 but deliberately violates both
+                    -- richer retained-scoring checks added as NOT VALID later.
+                    INSERT INTO %s.typing_result (
+                        id, user_id, client_result_id, mode, mode_value,
+                        punctuation, numbers, duration_ms, typed_characters,
+                        correct_attempts, incorrect_attempts, correct_characters,
+                        missing_characters, extra_attempts, corrected_errors,
+                        wpm, raw_wpm, accuracy, consistency, pace_buckets_json,
+                        completed_at
+                    ) VALUES (
+                        ?, ?, ?, 'WORDS', 10, false, false, 1000, 2,
+                        1, 1, 2, 0, 1, 2, 23, 23, 49, 80,
+                        '[{"durationMs":1000,"typedCharacters":2}]', now()
+                    )
+                    """
+                            .formatted(schema),
+                    UUID.randomUUID(),
+                    userId,
+                    UUID.randomUUID());
+            jdbc.update(
+                    """
+                    INSERT INTO %s.typing_result (
+                        id, user_id, client_result_id, mode, mode_value,
+                        punctuation, numbers, duration_ms, typed_characters,
+                        correct_attempts, incorrect_attempts, correct_characters,
+                        missing_characters, extra_attempts, corrected_errors,
+                        wpm, raw_wpm, accuracy, consistency, pace_buckets_json,
+                        completed_at
+                    ) VALUES (
+                        ?, ?, ?, 'TIME', 15, false, false, 15000, 2,
+                        1, 1, 2, 0, 0, 0, 1.6, 1.6, 50, 100,
+                        '[{"durationMs":1000,"typedCharacters":2}]', now()
+                    )
+                    """
+                            .formatted(schema),
+                    UUID.randomUUID(),
+                    userId,
+                    UUID.randomUUID());
+            jdbc.update(
+                    """
+                    INSERT INTO %s.typing_result (
+                        id, user_id, client_result_id, mode, mode_value,
+                        punctuation, numbers, duration_ms, typed_characters,
+                        correct_attempts, incorrect_attempts, correct_characters,
+                        missing_characters, extra_attempts, corrected_errors,
+                        wpm, raw_wpm, accuracy, consistency, pace_buckets_json,
+                        completed_at
+                    ) VALUES (
+                        ?, ?, ?, 'WORDS', 10, false, false, 3840, 33,
+                        33, 0, 33, 0, 0, 0, 103.13, 103.13, 100, 100,
+                        '[{"durationMs":1000,"typedCharacters":33}]', now()
+                    )
+                    """
+                            .formatted(schema),
+                    boundaryResultId,
+                    userId,
+                    UUID.randomUUID());
+
+            Flyway.configure()
+                    .dataSource(dataSource)
+                    .defaultSchema(schema)
+                    .schemas(schema)
+                    .locations("classpath:db/migration")
+                    .load()
+                    .migrate();
+
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT count(*) FROM "
+                                            + schema
+                                            + ".typing_result",
+                                    Integer.class))
+                    .isEqualTo(3);
+            assertThat(
+                            jdbc.queryForList(
+                                    """
+                                    SELECT mode, typed_characters, correct_attempts,
+                                           incorrect_attempts, correct_characters,
+                                           incorrect_characters, missing_characters,
+                                           extra_attempts, corrected_errors, completion_reason,
+                                           wpm, raw_wpm, accuracy, content_type,
+                                           language, word_list_version, error_policy
+                                    FROM %s.typing_result
+                                    WHERE id <> ?
+                                    ORDER BY mode
+                                    """
+                                            .formatted(schema),
+                                    boundaryResultId))
+                    .containsExactly(
+                            Map.ofEntries(
+                                    Map.entry("mode", "TIME"),
+                                    Map.entry("typed_characters", 2),
+                                    Map.entry("correct_attempts", 1),
+                                    Map.entry("incorrect_attempts", 1),
+                                    Map.entry("correct_characters", 2),
+                                    Map.entry("incorrect_characters", 0),
+                                    Map.entry("missing_characters", 0),
+                                    Map.entry("extra_attempts", 0),
+                                    Map.entry("corrected_errors", 0),
+                                    Map.entry("completion_reason", "TIME"),
+                                    Map.entry("wpm", new BigDecimal("1.60")),
+                                    Map.entry("raw_wpm", new BigDecimal("1.60")),
+                                    Map.entry("accuracy", new BigDecimal("50.00")),
+                                    Map.entry("content_type", "WORDS"),
+                                    Map.entry("language", "EN"),
+                                    Map.entry("word_list_version", "en-v1"),
+                                    Map.entry("error_policy", "NORMAL")),
+                            Map.ofEntries(
+                                    Map.entry("mode", "WORDS"),
+                                    Map.entry("typed_characters", 2),
+                                    Map.entry("correct_attempts", 1),
+                                    Map.entry("incorrect_attempts", 1),
+                                    Map.entry("correct_characters", 2),
+                                    Map.entry("incorrect_characters", 0),
+                                    Map.entry("missing_characters", 0),
+                                    Map.entry("extra_attempts", 1),
+                                    Map.entry("corrected_errors", 2),
+                                    Map.entry("completion_reason", "FINISHED"),
+                                    Map.entry("wpm", new BigDecimal("24.00")),
+                                    Map.entry("raw_wpm", new BigDecimal("24.00")),
+                                    Map.entry("accuracy", new BigDecimal("50.00")),
+                                    Map.entry("content_type", "WORDS"),
+                                    Map.entry("language", "EN"),
+                                    Map.entry("word_list_version", "en-v1"),
+                                    Map.entry("error_policy", "NORMAL")));
+            assertThat(
+                            jdbc.queryForMap(
+                                    """
+                                    SELECT wpm, raw_wpm, accuracy
+                                    FROM %s.typing_result
+                                    WHERE id = ?
+                                    """
+                                            .formatted(schema),
+                                    boundaryResultId))
+                    .containsEntry("wpm", new BigDecimal("103.12"))
+                    .containsEntry("raw_wpm", new BigDecimal("103.12"))
+                    .containsEntry("accuracy", new BigDecimal("100.00"));
+            assertThat(
+                            jdbc.queryForObject(
+                                    """
+                                    SELECT convalidated
+                                    FROM pg_constraint
+                                    WHERE conname = 'ck_typing_result_character_ranges'
+                                      AND conrelid = ?::regclass
+                                    """,
+                                    Boolean.class,
+                                    schema + ".typing_result"))
+                    .isFalse();
+            assertThat(
+                            jdbc.queryForObject(
+                                    """
+                                    SELECT convalidated
+                                    FROM pg_constraint
+                                    WHERE conname = 'ck_typing_result_corrected_error_attempts'
+                                      AND conrelid = ?::regclass
+                                    """,
+                                    Boolean.class,
+                                    schema + ".typing_result"))
+                    .isFalse();
+        } finally {
+            jdbc.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+        }
     }
 
     @Test
@@ -399,22 +1286,105 @@ class ApiIntegrationTest {
                                           "modeValue":10,
                                           "punctuation":false,
                                           "numbers":false,
+                                          "contentType":"WORDS",
+                                          "language":"EN",
+                                          "errorPolicy":"NORMAL",
                                           "durationMs":250,
                                           "typedCharacters":50000,
                                           "correctAttempts":50000,
                                           "incorrectAttempts":0,
                                           "correctCharacters":50000,
+                                          "incorrectCharacters":0,
                                           "missingCharacters":0,
                                           "extraAttempts":0,
                                           "correctedErrors":0,
-                                          "paceBuckets":[
-                                            {"durationMs":250,"typedCharacters":50000}
-                                          ]
+                                          "paceBuckets":[]
                                         }
                                         """
                                                 .formatted(UUID.randomUUID())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void impossibleResultAndPaceCounterRelationsAreRejected() throws Exception {
+        Client client = registeredClient("counter_bounds");
+        String baseline = resultJson(UUID.randomUUID(), 7, 6, 1);
+        List<String> invalidPayloads =
+                List.of(
+                        baseline.replace(
+                                "\"typedCharacters\": 7",
+                                "\"typedCharacters\": 8"),
+                        baseline.replace(
+                                "\"incorrectCharacters\": 1",
+                                "\"incorrectCharacters\": 3"),
+                        baseline.replace("\"errors\": 1", "\"errors\": 8"),
+                        baseline.replace(
+                                "\"rawCharacters\": 7",
+                                "\"rawCharacters\": 4"),
+                        baseline.replaceFirst(
+                                "\"typedCharacters\": 7",
+                                "\"typedCharacters\": 6"));
+
+        for (String payload : invalidPayloads) {
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(payload))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Test
+    void cumulativePaceCannotExceedInsertionsSeenByThatBucket() throws Exception {
+        Client client = registeredClient("pace_prefix");
+        List<ResultDtos.PaceBucket> buckets =
+                List.of(
+                        new ResultDtos.PaceBucket(1000, 1, 2, 2, 0),
+                        new ResultDtos.PaceBucket(1000, 2, 3, 3, 0));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                2000,
+                                                3,
+                                                3,
+                                                0,
+                                                3,
+                                                0,
+                                                buckets)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void cumulativePaceMayDecreaseAfterBackspacing() throws Exception {
+        Client client = registeredClient("pace_backspace");
+        List<ResultDtos.PaceBucket> buckets =
+                List.of(
+                        new ResultDtos.PaceBucket(1000, 3, 3, 3, 0),
+                        new ResultDtos.PaceBucket(1000, 1, 1, 1, 0));
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        metricResultJson(
+                                                UUID.randomUUID(),
+                                                2000,
+                                                1,
+                                                4,
+                                                0,
+                                                1,
+                                                0,
+                                                buckets)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.paceBuckets[0].rawCharacters").value(3))
+                .andExpect(jsonPath("$.paceBuckets[1].rawCharacters").value(1));
     }
 
     @Test
@@ -653,20 +1623,27 @@ class ApiIntegrationTest {
                 10,
                 false,
                 false,
+                ContentType.WORDS,
+                TypingLanguage.EN,
+                null,
+                "en-v1",
+                ErrorPolicy.NORMAL,
                 5_000,
                 7,
                 correct,
                 incorrect,
                 5,
+                1,
                 2,
                 0,
                 1,
+                null,
                 List.of(
-                        new ResultDtos.PaceBucket(1_000, 7),
-                        new ResultDtos.PaceBucket(1_000, 0),
-                        new ResultDtos.PaceBucket(1_000, 0),
-                        new ResultDtos.PaceBucket(1_000, 0),
-                        new ResultDtos.PaceBucket(1_000, 0)));
+                        new ResultDtos.PaceBucket(1_000, 7, 5, 7, incorrect),
+                        new ResultDtos.PaceBucket(1_000, 0, 5, 7, 0),
+                        new ResultDtos.PaceBucket(1_000, 0, 5, 7, 0),
+                        new ResultDtos.PaceBucket(1_000, 0, 5, 7, 0),
+                        new ResultDtos.PaceBucket(1_000, 0, 5, 7, 0)));
     }
 
     private Client bootstrap() throws Exception {
@@ -684,6 +1661,62 @@ class ApiIntegrationTest {
         return (prefix + "_" + suffix).substring(0, Math.min(24, prefix.length() + 9));
     }
 
+    private String completionResultJson(
+            UUID clientResultId, CompletionCase completion) {
+        return completionResultJson(clientResultId, completion, null);
+    }
+
+    private String completionResultJson(
+            UUID clientResultId,
+            CompletionCase completion,
+            Double finalBucketDurationOverride) {
+        int bucketCount = completion.durationMs() / 1000;
+        if (completion.mode() == TestMode.WORDS
+                && completion.durationMs() % 1000 >= 500) {
+            bucketCount += 1;
+        }
+        List<Map<String, Object>> buckets = new ArrayList<>(bucketCount);
+        for (int index = 0; index < bucketCount; index++) {
+            Map<String, Object> bucket = new LinkedHashMap<>();
+            int bucketDuration =
+                    index == bucketCount - 1 && completion.durationMs() % 1000 != 0
+                            ? completion.durationMs() % 1000
+                            : 1000;
+            bucket.put(
+                    "durationMs",
+                    index == bucketCount - 1 && finalBucketDurationOverride != null
+                            ? finalBucketDurationOverride
+                            : (double) bucketDuration);
+            bucket.put("typedCharacters", index == 0 ? 3 : 0);
+            bucket.put("correctCharacters", 3);
+            bucket.put("rawCharacters", 3);
+            bucket.put("errors", 0);
+            buckets.add(bucket);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("clientResultId", clientResultId);
+        body.put("mode", completion.mode().name());
+        body.put("modeValue", completion.modeValue());
+        body.put("punctuation", false);
+        body.put("numbers", false);
+        body.put("contentType", ContentType.WORDS.name());
+        body.put("language", TypingLanguage.EN.name());
+        body.put("errorPolicy", ErrorPolicy.NORMAL.name());
+        body.put("durationMs", completion.durationMs());
+        body.put("typedCharacters", 3);
+        body.put("correctAttempts", 3);
+        body.put("incorrectAttempts", 0);
+        body.put("correctCharacters", 3);
+        body.put("incorrectCharacters", 0);
+        body.put("missingCharacters", 0);
+        body.put("extraAttempts", 0);
+        body.put("correctedErrors", 0);
+        body.put("completionReason", completion.reason().name());
+        body.put("paceBuckets", buckets);
+        return json.writeValueAsString(body);
+    }
+
     private String resultJson(UUID clientResultId, int typed, int correct, int incorrect) {
         return """
                 {
@@ -692,27 +1725,156 @@ class ApiIntegrationTest {
                   "modeValue": 10,
                   "punctuation": false,
                   "numbers": false,
+                  "contentType": "WORDS",
+                  "language": "EN",
+                  "errorPolicy": "NORMAL",
                   "durationMs": 5000,
                   "typedCharacters": %d,
                   "correctAttempts": %d,
                   "incorrectAttempts": %d,
                   "correctCharacters": 5,
+                  "incorrectCharacters": 1,
                   "missingCharacters": 2,
                   "extraAttempts": 0,
                   "correctedErrors": 1,
                   "paceBuckets": [
-                    {"durationMs": 1000, "typedCharacters": %d},
-                    {"durationMs": 1000, "typedCharacters": 0},
-                    {"durationMs": 1000, "typedCharacters": 0},
-                    {"durationMs": 1000, "typedCharacters": 0},
-                    {"durationMs": 1000, "typedCharacters": 0}
+                    {
+                      "durationMs": 1000,
+                      "typedCharacters": %d,
+                      "correctCharacters": 5,
+                      "rawCharacters": 7,
+                      "errors": %d
+                    },
+                    {
+                      "durationMs": 1000,
+                      "typedCharacters": 0,
+                      "correctCharacters": 5,
+                      "rawCharacters": 7,
+                      "errors": 0
+                    },
+                    {
+                      "durationMs": 1000,
+                      "typedCharacters": 0,
+                      "correctCharacters": 5,
+                      "rawCharacters": 7,
+                      "errors": 0
+                    },
+                    {
+                      "durationMs": 1000,
+                      "typedCharacters": 0,
+                      "correctCharacters": 5,
+                      "rawCharacters": 7,
+                      "errors": 0
+                    },
+                    {
+                      "durationMs": 1000,
+                      "typedCharacters": 0,
+                      "correctCharacters": 5,
+                      "rawCharacters": 7,
+                      "errors": 0
+                    }
                   ]
                 }
                 """
-                .formatted(clientResultId, typed, correct, incorrect, typed);
+                .formatted(
+                        clientResultId,
+                        typed,
+                        correct,
+                        incorrect,
+                        typed,
+                        incorrect);
+    }
+
+    private String metricResultJson(
+            UUID clientResultId,
+            int durationMs,
+            int typedCharacters,
+            int correctAttempts,
+            int incorrectAttempts,
+            int correctCharacters,
+            int incorrectCharacters,
+            List<ResultDtos.PaceBucket> paceBuckets) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("clientResultId", clientResultId);
+        body.put("mode", TestMode.WORDS.name());
+        body.put("modeValue", 10);
+        body.put("punctuation", false);
+        body.put("numbers", false);
+        body.put("contentType", ContentType.WORDS.name());
+        body.put("language", TypingLanguage.EN.name());
+        body.put("errorPolicy", ErrorPolicy.NORMAL.name());
+        body.put("durationMs", durationMs);
+        body.put("typedCharacters", typedCharacters);
+        body.put("correctAttempts", correctAttempts);
+        body.put("incorrectAttempts", incorrectAttempts);
+        body.put("correctCharacters", correctCharacters);
+        body.put("incorrectCharacters", incorrectCharacters);
+        body.put("missingCharacters", 0);
+        body.put("extraAttempts", 0);
+        body.put("correctedErrors", 0);
+        body.put("completionReason", CompletionReason.FINISHED.name());
+        body.put("paceBuckets", paceBuckets);
+        return json.writeValueAsString(body);
+    }
+
+    private String dimensionedResultJson(
+            UUID clientResultId,
+            ContentType contentType,
+            TypingLanguage language,
+            ErrorPolicy errorPolicy) {
+        return dimensionedResultJson(
+                clientResultId, contentType, language, null, errorPolicy);
+    }
+
+    private String dimensionedResultJson(
+            UUID clientResultId,
+            ContentType contentType,
+            TypingLanguage language,
+            CodeLanguage codeLanguage,
+            ErrorPolicy errorPolicy) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("clientResultId", clientResultId);
+        body.put("mode", TestMode.WORDS.name());
+        body.put("modeValue", 2);
+        body.put("punctuation", false);
+        body.put("numbers", false);
+        body.put("contentType", contentType.name());
+        body.put("language", language.name());
+        if (codeLanguage != null) {
+            body.put("codeLanguage", codeLanguage.name());
+        }
+        body.put(
+                "wordListVersion",
+                switch (contentType) {
+                    case WORDS -> language == TypingLanguage.ES ? "es-v1" : "en-v1";
+                    case QUOTE -> "quote-v1";
+                    case CUSTOM -> "custom-v1";
+                    case CODE -> "code-v2";
+                });
+        body.put("errorPolicy", errorPolicy.name());
+        body.put("durationMs", 1_000);
+        body.put("typedCharacters", 2);
+        body.put("correctAttempts", 2);
+        body.put("incorrectAttempts", 0);
+        body.put("correctCharacters", 2);
+        body.put("incorrectCharacters", 0);
+        body.put("missingCharacters", 0);
+        body.put("extraAttempts", 0);
+        body.put("correctedErrors", 0);
+        body.put("completionReason", CompletionReason.FINISHED.name());
+        body.put(
+                "paceBuckets",
+                List.of(new ResultDtos.PaceBucket(1_000, 2, 2, 2, 0)));
+        return json.writeValueAsString(body);
     }
 
     private record Credentials(String username, String password) {}
+
+    private record CompletionCase(
+            TestMode mode,
+            int modeValue,
+            int durationMs,
+            CompletionReason reason) {}
 
     private record ConcurrentCall(
             TypingResultService.CreateOutcome outcome, String errorCode) {}

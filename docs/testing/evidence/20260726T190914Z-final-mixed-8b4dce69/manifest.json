@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "runId": "20260726T190914Z-final-mixed-8b4dce69",
+  "localDate": "2026-07-27",
+  "timeZone": "Asia/Manila",
+  "rill": {
+    "baseCommit": "528e07f68a381351c61cb5c4c9b303adf84ecd8c",
+    "revision": "WORKTREE",
+    "frozenCommit": false,
+    "sourceSnapshot": {
+      "algorithm": "sha256",
+      "digest": "3793a78ddd60218686469d3d42ee5f2e372b7f67891a5d90cc447760f74db1bd",
+      "files": 128,
+      "enumeration": "git ls-files --cached --others --exclude-standard -z; sorted paths; path NUL content-or-MISSING NUL",
+      "excluded": [
+        "docs/VERIFICATION.md",
+        "docs/testing/**"
+      ]
+    },
+    "note": "Git staging was blocked because .git/index.lock was not writable. The tested application/source/spec snapshot is bound to the base commit and deterministic SHA-256 above; mutable audit records are excluded to avoid self-reference."
+  },
+  "monkeytype": {
+    "liveVersionObserved": "v26.28.0",
+    "sourceCommit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
+    "statsPath": "frontend/src/ts/test/events/stats.ts",
+    "statsSha256": "e9749f326876e04f50fb5df9a6c22e27cea99c87daa0a98d2191e1c8daeee3a4",
+    "numbersPath": "packages/util/src/numbers.ts",
+    "numbersSha256": "0fa87c6040fe650202f5b9b80867b065dd831498701d1e530062035a8409642c"
+  },
+  "ledger": {
+    "total": 312,
+    "pass": 37,
+    "blocked": 258,
+    "notApplicable": 16,
+    "difference": 1,
+    "unreviewed": 0
+  },
+  "currentChecks": {
+    "frontendRuntime": "Node 22.20.0; below declared >=22.22.0",
+    "frontendUnit": "115 passed, 0 failed",
+    "frontendCoverage": "115 passed; configured thresholds passed; 57.2% total line coverage",
+    "frontendLint": "passed with zero warnings",
+    "frontendTypecheck": "passed",
+    "frontendBuild": "passed",
+    "supportedNodeRuntime": "blocked: runtime download failed",
+    "pinnedMonkeytypeTiming": "7 of 7 vectors matched source",
+    "backendPackage": "Maven wrapper passed with tests skipped after a null symlink-target bootstrap fix",
+    "backendCleanState": "blocked: Maven clean could not delete backend/target through the managed sandbox",
+    "backendTests": "blocked: reproducible workspace testCompile could not read target/classes; earlier workaround evidence was not retained",
+    "backendIntegration": "blocked: Docker named-pipe access denied",
+    "liveBrowser": "blocked for final worktree: port 8080 served an older bundle and policy rejected the isolated preview port",
+    "playwrightE2e": "blocked before test bodies: browser launch spawn EPERM",
+    "performance": "blocked: browser launch spawn EPERM",
+    "npmAudit": "0 vulnerabilities",
+    "owaspDependencyCheck": "blocked: update loopback connection failure"
+  },
+  "artifactHashes": {
+    "algorithm": "sha256",
+    "manifestExcludedForSelfReference": true,
+    "artifacts": [
+      {
+        "path": "case-coverage.md",
+        "bytes": 2719,
+        "sha256": "7faf3ab57abf15b2eb61e210346622feb26addce24da29e0c2f143e37ff36239"
+      },
+      {
+        "path": "live-browser.md",
+        "bytes": 2229,
+        "sha256": "53c07cd3e511c9192ad0f88063368e44a6819e7fdae65bbafc8eff0b5570942b"
+      },
+      {
+        "path": "run.md",
+        "bytes": 7139,
+        "sha256": "fb3ca661dd312e3af45dc79d12f927b55308a80d5dd9cee520a570a3f4aa2684"
+      },
+      {
+        "path": "security-performance.md",
+        "bytes": 1575,
+        "sha256": "e56cadb6dc649186d06821b8c7ba9106d2f28cb4e9a439dc1784b93f57a9c30e"
+      },
+      {
+        "path": "specialist-reviews.md",
+        "bytes": 3373,
+        "sha256": "f0865af21466cbab412011eb062c7cb132c367e058addbc74bc0d09a2919f33c"
+      }
+    ]
+  }
+}

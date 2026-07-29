@@ -41,6 +41,25 @@ public class TypingResultEntity {
     @Column(nullable = false)
     private boolean numbers;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_type", nullable = false, length = 8)
+    private ContentType contentType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 2)
+    private TypingLanguage language;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "code_language", length = 16)
+    private CodeLanguage codeLanguage;
+
+    @Column(name = "word_list_version", nullable = false, length = 16)
+    private String wordListVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "error_policy", nullable = false, length = 8)
+    private ErrorPolicy errorPolicy;
+
     @Column(name = "duration_ms", nullable = false)
     private int durationMs;
 
@@ -56,6 +75,9 @@ public class TypingResultEntity {
     @Column(name = "correct_characters", nullable = false)
     private int correctCharacters;
 
+    @Column(name = "incorrect_characters", nullable = false)
+    private int incorrectCharacters;
+
     @Column(name = "missing_characters", nullable = false)
     private int missingCharacters;
 
@@ -64,6 +86,10 @@ public class TypingResultEntity {
 
     @Column(name = "corrected_errors", nullable = false)
     private int correctedErrors;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "completion_reason", nullable = false, length = 20)
+    private CompletionReason completionReason;
 
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal wpm;
@@ -92,14 +118,21 @@ public class TypingResultEntity {
             int modeValue,
             boolean punctuation,
             boolean numbers,
+            ContentType contentType,
+            TypingLanguage language,
+            CodeLanguage codeLanguage,
+            String wordListVersion,
+            ErrorPolicy errorPolicy,
             int durationMs,
             int typedCharacters,
             int correctAttempts,
             int incorrectAttempts,
             int correctCharacters,
+            int incorrectCharacters,
             int missingCharacters,
             int extraAttempts,
             int correctedErrors,
+            CompletionReason completionReason,
             BigDecimal wpm,
             BigDecimal rawWpm,
             BigDecimal accuracy,
@@ -113,14 +146,21 @@ public class TypingResultEntity {
         this.modeValue = modeValue;
         this.punctuation = punctuation;
         this.numbers = numbers;
+        this.contentType = contentType;
+        this.language = language;
+        this.codeLanguage = codeLanguage;
+        this.wordListVersion = wordListVersion;
+        this.errorPolicy = errorPolicy;
         this.durationMs = durationMs;
         this.typedCharacters = typedCharacters;
         this.correctAttempts = correctAttempts;
         this.incorrectAttempts = incorrectAttempts;
         this.correctCharacters = correctCharacters;
+        this.incorrectCharacters = incorrectCharacters;
         this.missingCharacters = missingCharacters;
         this.extraAttempts = extraAttempts;
         this.correctedErrors = correctedErrors;
+        this.completionReason = completionReason;
         this.wpm = wpm;
         this.rawWpm = rawWpm;
         this.accuracy = accuracy;
@@ -157,6 +197,26 @@ public class TypingResultEntity {
         return numbers;
     }
 
+    public ContentType getContentType() {
+        return contentType;
+    }
+
+    public TypingLanguage getLanguage() {
+        return language;
+    }
+
+    public CodeLanguage getCodeLanguage() {
+        return codeLanguage;
+    }
+
+    public String getWordListVersion() {
+        return wordListVersion;
+    }
+
+    public ErrorPolicy getErrorPolicy() {
+        return errorPolicy;
+    }
+
     public int getDurationMs() {
         return durationMs;
     }
@@ -177,6 +237,10 @@ public class TypingResultEntity {
         return correctCharacters;
     }
 
+    public int getIncorrectCharacters() {
+        return incorrectCharacters;
+    }
+
     public int getMissingCharacters() {
         return missingCharacters;
     }
@@ -187,6 +251,10 @@ public class TypingResultEntity {
 
     public int getCorrectedErrors() {
         return correctedErrors;
+    }
+
+    public CompletionReason getCompletionReason() {
+        return completionReason;
     }
 
     public BigDecimal getWpm() {
