@@ -720,7 +720,7 @@ describe("independent Rill typing reference model", () => {
         extraAttempts,
         correctedErrors: randomInt(random, incorrectAttempts + 1),
       };
-      const durationMs = 250 + randomInt(random, 599_751);
+      const durationMs = 1 + randomInt(random, 600_000);
       const buckets = Array.from(
         { length: 1 + randomInt(random, 12) },
         (): PaceBucket => ({

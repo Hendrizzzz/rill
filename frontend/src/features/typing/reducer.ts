@@ -10,7 +10,6 @@ import {
 } from "./inputAdapter";
 import { calculateMetrics } from "./scoring";
 import {
-  MIN_WORD_TEST_DURATION_MS,
   WORD_TEST_LIMIT_MS,
   type Prompt,
   type ResultCounters,
@@ -102,10 +101,7 @@ function complete(
   const durationMs =
     state.config.mode === "time" && reason === "time"
       ? rawDurationMs
-      : Math.max(
-          state.config.mode === "words" ? MIN_WORD_TEST_DURATION_MS : 1,
-          normalizeTestDurationMs(rawDurationMs),
-        );
+      : Math.max(1, normalizeTestDurationMs(rawDurationMs));
   const completedAt = state.startedAt + rawDurationMs;
   const paceBuckets = buildPaceBuckets(
     durationMs,

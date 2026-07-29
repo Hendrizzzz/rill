@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_CONFIG,
   hasLegacyGuestResults,
+  isResultSaveEligible,
   loadGuestResults,
   loadTestConfig,
   saveGuestResult,
@@ -153,24 +154,44 @@ describe("typing local storage", () => {
     expect(loadGuestResults()).toEqual([result]);
   });
 
-  it("round trips an instantaneous test normalized to the duration boundary", () => {
-    const normalized: TypingResult = {
+  it("keeps source-compatible subsecond results out of persistence", () => {
+    const tooShort: TypingResult = {
       ...result,
-      durationMs: 250,
+      durationMs: 1,
       typedCharacters: 1,
       correctAttempts: 1,
       correctCharacters: 1,
-      wpm: 48,
-      rawWpm: 48,
+      wpm: 12_000,
+      rawWpm: 12_000,
       consistency: 0,
       paceBuckets: [],
     };
 
-    expect(saveGuestResult(normalized)).toEqual({
-      ok: true,
+    expect(isResultSaveEligible(tooShort)).toBe(false);
+    expect(saveGuestResult(tooShort)).toEqual({
+      ok: false,
       deduplicated: false,
     });
-    expect(loadGuestResults()).toEqual([normalized]);
+    expect(loadGuestResults()).toEqual([]);
+    expect(isResultSaveEligible({ ...tooShort, durationMs: 999 })).toBe(false);
+    expect(isResultSaveEligible(result)).toBe(true);
+    expect(
+      isResultSaveEligible({
+        ...tooShort,
+        mode: "time",
+        modeValue: 15,
+        completionReason: "prompt-exhausted",
+      }),
+    ).toBe(false);
+    expect(
+      isResultSaveEligible({
+        ...tooShort,
+        mode: "time",
+        modeValue: 15,
+        durationMs: 15_000,
+        completionReason: "time",
+      }),
+    ).toBe(true);
   });
 
   it("reports unavailable storage without throwing", () => {
@@ -244,7 +265,7 @@ describe("typing local storage", () => {
     },
   );
 
-  it("round trips a fractional source-compatible graph tail", () => {
+  it("does not persist a subsecond fractional graph tail", () => {
     const fractional: TypingResult = {
       ...result,
       durationMs: 500,
@@ -265,10 +286,10 @@ describe("typing local storage", () => {
     };
 
     expect(saveGuestResult(fractional)).toEqual({
-      ok: true,
+      ok: false,
       deduplicated: false,
     });
-    expect(loadGuestResults()).toEqual([fractional]);
+    expect(loadGuestResults()).toEqual([]);
   });
 
   it("round trips a canonical fractional tail after a whole second", () => {

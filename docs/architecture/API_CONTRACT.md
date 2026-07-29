@@ -200,7 +200,10 @@ Bounds and invariants:
   server then infers `TIME` for time mode and `FINISHED` for word mode. Current
   clients always send the explicit value;
 - time-mode duration equals the mode value multiplied by 1,000 milliseconds;
-- word-mode duration: 250–600,000ms on a 10ms grid;
+- persisted word-mode duration is 1,000–600,000ms on a 10ms grid. The typing
+  engine still calculates and displays source-compatible sub-second results,
+  but the client labels them `too short · not saved` and does not send or queue
+  them;
 - 0–600 pace buckets; `durationMs` is finite, 0.01–1,000ms, has at most
   hundredth-millisecond precision, and every non-final bucket is 1,000ms;
 - time-mode bucket durations sum to `durationMs`;

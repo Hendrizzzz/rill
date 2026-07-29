@@ -10,11 +10,12 @@ import {
 import { extendPrompt, generatePrompt, createPromptSeed } from "./prompt";
 import { createTypingState, typingReducer } from "./reducer";
 import {
+  isResultSaveEligible,
   loadTestConfig,
   saveGuestResult,
   saveTestConfig,
 } from "./storage";
-import type { TestConfig } from "./types";
+import type { ResultSaveStatus, TestConfig } from "./types";
 import { isRetryableApiError, saveAccountResult } from "../../api/client";
 import { queueAccountResult } from "../../api/pendingResults";
 import { useAuth } from "../account/auth-context";
@@ -54,9 +55,7 @@ export function useTypingSession() {
   const auth = useAuth();
   const [state, dispatch] = useReducer(typingReducer, undefined, makeInitialState);
   const [displayNow, setDisplayNow] = useState(() => performance.now());
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saved" | "queued" | "unavailable"
-  >("idle");
+  const [saveStatus, setSaveStatus] = useState<ResultSaveStatus>("idle");
   const persistedId = useRef<string | null>(null);
   const customText = useRef("");
 
@@ -187,6 +186,14 @@ export function useTypingSession() {
     }
     persistedId.current = result.clientResultId;
     const resultId = result.clientResultId;
+    if (!isResultSaveEligible(result)) {
+      void Promise.resolve().then(() => {
+        if (persistedId.current === resultId) {
+          setSaveStatus("too-short");
+        }
+      });
+      return;
+    }
     const accountUser = auth.user;
     const persistence =
       accountUser === null

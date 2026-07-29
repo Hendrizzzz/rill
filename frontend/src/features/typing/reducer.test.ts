@@ -324,15 +324,15 @@ describe("typing reducer contract", () => {
     });
   });
 
-  it("normalizes an instantaneous word test to the persistence minimum", () => {
+  it("preserves the canonical instantaneous word-test fallback", () => {
     const state = insert(initial(["c"]), "c", 0);
 
     expect(state.status).toBe("completed");
     expect(state.startedAt).toBe(0);
     expect(state.result).toMatchObject({
-      durationMs: 250,
-      wpm: 48,
-      rawWpm: 48,
+      durationMs: 1,
+      wpm: 12_000,
+      rawWpm: 12_000,
       accuracy: 100,
       paceBuckets: [],
     });

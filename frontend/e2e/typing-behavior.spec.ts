@@ -27,7 +27,12 @@ async function dispatchComposition(
 
 test.describe("typing behavior parity", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/api/**", (route) => route.abort("connectionrefused"));
+    await page.route("**/api/**", (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      return pathname.startsWith("/api/")
+        ? route.abort("connectionrefused")
+        : route.continue();
+    });
     await page.goto("/");
   });
 

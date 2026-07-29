@@ -529,17 +529,48 @@ class ApiIntegrationTest {
     }
 
     @Test
-    void wordDurationOffTenMillisecondGridIsRejected() throws Exception {
+    void subsecondAndNonCanonicalWordDurationsAreRejected() throws Exception {
         Client client = registeredClient("duration_grid");
+        for (int durationMs : List.of(1, 10, 990, 999, 1_001, 4_999)) {
+            CompletionCase completion =
+                    new CompletionCase(
+                            TestMode.WORDS,
+                            10,
+                            durationMs,
+                            CompletionReason.FINISHED);
+
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            completionResultJson(
+                                                    UUID.randomUUID(), completion)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Test
+    void minimumPersistableWordDurationRoundTrips() throws Exception {
+        Client client = registeredClient("duration_minimum");
         CompletionCase completion =
-                new CompletionCase(TestMode.WORDS, 10, 4_999, CompletionReason.FINISHED);
+                new CompletionCase(
+                        TestMode.WORDS, 10, 1_000, CompletionReason.FINISHED);
 
         client.perform(
                         post("/api/results")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(completionResultJson(UUID.randomUUID(), completion)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                                .content(
+                                        completionResultJson(
+                                                UUID.randomUUID(), completion)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMs").value(1_000))
+                .andExpect(jsonPath("$.wpm").value(36.0))
+                .andExpect(jsonPath("$.paceBuckets.length()").value(1));
+
+        client.perform(get("/api/results").param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
     }
 
     @Test
@@ -975,6 +1006,8 @@ class ApiIntegrationTest {
         String schema =
                 "upgrade_" + UUID.randomUUID().toString().replace("-", "");
         UUID userId = UUID.randomUUID();
+        UUID minimumPersistableResultId = UUID.randomUUID();
+        UUID subsecondResultId = UUID.randomUUID();
         UUID boundaryResultId = UUID.randomUUID();
         try {
             jdbc.execute("CREATE SCHEMA " + schema);
@@ -1012,7 +1045,28 @@ class ApiIntegrationTest {
                     )
                     """
                             .formatted(schema),
-                    UUID.randomUUID(),
+                    minimumPersistableResultId,
+                    userId,
+                    UUID.randomUUID());
+            jdbc.update(
+                    """
+                    -- V1 through V8 accepted this result. V9 must remove it
+                    -- before validating the one-second persistence boundary.
+                    INSERT INTO %s.typing_result (
+                        id, user_id, client_result_id, mode, mode_value,
+                        punctuation, numbers, duration_ms, typed_characters,
+                        correct_attempts, incorrect_attempts, correct_characters,
+                        missing_characters, extra_attempts, corrected_errors,
+                        wpm, raw_wpm, accuracy, consistency, pace_buckets_json,
+                        completed_at
+                    ) VALUES (
+                        ?, ?, ?, 'WORDS', 10, false, false, 990, 2,
+                        2, 0, 2, 0, 0, 0, 24, 24, 100, 100,
+                        '[]', now()
+                    )
+                    """
+                            .formatted(schema),
+                    subsecondResultId,
                     userId,
                     UUID.randomUUID());
             jdbc.update(
@@ -1069,6 +1123,14 @@ class ApiIntegrationTest {
                                             + ".typing_result",
                                     Integer.class))
                     .isEqualTo(3);
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT count(*) FROM "
+                                            + schema
+                                            + ".typing_result WHERE id = ?",
+                                    Integer.class,
+                                    subsecondResultId))
+                    .isZero();
             assertThat(
                             jdbc.queryForList(
                                     """
@@ -1133,6 +1195,32 @@ class ApiIntegrationTest {
                     .containsEntry("wpm", new BigDecimal("103.12"))
                     .containsEntry("raw_wpm", new BigDecimal("103.12"))
                     .containsEntry("accuracy", new BigDecimal("100.00"));
+            assertThat(
+                            jdbc.queryForObject(
+                                    """
+                                    SELECT convalidated
+                                    FROM pg_constraint
+                                    WHERE conname = 'ck_typing_result_duration'
+                                      AND conrelid = ?::regclass
+                                    """,
+                                    Boolean.class,
+                                    schema + ".typing_result"))
+                    .isTrue();
+            assertThatThrownBy(
+                            () ->
+                                    jdbc.update(
+                                            "UPDATE "
+                                                    + schema
+                                                    + ".typing_result SET duration_ms = 990 WHERE id = ?",
+                                            minimumPersistableResultId))
+                    .hasMessageContaining("ck_typing_result_duration");
+            assertThat(
+                            jdbc.update(
+                                    "UPDATE "
+                                            + schema
+                                            + ".typing_result SET duration_ms = 1000 WHERE id = ?",
+                                    minimumPersistableResultId))
+                    .isEqualTo(1);
             assertThat(
                             jdbc.queryForObject(
                                     """
@@ -1273,7 +1361,7 @@ class ApiIntegrationTest {
     }
 
     @Test
-    void derivedSpeedOutsideThePersistenceRangeIsRejected() throws Exception {
+    void maximumPersistableCharacterCountProducesBoundedSpeed() throws Exception {
         Client client = registeredClient("speed_bound");
         client.perform(
                         post("/api/results")
@@ -1289,7 +1377,7 @@ class ApiIntegrationTest {
                                           "contentType":"WORDS",
                                           "language":"EN",
                                           "errorPolicy":"NORMAL",
-                                          "durationMs":250,
+                                          "durationMs":1000,
                                           "typedCharacters":50000,
                                           "correctAttempts":50000,
                                           "incorrectAttempts":0,
@@ -1298,12 +1386,19 @@ class ApiIntegrationTest {
                                           "missingCharacters":0,
                                           "extraAttempts":0,
                                           "correctedErrors":0,
-                                          "paceBuckets":[]
+                                          "paceBuckets":[{
+                                            "durationMs":1000,
+                                            "typedCharacters":50000,
+                                            "correctCharacters":50000,
+                                            "rawCharacters":50000,
+                                            "errors":0
+                                          }]
                                         }
                                         """
                                                 .formatted(UUID.randomUUID())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wpm").value(600000.0))
+                .andExpect(jsonPath("$.rawWpm").value(600000.0));
     }
 
     @Test

@@ -590,3 +590,59 @@ accepted by the providers. No Neon project, Render service, Vercel project, or
 public hostname is claimed verified until provider authentication, deployment,
 and the public-origin checks in
 `docs/operations/FREE_TIER_DEPLOYMENT.md` complete.
+
+## 2026-07-30 subsecond scoring and persistence boundary
+
+Rill now keeps Monkeytype-compatible statistics for word tests that complete
+in less than one second, including the canonical 1ms fallback, while marking
+those results `too short · not saved`. They do not enter guest history, account
+API traffic, or the offline retry queue. Results become persistable at 1,000ms
+and remain on the 10ms duration grid.
+
+Flyway V9 removes only pre-release word-mode rows below that boundary before
+installing a validated database constraint. This prevents an upgrade failure
+from the older 250ms policy and avoids retaining inflated legacy records.
+
+Completed local checks:
+
+```text
+npm.cmd run test:coverage
+# 18 files, 248 tests passed
+# statements 73.32%, branches 67.79%, functions 64.91%, lines 73.43%
+
+npm.cmd run test:code-corpus
+# JavaScript 64/64 parsed and TypeScript 64/64 strictly validated;
+# Python 64/64 and Java 64/64 compiled; C, C++, C#, and Go were skipped
+# because their local toolchains were unavailable
+
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
+# all exit 0; Vite 8.1.5 built 103 modules
+
+$env:MONKEYTYPE_SOURCE_ROOT='C:\Users\hendrizzzz\AppData\Local\Temp\rill-monkeytype-audit'
+npm.cmd run test:parity:oracle
+# pinned commit 7feea96c5df21a59af9553fa7c52eb33af5997b8; 1/1 passed
+
+$env:RILL_PARITY_RUNS='10000'
+npm.cmd run test:parity:campaign
+# 5/5 campaign checks passed; 10,000 traces executed
+
+$env:CI='true'
+npx.cmd playwright test
+# 142 passed, 10 expected capability/account skips, 0 failed in 6.9 minutes
+# Chromium, Firefox, WebKit, and mobile Chromium
+
+.\mvnw.cmd '-Dtest=RillPrincipalResolverTest,DeploymentManifestTest,ProductionSafetyConfigurationTest,SecurityConfigurationTest' test
+# 8 tests passed; BUILD SUCCESS
+
+.\mvnw.cmd -DskipTests package
+# executable Spring Boot jar packaged; BUILD SUCCESS
+```
+
+The full browser suite started and stopped its own port 5173 server. Port 4173
+remained owned by the user's existing process, and Docker was not started,
+stopped, or used. PostgreSQL-backed API and Flyway upgrade tests compiled but
+are left to the clean GitHub Actions container job. The local Node runtime was
+22.20.0, below the repository's 22.22.0 floor; the definitive frontend CI job
+uses Node 24.

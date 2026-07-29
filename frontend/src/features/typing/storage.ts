@@ -1,12 +1,11 @@
 import { calculateConsistency, calculateMetrics } from "./scoring";
-import {
-  MIN_WORD_TEST_DURATION_MS,
-  type PaceBucket,
-  type CodeLanguage,
-  type ResultCounters,
-  type TestConfig,
-  type TypingResult,
-  type WordListVersion,
+import type {
+  PaceBucket,
+  CodeLanguage,
+  ResultCounters,
+  TestConfig,
+  TypingResult,
+  WordListVersion,
 } from "./types";
 
 export type ThemeName = "paper" | "nocturne" | "tide";
@@ -19,6 +18,8 @@ const PREVIOUS_GUEST_RESULTS_KEY = "rill.guest-results.v3";
 const PREVIOUS_V2_GUEST_RESULTS_KEY = "rill.guest-results.v2";
 const LEGACY_GUEST_RESULTS_KEY = "rill.guest-results.v1";
 const MAX_GUEST_RESULTS = 100;
+
+export const MIN_SAVED_WORD_RESULT_DURATION_MS = 1_000;
 
 export const DEFAULT_CONFIG: TestConfig = {
   mode: "time",
@@ -281,7 +282,10 @@ function hasValidPaceBuckets(
   ) {
     return false;
   }
-  if (!isCanonicalRawDuration(totalDuration, durationMs)) {
+  if (
+    value.length === 0 ||
+    !isCanonicalRawDuration(totalDuration, durationMs)
+  ) {
     return true;
   }
   const finalBucket: unknown = value.at(-1);
@@ -364,7 +368,8 @@ export function isTypingResult(value: unknown): value is TypingResult {
     isIntegerInRange(durationMs, 1, 600_000) &&
     (value.mode === "time"
       ? durationMs === modeValue * 1_000
-      : durationMs >= MIN_WORD_TEST_DURATION_MS && durationMs % 10 === 0);
+      : durationMs >= MIN_SAVED_WORD_RESULT_DURATION_MS &&
+        durationMs % 10 === 0);
   const completionReasonValid =
     value.mode === "time"
       ? value.completionReason === "time" ||
@@ -515,6 +520,10 @@ export function loadGuestResults(): TypingResult[] {
     .slice(0, MAX_GUEST_RESULTS);
 }
 
+export function isResultSaveEligible(result: TypingResult): boolean {
+  return result.durationMs >= MIN_SAVED_WORD_RESULT_DURATION_MS;
+}
+
 export function hasLegacyGuestResults(): boolean {
   const stored = readJson(LEGACY_GUEST_RESULTS_KEY);
   return (
@@ -528,6 +537,9 @@ export function hasLegacyGuestResults(): boolean {
 export function saveGuestResult(
   result: TypingResult,
 ): { ok: boolean; deduplicated: boolean } {
+  if (!isResultSaveEligible(result) || !isTypingResult(result)) {
+    return { ok: false, deduplicated: false };
+  }
   const current = loadGuestResults();
   if (current.some((item) => item.clientResultId === result.clientResultId)) {
     return { ok: true, deduplicated: true };

@@ -13,7 +13,7 @@ the checks recorded in `docs/VERIFICATION.md`.
 | Finding | Root decision | Resolution |
 | --- | --- | --- |
 | Concurrent login could exceed the active-session cap | Accept | Session creation now locks the account row before insert/prune. A 24-worker PostgreSQL regression proves the cap remains ten. |
-| Accepted counts could derive a WPM outside the database numeric range | Accept | Validation rejects derived WPM/raw WPM above `999999.99`; a crafted maximum-count/250ms request now returns `400 VALIDATION_FAILED`. |
+| Accepted counts could derive a WPM outside the database numeric range | Accept, then supersede | The persisted word-result floor is now one second, so the maximum accepted 50,000 characters derives 600,000 WPM and fits the numeric column. An integration test proves that boundary round-trips instead of relying on an unreachable overflow check. |
 | Readiness excluded PostgreSQL | Accept | Readiness explicitly includes `readinessState,db`; stopping PostgreSQL produced HTTP 503 and recovery returned the stack to healthy. |
 | Password-confirmed deletion allowed unbounded BCrypt work inside a transaction | Accept | Five attempts/account/15 minutes are allowed, the sixth returns 429, and BCrypt now runs between short repository transactions rather than holding a database connection. |
 | Idempotent result retries bypassed the creation quota while still doing database work | Accept | A separate 240-request/account/minute limiter runs before validation, JSON serialization, and locking. Novel results retain the 120/hour quota. |

@@ -49,11 +49,28 @@ async function readPromptTargets(page: Page): Promise<string[]> {
   );
 }
 
-async function completeTenWords(page: Page, delay = 10): Promise<void> {
+function persistableTypingDelay(text: string, minimumDelay = 30): number {
+  return Math.max(
+    minimumDelay,
+    Math.ceil(1_200 / Math.max(1, text.length - 1)),
+  );
+}
+
+async function completeTenWords(page: Page, minimumDelay = 30): Promise<void> {
+  const words = await chooseTenWords(page);
+  const text = words.join(" ");
+  await page.getByRole("textbox", { name: "Typing input" }).pressSequentially(
+    text,
+    { delay: persistableTypingDelay(text, minimumDelay) },
+  );
+  await expect(page.getByRole("heading", { name: /^\d+$/ })).toBeVisible();
+}
+
+async function completeTenWordsRapidly(page: Page): Promise<void> {
   const words = await chooseTenWords(page);
   await page.getByRole("textbox", { name: "Typing input" }).pressSequentially(
     words.join(" "),
-    { delay },
+    { delay: 0 },
   );
   await expect(page.getByRole("heading", { name: /^\d+$/ })).toBeVisible();
 }
@@ -139,6 +156,40 @@ test.describe("guest typing", () => {
         .getByRole("button", { name: "words", exact: true }),
     ).toBeEnabled();
     await expect(page.getByText(/Current word: .* Word 1 of 10\./)).toBeVisible();
+  });
+
+  test("shows exact subsecond stats but marks the run too short and does not save it", async ({
+    page,
+  }) => {
+    await page.clock.install({
+      time: new Date("2026-07-30T00:00:00.000Z"),
+    });
+    const apiRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/api/")) {
+        apiRequests.push(new URL(request.url()).pathname);
+      }
+    });
+    await page.goto("/");
+    await expect(
+      page.getByRole("textbox", { name: "Typing input" }),
+    ).toBeFocused();
+    const frozenAt = await page.evaluate(() => Date.now());
+    await page.clock.pauseAt(frozenAt + 10_000);
+
+    await completeTenWordsRapidly(page);
+
+    await expect(
+      page.getByText("too short · not saved", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".result-details dd").filter({ hasText: /^0\.\d+s$/ }),
+    ).toHaveCount(
+      1,
+    );
+    expect(apiRequests).not.toContain("/api/results");
+    await page.getByRole("link", { name: "history" }).click();
+    await expect(page.getByText(/No saved runs yet\./)).toBeVisible();
   });
 
   test("restarts with Enter after inspecting the completed chart", async ({
@@ -336,10 +387,19 @@ test.describe("guest typing", () => {
     ];
 
     await page.goto("/");
+    const appFrame = page.locator(".app-frame");
+    const promptWindow = page.locator(".prompt-window");
+    const firstPromptWord = page.locator(".prompt-word").first();
+    await expect(appFrame).toBeVisible();
+    await expect(promptWindow).toBeVisible();
+    await expect(firstPromptWord).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
 
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
+      await expect(appFrame).toBeVisible();
+      await expect(promptWindow).toBeVisible();
+      await expect(firstPromptWord).toBeVisible();
       const layout = await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(".app-frame");
         const header = document.querySelector<HTMLElement>(".site-header");
@@ -1422,10 +1482,13 @@ test.describe("guest typing", () => {
 
     await page.getByRole("link", { name: "test", exact: true }).click();
     const freshWords = await chooseTenWords(page);
+    const freshText = freshWords.join(" ");
     await context.setOffline(true);
     await page
       .getByRole("textbox", { name: "Typing input" })
-      .pressSequentially(freshWords.join(" "), { delay: 1 });
+      .pressSequentially(freshText, {
+        delay: persistableTypingDelay(freshText),
+      });
     await expect(page.getByText("saved", { exact: true })).toBeVisible();
     await context.setOffline(false);
   });

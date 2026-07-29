@@ -1235,6 +1235,10 @@ textarea:focus-visible {
   color: var(--accent);
 }
 
+.save-state--too-short {
+  color: var(--accent);
+}
+
 .result-actions {
   display: flex;
   gap: 1.5rem;

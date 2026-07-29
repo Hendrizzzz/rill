@@ -1,12 +1,12 @@
 import type { RefObject } from "react";
 
 import { codeLanguageLabel } from "./codeCorpus";
-import type { TypingResult } from "./types";
+import type { ResultSaveStatus, TypingResult } from "./types";
 import { PaceChart } from "./PaceChart";
 
 interface ResultsViewProps {
   result: TypingResult;
-  saveStatus: "idle" | "saved" | "queued" | "unavailable";
+  saveStatus: ResultSaveStatus;
   restartButtonRef: RefObject<HTMLButtonElement | null>;
   onRestart: () => void;
   onChangeTest: () => void;
@@ -63,6 +63,8 @@ export function ResultsView({
               ? "saved here · sync pending"
             : saveStatus === "unavailable"
               ? "result could not be saved"
+            : saveStatus === "too-short"
+              ? "too short · not saved"
               : "saving…"}
         </p>
         <div className="result-actions">

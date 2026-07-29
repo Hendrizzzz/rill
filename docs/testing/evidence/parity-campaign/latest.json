@@ -1,6 +1,6 @@
 {
   "version": "rill-parity-campaign/1",
-  "generatedAt": "2026-07-27T20:32:27.613Z",
+  "generatedAt": "2026-07-29T20:42:04.042Z",
   "seed": 20260727,
   "requestedRuns": 10000,
   "executedRuns": 10000,
@@ -12,7 +12,7 @@
     "durationResult": "official getTestDurationMs canonicalized to integer milliseconds; official metrics retain the source floating value"
   },
   "harness": {
-    "rillSourceSha256": "6eb310f603183abfa80509ef02c6db4630ff203ff500fce8682eda56356961d3",
+    "rillSourceSha256": "4d1f9c1b038059d3af410ad6f40d737e78f8792a98b4976ecf8d6bcc85fcc4af",
     "tooling": {
       "node": "v22.20.0",
       "vitest": "4.1.10",
@@ -69,17 +69,17 @@
     "duration:terminal-rollover-window": 24,
     "mode:time": 4177,
     "mode:words": 5823,
-    "strategy:corrected-extra": 5182,
-    "strategy:corrected-substitution": 5210,
-    "strategy:missing-suffix": 5193,
-    "strategy:perfect": 6798,
-    "strategy:retained-extra": 5214,
-    "strategy:retained-substitution": 5177,
-    "timing:back-loaded": 1774,
+    "strategy:corrected-extra": 5181,
+    "strategy:corrected-substitution": 5209,
+    "strategy:missing-suffix": 5192,
+    "strategy:perfect": 6799,
+    "strategy:retained-extra": 5213,
+    "strategy:retained-substitution": 5176,
+    "timing:back-loaded": 1775,
     "timing:bursts": 1704,
     "timing:duplicate": 1751,
-    "timing:exact-second": 1730,
-    "timing:exact-second-event": 2858,
+    "timing:exact-second": 1729,
+    "timing:exact-second-event": 2857,
     "timing:front-loaded": 1577,
     "timing:uniform": 3215
   },
@@ -90,5 +90,5 @@
     "powershell": "$env:PARITY_REPLAY_TRACE='<trace.json>'; npm.cmd run test:parity:campaign",
     "posix": "PARITY_REPLAY_TRACE='<trace.json>' npm run test:parity:campaign"
   },
-  "campaignDigest": "077a6ac82e1972284a1ac865554b5a74d39fcd8bf6aed6a60f5e6ef8b15a2e50"
+  "campaignDigest": "f88e1174011de1449cbdb41c2a4b5ddb4c0256a5e0c4ee597af7a1949eec2e40"
 }

@@ -231,11 +231,11 @@ public class TypingResultService {
             throw invalid("time mode duration must equal the selected duration");
         }
         if (request.mode() == TestMode.WORDS
-                && (request.durationMs() < 250
+                && (request.durationMs() < 1_000
                         || request.durationMs() > 600_000
                         || request.durationMs() % 10 != 0)) {
             throw invalid(
-                    "word mode duration must be between 250 and 600000 milliseconds on a 10 millisecond grid");
+                    "word mode duration must be between 1000 and 600000 milliseconds on a 10 millisecond grid");
         }
         CompletionReason completionReason = normalizedCompletionReason(request);
         if ((request.mode() == TestMode.TIME
@@ -304,7 +304,8 @@ public class TypingResultService {
                     approximatelyEqual(totalDuration, completeSecondDuration, 0.005);
         }
         boolean chartCoversCompletion =
-                isCanonicalRawDuration(totalDuration, request.durationMs());
+                !request.paceBuckets().isEmpty()
+                        && isCanonicalRawDuration(totalDuration, request.durationMs());
         if (!chartDurationValid
                 || totalInsertions > attempts
                 || totalErrors > request.incorrectAttempts()
