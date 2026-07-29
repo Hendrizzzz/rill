@@ -344,6 +344,11 @@ const CORE_TARGETED_DESCRIPTORS: readonly TraceDescriptor[] = [
   },
   {
     ...BASE,
+    timingProfile: "back-loaded",
+    durationUs: 3_250_000,
+  },
+  {
+    ...BASE,
     timingProfile: "exact-second",
     strategies: ["corrected-extra", "perfect"],
     durationUs: 4_000_000,

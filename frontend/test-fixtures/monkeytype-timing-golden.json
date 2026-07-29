@@ -3,9 +3,9 @@
     "repository": "monkeytypegame/monkeytype",
     "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
     "statsPath": "frontend/src/ts/test/events/stats.ts",
-    "statsSha256": "e9749f326876e04f50fb5df9a6c22e27cea99c87daa0a98d2191e1c8daeee3a4",
+    "statsSha256": "7c49f659cd00314136ff080c12512795d97e65e0ad51f98b2f43c07873500471",
     "numbersPath": "packages/util/src/numbers.ts",
-    "numbersSha256": "0fa87c6040fe650202f5b9b80867b065dd831498701d1e530062035a8409642c"
+    "numbersSha256": "3a20c6ec1b1cdeb2fd0b43f0ffcef9e42bd6402c99d9168dc7ae58512360aa51"
   },
   "vectors": [
     {

@@ -61,6 +61,10 @@ jobs:
           node-version: "24.18.0"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
       - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
       - run: npm run typecheck

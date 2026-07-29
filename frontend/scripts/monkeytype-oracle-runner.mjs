@@ -24,10 +24,16 @@ function sha256(content) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function normalizeSource(content) {
+  return content.replace(/\r\n?/g, "\n");
+}
+
 function readPinnedSources() {
   return new Map(
     fixture.files.map(({ path, sha256: expectedSha256 }) => {
-      const content = readFileSync(resolve(sourceRoot, path), "utf8");
+      const content = normalizeSource(
+        readFileSync(resolve(sourceRoot, path), "utf8"),
+      );
       const actualSha256 = sha256(content);
       if (actualSha256 !== expectedSha256) {
         throw new Error(

@@ -23,8 +23,14 @@ function sha256(content) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function normalizeSource(content) {
+  return content.replace(/\r\n?/g, "\n");
+}
+
 function readPinnedSource(relativePath, expectedSha256) {
-  const content = readFileSync(resolve(sourceRoot, relativePath), "utf8");
+  const content = normalizeSource(
+    readFileSync(resolve(sourceRoot, relativePath), "utf8"),
+  );
   const actualSha256 = sha256(content);
   if (actualSha256 !== expectedSha256) {
     throw new Error(
