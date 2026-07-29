@@ -153,6 +153,26 @@ describe("typing local storage", () => {
     expect(loadGuestResults()).toEqual([result]);
   });
 
+  it("round trips an instantaneous test normalized to the duration boundary", () => {
+    const normalized: TypingResult = {
+      ...result,
+      durationMs: 250,
+      typedCharacters: 1,
+      correctAttempts: 1,
+      correctCharacters: 1,
+      wpm: 48,
+      rawWpm: 48,
+      consistency: 0,
+      paceBuckets: [],
+    };
+
+    expect(saveGuestResult(normalized)).toEqual({
+      ok: true,
+      deduplicated: false,
+    });
+    expect(loadGuestResults()).toEqual([normalized]);
+  });
+
   it("reports unavailable storage without throwing", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("quota", "QuotaExceededError");

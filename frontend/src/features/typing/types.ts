@@ -142,4 +142,5 @@ export type TypingAction =
 
 export const TIME_VALUES = [15, 30, 60] as const;
 export const WORD_VALUES = [10, 25, 50] as const;
+export const MIN_WORD_TEST_DURATION_MS = 250;
 export const WORD_TEST_LIMIT_MS = 600_000;

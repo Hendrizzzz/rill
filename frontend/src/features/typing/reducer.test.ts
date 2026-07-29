@@ -324,14 +324,17 @@ describe("typing reducer contract", () => {
     });
   });
 
-  it("completes a zero-duration one-character test without non-finite metrics", () => {
+  it("normalizes an instantaneous word test to the persistence minimum", () => {
     const state = insert(initial(["c"]), "c", 0);
 
     expect(state.status).toBe("completed");
     expect(state.startedAt).toBe(0);
     expect(state.result).toMatchObject({
-      durationMs: 1,
+      durationMs: 250,
+      wpm: 48,
+      rawWpm: 48,
       accuracy: 100,
+      paceBuckets: [],
     });
     expect(Number.isFinite(state.result?.wpm)).toBe(true);
     expect(Number.isFinite(state.result?.rawWpm)).toBe(true);

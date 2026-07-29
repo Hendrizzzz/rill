@@ -207,6 +207,66 @@ describe("API client", () => {
     expect(saved).not.toHaveProperty("oldestResultsPruned");
   });
 
+  it("sends the minimum normalized word-test duration", async () => {
+    const normalized: TypingResult = {
+      ...localResult,
+      mode: "words",
+      modeValue: 10,
+      durationMs: 250,
+      typedCharacters: 1,
+      correctAttempts: 1,
+      incorrectAttempts: 0,
+      correctCharacters: 1,
+      incorrectCharacters: 0,
+      missingCharacters: 0,
+      extraAttempts: 0,
+      correctedErrors: 0,
+      wpm: 48,
+      rawWpm: 48,
+      accuracy: 100,
+      consistency: 0,
+      paceBuckets: [],
+      completionReason: "finished",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(guestSession))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          serverResult({
+            mode: "WORDS",
+            modeValue: 10,
+            durationMs: 250,
+            typedCharacters: 1,
+            correctAttempts: 1,
+            incorrectAttempts: 0,
+            correctCharacters: 1,
+            incorrectCharacters: 0,
+            missingCharacters: 0,
+            extraAttempts: 0,
+            correctedErrors: 0,
+            wpm: 48,
+            rawWpm: 48,
+            accuracy: 100,
+            consistency: 0,
+            paceBuckets: [],
+            completionReason: "FINISHED",
+          }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const { saveAccountResult } = await import("./client");
+
+    await expect(saveAccountResult(normalized)).resolves.toEqual(normalized);
+    const requestBody = fetchMock.mock.calls[1]?.[1]?.body;
+    expect(typeof requestBody).toBe("string");
+    expect(
+      typeof requestBody === "string"
+        ? (JSON.parse(requestBody) as Record<string, unknown>).durationMs
+        : undefined,
+    ).toBe(250);
+  });
+
   it("round trips the code language dimension", async () => {
     const codeResult: TypingResult = {
       ...localResult,

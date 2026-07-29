@@ -1,11 +1,12 @@
 import { calculateConsistency, calculateMetrics } from "./scoring";
-import type {
-  PaceBucket,
-  CodeLanguage,
-  ResultCounters,
-  TestConfig,
-  TypingResult,
-  WordListVersion,
+import {
+  MIN_WORD_TEST_DURATION_MS,
+  type PaceBucket,
+  type CodeLanguage,
+  type ResultCounters,
+  type TestConfig,
+  type TypingResult,
+  type WordListVersion,
 } from "./types";
 
 export type ThemeName = "paper" | "nocturne" | "tide";
@@ -363,7 +364,7 @@ export function isTypingResult(value: unknown): value is TypingResult {
     isIntegerInRange(durationMs, 1, 600_000) &&
     (value.mode === "time"
       ? durationMs === modeValue * 1_000
-      : durationMs >= 250 && durationMs % 10 === 0);
+      : durationMs >= MIN_WORD_TEST_DURATION_MS && durationMs % 10 === 0);
   const completionReasonValid =
     value.mode === "time"
       ? value.completionReason === "time" ||
