@@ -90,7 +90,7 @@ jobs:
       MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
       MONKEYTYPE_SOURCE_ROOT: ${{ github.workspace }}/../monkeytype-oracle
       PARITY_RUNS: "500"
-      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/../parity-smoke.json
+      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/parity-smoke.json
     defaults:
       run:
         working-directory: frontend
@@ -116,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: parity-smoke
-          path: ${{ github.workspace }}/../parity-smoke.json
+          path: ${{ github.workspace }}/parity-smoke.json
           if-no-files-found: error
 
   parity-full:
@@ -127,8 +127,8 @@ jobs:
       MONKEYTYPE_COMMIT: 7feea96c5df21a59af9553fa7c52eb33af5997b8
       MONKEYTYPE_SOURCE_ROOT: ${{ github.workspace }}/../monkeytype-oracle
       PARITY_RUNS: "10000"
-      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/../parity-campaign.json
-      PARITY_STATUS_PATH: ${{ github.workspace }}/../PARITY_STATUS.md
+      PARITY_EVIDENCE_PATH: ${{ github.workspace }}/parity-campaign.json
+      PARITY_STATUS_PATH: ${{ github.workspace }}/PARITY_STATUS.md
     defaults:
       run:
         working-directory: frontend
@@ -155,8 +155,8 @@ jobs:
         with:
           name: parity-campaign
           path: |
-            ${{ github.workspace }}/../parity-campaign.json
-            ${{ github.workspace }}/../PARITY_STATUS.md
+            ${{ github.workspace }}/parity-campaign.json
+            ${{ github.workspace }}/PARITY_STATUS.md
           if-no-files-found: error
 
   containers:
