@@ -3,7 +3,7 @@ FROM node:24.18.0-alpine3.24 AS build
 WORKDIR /workspace
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY frontend/index.html frontend/tsconfig*.json frontend/vite.config.ts frontend/eslint.config.js ./
+COPY frontend/index.html frontend/tsconfig*.json frontend/vite.config.ts frontend/eslint.config.js frontend/vercel.json ./
 COPY frontend/public ./public
 COPY frontend/src ./src
 RUN npm run build
