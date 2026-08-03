@@ -1,7 +1,7 @@
 # Basic typing interaction behavior
 
 Status: executable regression matrix  
-Last updated: 2026-07-28  
+Last updated: 2026-08-03
 Scope: common keyboard and word-boundary behavior that the scoring-only parity
 campaign cannot exercise
 
@@ -24,8 +24,8 @@ layers.
 | BI-005 | Repeated `Space` after an early commit | Remain on the same next word with no additional missing characters | `reducer.test.ts`; `typing-behavior.spec.ts` |
 | BI-006 | `Backspace` after an early commit | Reopen the imperfect previous word and remove its provisional missing count | `reducer.test.ts`; `typing-behavior.spec.ts` |
 | BI-007 | Correct the reopened word and finish | Preserve the historical bad separator in accuracy while final retained characters are correct | `reducer.test.ts`; `typing-behavior.spec.ts` |
-| BI-008 | Early `Space` in strict mode | Deliberately remain on the current word; strict mode requires correction before commit | `reducer.test.ts`; `typing.spec.ts` |
-| BI-009 | Early `Space` on the final word | Complete with the missing suffix and imperfect-word statistics | `reducer.test.ts` |
+| BI-008 | Early `Space` in strict mode | Commit a non-empty non-final word and advance. If the committed word is imperfect, later accepted input remains marked incorrect until every retained mistake is corrected | `reducer.test.ts`; `typing.spec.ts` |
+| BI-009 | Early `Space` on the final word | In normal mode, complete with the missing suffix and imperfect-word statistics. In strict mode, keep the final word editable while any retained mistake or missing suffix remains | `reducer.test.ts` |
 | BI-010 | `Ctrl+Backspace` / native `deleteWordBackward` in the active word | Delete the whole current word as one logical edit while retaining historical attempts | `TypingCapture.test.tsx`; `reducer.test.ts`; `typing-behavior.spec.ts` |
 | BI-011 | Word-delete at an empty word after an imperfect word | Reopen and clear the previous imperfect word, including its provisional separator/missing state | `reducer.test.ts`; `typing-behavior.spec.ts` |
 | BI-012 | Word-delete at an empty word after a perfect word | Stop at the perfect-word boundary | `reducer.test.ts`; `typing-behavior.spec.ts` |
@@ -41,6 +41,8 @@ layers.
 | BI-022 | Printable key after non-editable focus leaves the prompt | Refocus the capture field and swallow the recovery key so it is not scored accidentally | `TypingPage.tsx`; `typing-behavior.spec.ts` |
 | BI-023 | Plain `Tab` while ready, running, or completed | Focus the visible restart action without starting, restarting, or mutating the test; `Enter` then restarts | `TypingCapture.test.tsx`; `TypingPage.test.tsx`; `typing-behavior.spec.ts` |
 | BI-024 | Restart keys | `Escape` restarts from ready, running, or completed state; `Enter` restarts only from completed state | `TypingCapture.test.tsx`; `typing-behavior.spec.ts` |
+| BI-025 | Backspace through strict-tainted exact words | Reopen exact words that are red only because of an earlier retained mistake, continue back to that mistake, then restore the normal perfect-word boundary after correction | `reducer.test.ts`; `typing.spec.ts` |
+| BI-026 | `Ctrl+Backspace` through strict-tainted words | Clear one active word per command and allow repeated commands to reach the retained mistake without underflowing or crossing a genuinely perfect pre-error boundary | `reducer.test.ts`; `typing.spec.ts` |
 
 ## Reference observations
 
@@ -107,6 +109,9 @@ The following findings were deliberately not copied:
 - Command palette, zen mode, funboxes, freedom/confidence modes, and
   literal-tab prompts: these are product
   features, not universal single-player typing-input behavior.
+- Monkeytype separates freedom, stop-on-error, and confidence settings. Rill's
+  cascading-red strict policy is an intentional product contract rather than
+  a claim that one Monkeytype setting behaves identically.
 - Monkeytype's configurable command palette and alternate quick-restart
   bindings remain absent. Rill now exposes the familiar visible restart action
   and `Tab`-then-`Enter` sequence directly.
@@ -116,16 +121,24 @@ The following findings were deliberately not copied:
 
 ## Latest verification
 
-Run date: 2026-07-28 (Asia/Manila)
+Run date: 2026-08-03 (Asia/Manila)
 
 Completed and verified:
 
-- `npm.cmd run test:run` - 247 tests passed in 18 files.
+- `npm test -- --run` - 260 tests passed in 19 files.
 - `npm.cmd run typecheck` - passed.
 - `npm.cmd run lint` - passed with zero warnings.
 - `npm.cmd run build` - passed; Vite transformed 103 modules and produced a
-  361.00 kB JavaScript bundle (107.87 kB gzip).
-- `$env:E2E_BASE_URL='http://127.0.0.1:4174'; npm.cmd run test:e2e` -
+  362.49 kB JavaScript bundle (108.34 kB gzip).
+- A production-preview strict correction trace passed 4/4 in Chromium,
+  Firefox, WebKit, and mobile Chromium. It covered forward Space, cascading
+  red input, plain Backspace reopening, repeated `Ctrl+Backspace` from empty
+  boundaries, origin repair, and green retyping.
+- A separate Playwright CLI visual probe reproduced `xonsider face`, reopened
+  `face` with Backspace, and traversed to `consider` with repeated word
+  deletion. The screenshot showed the expected stable red target glyphs,
+  caret, layout, and no error overlay.
+- Earlier on 2026-07-28, `$env:E2E_BASE_URL='http://127.0.0.1:4174'; npm.cmd run test:e2e` -
   138 passed, 10 capability/environment skips, and 0 failed across Chromium,
   Firefox, WebKit, and mobile Chromium. This full matrix supersedes the smaller
   focused browser totals retained below as useful historical evidence.

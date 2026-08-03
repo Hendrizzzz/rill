@@ -1,5 +1,5 @@
 import { createRef } from "react";
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import {
   afterAll,
   beforeAll,
@@ -170,7 +170,7 @@ describe("code prompt presentation", () => {
 });
 
 describe("strict prompt presentation", () => {
-  it("shows later matching characters as correct after an earlier mistake", () => {
+  it("keeps later matching characters red after the first mistake", () => {
     const strictConfig: TestConfig = {
       ...config,
       contentType: "words",
@@ -188,7 +188,7 @@ describe("strict prompt presentation", () => {
       "strict-presentation-run",
     );
     let now = 0;
-    for (const grapheme of ["x", "a", "t", " "]) {
+    for (const grapheme of ["c", "a", "x", " ", "d", "o", "g"]) {
       state = typingReducer(state, {
         type: "insert",
         grapheme,
@@ -219,7 +219,87 @@ describe("strict prompt presentation", () => {
       (character) => character.classList.contains("is-incorrect"),
     );
 
-    expect(firstWordCharacters).toEqual([true, false, false]);
-    expect(secondWordCharacters).toEqual([false, false, false]);
+    expect(firstWordCharacters).toEqual([false, false, true]);
+    expect(secondWordCharacters).toEqual([true, true, true]);
+  });
+});
+
+describe("prompt virtualization", () => {
+  it("brings an earlier active word back into the rendered window", async () => {
+    const words = Array.from(
+      { length: 120 },
+      (_, index) => `word${String(index)}`,
+    );
+    const longPrompt: Prompt = {
+      ...prompt,
+      id: "long-prompt-window",
+      words,
+    };
+    const wordConfig: TestConfig = {
+      ...config,
+      contentType: "words",
+      modeValue: words.length,
+    };
+    const stateAt = (wordIndex: number): TypingState => ({
+      ...createTypingState(wordConfig, longPrompt, "long-window-run"),
+      status: "running",
+      wordIndex,
+      committedWords: words
+        .slice(0, wordIndex)
+        .map((word) => Array.from(word)),
+      startedAt: 0,
+      deadline: 600_000,
+    });
+    const boundsSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function mockBounds(this: HTMLElement) {
+        const promptIndex = this.dataset.promptIndex;
+        const top = promptIndex === undefined ? 0 : Number(promptIndex) * 20;
+        return {
+          x: 0,
+          y: top,
+          width: 100,
+          height: 20,
+          top,
+          right: 100,
+          bottom: top + 20,
+          left: 0,
+          toJSON: () => ({}),
+        };
+      });
+
+    try {
+      const { container, rerender } = render(
+        <PromptView
+          state={stateAt(70)}
+          captureRef={createRef<HTMLTextAreaElement>()}
+          captureFocused={true}
+          compositionText=""
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-prompt-index="0"]'),
+        ).toBeNull();
+      });
+
+      rerender(
+        <PromptView
+          state={stateAt(10)}
+          captureRef={createRef<HTMLTextAreaElement>()}
+          captureFocused={true}
+          compositionText=""
+        />,
+      );
+      await waitFor(() => {
+        const activeWord = container.querySelector(
+          '[data-prompt-index="10"]',
+        );
+        expect(activeWord).not.toBeNull();
+        expect(activeWord?.querySelector(".typing-caret")).not.toBeNull();
+      });
+    } finally {
+      boundsSpy.mockRestore();
+    }
   });
 });

@@ -179,6 +179,11 @@ export function PromptView({
     }
 
     const alignActiveLine = () => {
+      if (state.wordIndex < windowStart) {
+        setWindowStart(Math.max(0, state.wordIndex - 16));
+        return;
+      }
+
       const wordElements = Array.from(
         windowElement.querySelectorAll<HTMLElement>("[data-prompt-index]"),
       );
@@ -246,6 +251,7 @@ export function PromptView({
     state.wordIndex,
     windowEnd,
     visibleWindowStart,
+    windowStart,
   ]);
 
   useLayoutEffect(() => {
