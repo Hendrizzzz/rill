@@ -265,12 +265,12 @@ test.describe("guest typing", () => {
       .click();
     await page.getByRole("button", { name: "10", exact: true }).click();
     await page.getByRole("button", { name: "strict", exact: true }).click();
-    const [firstTarget, secondTarget] = (await readPromptTargets(page)).slice(
-      0,
-      2,
-    );
+    const [firstTarget, secondTarget, thirdTarget] = (
+      await readPromptTargets(page)
+    ).slice(0, 3);
     expect(firstTarget).toBeTruthy();
     expect(secondTarget).toBeTruthy();
+    expect(thirdTarget).toBeTruthy();
     const wrongFirst =
       firstTarget?.startsWith("x")
         ? `y${firstTarget.slice(1)}`
@@ -290,9 +290,37 @@ test.describe("guest typing", () => {
     await expect(
       page.locator('[data-prompt-index="1"] .prompt-character.is-correct'),
     ).toHaveCount(0);
+    await input.press("Space");
+    await expect(page.locator("#current-target")).toContainText(
+      `Current word: ${thirdTarget ?? ""}.`,
+    );
+    await input.press("Backspace");
+    await expect(page.locator("#current-target")).toContainText(
+      `Current word: ${secondTarget ?? ""}.`,
+    );
+    await input.press("Space");
+    await input.press("Control+Backspace");
+    await expect(page.locator("#current-target")).toContainText(
+      `Current word: ${secondTarget ?? ""}.`,
+    );
+    await input.press("Control+Backspace");
+    await expect(page.locator("#current-target")).toContainText(
+      `Current word: ${firstTarget ?? ""}.`,
+    );
+    await input.pressSequentially(firstTarget ?? "", { delay: 1 });
+    await input.press("Space");
+    await input.pressSequentially(secondTarget ?? "", { delay: 1 });
+    await expect(
+      page.locator('[data-prompt-index="1"] .prompt-character.is-correct'),
+    ).toHaveCount(secondTarget?.length ?? 0);
+    await expect(
+      page.locator(
+        '[data-prompt-index="1"] .prompt-character.is-incorrect',
+      ),
+    ).toHaveCount(0);
     await expect(
       page.getByText(
-        "Strict errors are on; after the first mistake, later input remains marked incorrect.",
+        "Strict errors are on; later input remains marked incorrect until all retained mistakes are corrected.",
         { exact: false },
       ),
     ).toBeAttached();

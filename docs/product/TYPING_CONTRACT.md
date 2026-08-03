@@ -1,7 +1,7 @@
 # Rill typing contract
 
 Status: normative release-1 contract
-Last updated: 2026-07-28
+Last updated: 2026-08-03
 
 This document removes ambiguity from the keystroke-critical path. The reducer, browser input adapter, score calculator, API validator, and tests must all follow it.
 
@@ -73,8 +73,9 @@ Native browser events are translated outside the reducer:
   after each line break. Internal spaces remain scored characters within the
   active line. Structural indentation never enters `currentInput`, the input
   event log, attempt counters, WPM/raw WPM, or pace buckets.
-  Enter commits a non-empty line; an empty Enter is ignored. Strict mode blocks
-  a line boundary until the current line exactly matches its target.
+  Enter commits a non-empty non-final line; an empty Enter is ignored. Strict
+  mode allows an imperfect line to advance, taints later input, and keeps the
+  final line editable until every retained mistake is corrected.
 - `Ctrl`/`Option` + Backspace performs word deletion. Other `Ctrl`, `Alt`, and
   `Meta` shortcuts are not scored.
 - Key repeat generates repeated input events and is counted normally.
@@ -126,24 +127,34 @@ Space is handled as a separator rather than inserted into `currentInput`:
   equal lengths.
 - For the final word in a word test, an exact word completes on its final
   grapheme. Space can submit an imperfect final word and is scored against that
-  imperfect word in the same way as Monkeytype.
+  imperfect word in normal mode. In strict mode, Space is ignored on the final
+  word while a retained mistake or missing suffix remains so correction stays
+  available.
 - Consecutive spaces after a commit are therefore ignored.
 
 ### Committing a word
 
 - A non-empty current word may be committed even when incorrect.
-- With `errorPolicy = strict`, an imperfect current word cannot be committed;
-  the user must backspace and correct it. The incorrect historical attempts
-  remain counted.
+- With `errorPolicy = strict`, an imperfect non-final word still commits and
+  advances. Every later accepted character and separator is marked incorrect
+  until all mismatched, extra, or missing retained input has been corrected.
+- Strict taint is derived from retained input, never from historical attempt
+  counters. Historical bad attempts remain counted after correction, while
+  newly retyped characters become correct as soon as no retained mistake
+  remains.
 - Unfilled target positions at commit increment `missingCharacters`.
 - Mismatched filled positions are already incorrect attempts and are not also marked missing.
 - Extra positions remain extra attempts.
 - At an empty current word, backspace reopens the immediately previous word
   when its final aligned input is imperfect (a substitution, missing suffix,
   or extra character).
-- A perfectly aligned committed word remains locked.
-- In a word test, an exact final word completes automatically on its final expected grapheme.
-- An incorrect final word completes when the user submits it with space.
+- A perfectly aligned committed word remains locked in normal mode. In strict
+  mode it can be reopened while it is tainted by an earlier retained mistake,
+  allowing the user to traverse back to that mistake.
+- In a word test, an exact final word completes automatically on its final
+  expected grapheme only when no unresolved strict mistake remains.
+- An incorrect final word completes with Space in normal mode; strict mode
+  keeps it editable.
 - In a time test, an active partial word that is still a correct target prefix
   receives partial credit at expiry; its untyped suffix is not marked missing.
 
@@ -157,17 +168,24 @@ Space is handled as a separator rather than inserted into `currentInput`:
   aligned separator, while historical attempt counters remain unchanged. If
   that separator was incorrect, removing it increments `correctedErrors` just
   like removing any other incorrect insertion.
-- Removing a grapheme whose position was incorrect or extra increments `correctedErrors`.
-- Removing a correct grapheme does not increment `correctedErrors`.
+- Removing a grapheme whose retained insertion was scored incorrect, including
+  a matching grapheme tainted by strict mode, increments `correctedErrors`.
+- Removing a grapheme whose retained insertion was scored correct does not
+  increment `correctedErrors`.
 - Attempt counters remain historical; retyping adds a new attempt.
 - Backspace on an empty current word does nothing when there is no previous
-  word or the previous word is perfectly aligned.
+  word. It also stops at a perfectly aligned word unless strict mode still has
+  an earlier retained mistake, in which case an exact-but-tainted word may be
+  reopened.
 - Word deletion removes every grapheme in the active word in one logical
   action. From an empty current word it reopens and clears an imperfect
-  previous word, but never crosses a perfectly aligned previous word.
+  previous word. In strict mode, repeated word deletion may also traverse
+  exact-but-tainted words until the retained mistake is reached; one command
+  never skips more than one word boundary.
 - In code mode, word deletion follows editor-like token boundaries within the
   current line: it first removes trailing spaces, then one identifier or
-  punctuation run. It never crosses a perfectly completed line.
+  punctuation run. A strict-tainted completed line may be reopened, but token
+  deletion within that line keeps the editor-like boundary behavior.
 - The event log retains one deletion record per removed grapheme so result
   replay reconstructs the final retained input exactly.
 

@@ -54,11 +54,15 @@ export function createTypingState(
   };
 }
 
-function currentTarget(state: TypingState): string {
+function targetAt(state: TypingState, wordIndex: number): string {
   return typableTarget(
-    state.prompt.words[state.wordIndex] ?? "",
+    state.prompt.words[wordIndex] ?? "",
     state.config.contentType,
   );
+}
+
+function currentTarget(state: TypingState): string {
+  return targetAt(state, state.wordIndex);
 }
 
 function currentTargetCharacters(state: TypingState): string[] {
@@ -67,6 +71,43 @@ function currentTargetCharacters(state: TypingState): string[] {
 
 function targetSeparator(state: TypingState): " " | "\n" {
   return state.config.contentType === "code" ? "\n" : " ";
+}
+
+function hasUnresolvedStrictError(state: TypingState): boolean {
+  if (state.config.errorPolicy !== "strict") {
+    return false;
+  }
+
+  if (
+    state.committedWords.some(
+      (input, wordIndex) => input.join("") !== targetAt(state, wordIndex),
+    )
+  ) {
+    return true;
+  }
+
+  const targetCharacters = currentTargetCharacters(state);
+  return state.currentInput.some(
+    (grapheme, index) => targetCharacters[index] !== grapheme,
+  );
+}
+
+function retainedCorrectnessForWord(
+  state: TypingState,
+  wordIndex: number,
+): boolean[] {
+  const correctness: boolean[] = [];
+  for (const event of state.inputEvents) {
+    if (event.wordIndex !== wordIndex) {
+      continue;
+    }
+    if (event.type === "insert") {
+      correctness.push(event.correct);
+    } else {
+      correctness.pop();
+    }
+  }
+  return correctness;
 }
 
 function startIfReady(state: TypingState, now: number): TypingState {
@@ -198,9 +239,16 @@ function commitWord(
     state.wordIndex === state.prompt.words.length - 1;
 
   const startedAt = state.startedAt ?? now;
-  const strictFailureActive =
+  const strictFailureActive = hasUnresolvedStrictError(state);
+
+  if (
+    isFinalWord &&
     state.config.errorPolicy === "strict" &&
-    state.counters.incorrectAttempts > 0;
+    (strictFailureActive || state.currentInput.length !== targetCharacters.length)
+  ) {
+    return state;
+  }
+
   const spaceIsCorrect =
     !strictFailureActive &&
     state.currentInput.length === targetCharacters.length;
@@ -297,9 +345,7 @@ function insertGrapheme(
     grapheme,
     targetCharacters[index],
   );
-  const strictFailureActive =
-    state.config.errorPolicy === "strict" &&
-    state.counters.incorrectAttempts > 0;
+  const strictFailureActive = hasUnresolvedStrictError(state);
   const isCorrect =
     !strictFailureActive &&
     targetCharacters[index] === normalizedGrapheme;
@@ -331,7 +377,8 @@ function insertGrapheme(
   const isExactFinalWord =
     next.config.mode === "words" &&
     next.wordIndex === next.prompt.words.length - 1 &&
-    next.currentInput.join("") === target;
+    next.currentInput.join("") === target &&
+    !hasUnresolvedStrictError(next);
   return isExactFinalWord ? complete(next, now, wallNow, "finished") : next;
 }
 
@@ -376,7 +423,10 @@ function backspace(
       previousSourceTarget,
       state.config.contentType,
     );
-    if (previousInput.join("") === previousTarget) {
+    if (
+      previousInput.join("") === previousTarget &&
+      !hasUnresolvedStrictError(state)
+    ) {
       return state;
     }
 
@@ -388,8 +438,14 @@ function backspace(
       0,
       previousTargetCharacters.length - previousInput.length,
     );
+    const recordedSeparatorCorrectness = retainedCorrectnessForWord(
+      state,
+      previousWordIndex,
+    )[previousInput.length];
     const correctedSeparator =
-      previousInput.length !== previousTargetCharacters.length;
+      recordedSeparatorCorrectness === undefined
+        ? previousInput.length !== previousTargetCharacters.length
+        : !recordedSeparatorCorrectness;
     return {
       ...state,
       wordIndex: previousWordIndex,
@@ -426,7 +482,14 @@ function backspace(
   const index = state.currentInput.length - 1;
   const grapheme = state.currentInput[index] ?? "";
   const target = currentTargetCharacters(state);
-  const corrected = index >= target.length || target[index] !== grapheme;
+  const recordedCorrectness = retainedCorrectnessForWord(
+    state,
+    state.wordIndex,
+  )[index];
+  const corrected =
+    recordedCorrectness === undefined
+      ? index >= target.length || target[index] !== grapheme
+      : !recordedCorrectness;
 
   return {
     ...state,

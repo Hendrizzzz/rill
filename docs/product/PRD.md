@@ -1,7 +1,7 @@
 # Rill product requirements
 
 Status: release scope implemented; final verification in progress
-Last updated: 2026-07-27
+Last updated: 2026-08-03
 
 ## Verdict
 
@@ -41,8 +41,10 @@ The product must feel:
   a scored line boundary, and excludes structural indentation from typing
   metrics. It shows the pattern, invariant, and complexity and retains the
   standard five-characters-per-word calculation.
-- Normal and strict error policies. Strict mode requires the current word to
-  match exactly before it can be committed.
+- Normal and strict error policies. Strict mode permits ordinary forward
+  typing, marks all later input incorrect after a retained mistake, and lets
+  Backspace or word deletion traverse tainted words so the original mistake
+  can be corrected before completion.
 - Start on the first printable character.
 - Correct, incorrect, extra, and missing-character presentation.
 - Backspace correction without erasing the historical accuracy penalty.

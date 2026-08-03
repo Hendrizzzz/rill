@@ -275,7 +275,7 @@ describe("typing reducer contract", () => {
     const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
     let state = createTypingState(
       strictConfig,
-      prompt(["cat", "dog"]),
+      prompt(["cat", "dog", "fox"]),
       "strict-run",
     );
     state = insert(state, "c", 0);
@@ -291,7 +291,7 @@ describe("typing reducer contract", () => {
     state = insert(state, "o", 500);
     state = insert(state, "g", 600);
 
-    expect(state.status).toBe("completed");
+    expect(state.status).toBe("running");
     expect(state.inputEvents.map((event) => event.correct)).toEqual([
       true,
       true,
@@ -304,6 +304,349 @@ describe("typing reducer contract", () => {
     expect(state.counters).toMatchObject({
       correctAttempts: 2,
       incorrectAttempts: 5,
+    });
+  });
+
+  it("backtracks through tainted words and clears the taint after correction", () => {
+    const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["cat", "dog", "fox"]),
+      "strict-backtrack-run",
+    );
+    let now = 0;
+    for (const grapheme of "cax dog ") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput.join("")).toBe("dog");
+    expect(state.counters.correctedErrors).toBe(1);
+    expect(state.inputEvents.at(-1)).toMatchObject({
+      type: "delete",
+      grapheme: " ",
+      correct: false,
+    });
+
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: now + 20,
+      wallNow: 1_700_000_000_020 + now,
+    });
+    expect(state.currentInput).toEqual([]);
+    expect(state.counters.correctedErrors).toBe(4);
+    state = typingReducer(state, {
+      type: "backspace",
+      now: now + 40,
+      wallNow: 1_700_000_000_040 + now,
+    });
+    expect(state.wordIndex).toBe(0);
+    expect(state.currentInput.join("")).toBe("cax");
+
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: now + 60,
+      wallNow: 1_700_000_000_060 + now,
+    });
+    expect(state.currentInput).toEqual([]);
+    now += 80;
+    for (const grapheme of "cat ") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+    const repairedBoundary = state;
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    expect(state).toBe(repairedBoundary);
+    for (const grapheme of "dog") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    expect(
+      state.inputEvents
+        .filter((event) => event.type === "insert" && event.wordIndex === 1)
+        .slice(-3)
+        .map((event) => event.correct),
+    ).toEqual([true, true, true]);
+    state = insert(state, " ", now);
+    for (const grapheme of "fox") {
+      now += 20;
+      state = insert(state, grapheme, now);
+    }
+    expect(state.status).toBe("completed");
+    expect(state.result).toMatchObject({
+      correctCharacters: 11,
+      incorrectCharacters: 0,
+      missingCharacters: 0,
+      extraAttempts: 0,
+    });
+    expect(state.result?.correctedErrors).toBe(6);
+    expect(state.result?.accuracy).toBeLessThan(100);
+  });
+
+  it("repeats word deletion across empty strict-tainted boundaries", () => {
+    const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["cat", "dog", "fox"]),
+      "strict-repeated-word-delete-run",
+    );
+    let now = 0;
+    for (const grapheme of "cax dog ") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput).toEqual([]);
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: now + 20,
+      wallNow: 1_700_000_000_020 + now,
+    });
+    expect(state.wordIndex).toBe(0);
+    expect(state.currentInput).toEqual([]);
+    expect(state.counters.correctedErrors).toBe(6);
+  });
+
+  it("keeps the final word editable while an earlier strict error is unresolved", () => {
+    const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["cat", "dog"]),
+      "strict-final-run",
+    );
+    let now = 0;
+    for (const grapheme of "cax dog") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    expect(state.status).toBe("running");
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput.join("")).toBe("dog");
+    const beforeSpace = state;
+    state = insert(state, " ", now);
+    expect(state).toBe(beforeSpace);
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now: now + 20,
+      wallNow: 1_700_000_000_020 + now,
+    });
+    expect(state.currentInput.join("")).toBe("do");
+  });
+
+  it("keeps an incomplete strict final word editable without an earlier error", () => {
+    const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["cat", "dog"]),
+      "strict-final-missing-run",
+    );
+    let now = 0;
+    for (const grapheme of "cat d") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    const beforeSpace = state;
+    state = insert(state, " ", now);
+    expect(state).toBe(beforeSpace);
+    expect(state.status).toBe("running");
+    expect(state.currentInput.join("")).toBe("d");
+  });
+
+  it("keeps strict taint while an older retained error remains", () => {
+    const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["cat", "dog", "fox"]),
+      "strict-multiple-errors-run",
+    );
+    let now = 0;
+    for (const grapheme of "cax dxg ") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: now + 20,
+      wallNow: 1_700_000_000_020 + now,
+    });
+    for (const grapheme of "dog") {
+      now += 20;
+      state = insert(state, grapheme, now);
+    }
+
+    expect(
+      state.inputEvents
+        .filter((event) => event.type === "insert" && event.wordIndex === 1)
+        .slice(-3)
+        .map((event) => event.correct),
+    ).toEqual([false, false, false]);
+  });
+
+  it.each([
+    { label: "missing suffix", firstInput: "c" },
+    { label: "extra character", firstInput: "catx" },
+  ])(
+    "can traverse an exact tainted word after a $label",
+    ({ firstInput }) => {
+      const strictConfig: TestConfig = {
+        ...config,
+        errorPolicy: "strict",
+      };
+      let state = createTypingState(
+        strictConfig,
+        prompt(["cat", "dog", "fox"]),
+        `strict-${firstInput}-run`,
+      );
+      let now = 0;
+      for (const grapheme of `${firstInput} dog `) {
+        state = insert(state, grapheme, now);
+        now += 20;
+      }
+
+      state = typingReducer(state, {
+        type: "backspace",
+        now,
+        wallNow: 1_700_000_000_000 + now,
+      });
+      expect(state.wordIndex).toBe(1);
+      expect(state.currentInput.join("")).toBe("dog");
+    },
+  );
+
+  it("applies strict correction and editor-style word deletion in code mode", () => {
+    const strictCodeConfig: TestConfig = {
+      ...config,
+      contentType: "code",
+      codeLanguage: "python3",
+      errorPolicy: "strict",
+      modeValue: 3,
+    };
+    const codePrompt: Prompt = {
+      ...prompt(["def f():", "    return 1", "done()"]),
+      id: "strict-code-backtrack",
+      wordListVersion: "code-v2",
+      codeLanguage: "python3",
+    };
+    let state = createTypingState(
+      strictCodeConfig,
+      codePrompt,
+      "strict-code-backtrack-run",
+    );
+    let now = 0;
+    for (const grapheme of "def x():\nreturn 1\n") {
+      state = insert(state, grapheme, now);
+      now += 20;
+    }
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput.join("")).toBe("return 1");
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: now + 20,
+      wallNow: 1_700_000_000_020 + now,
+    });
+    expect(state.currentInput.join("")).toBe("return ");
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const previous = state;
+      now += 20;
+      state = typingReducer(state, {
+        type: "deleteWordBackward",
+        now,
+        wallNow: 1_700_000_000_000 + now,
+      });
+      if (
+        state.wordIndex === 0 &&
+        state.currentInput.length === 0
+      ) {
+        break;
+      }
+      expect(state).not.toBe(previous);
+    }
+    expect(state.wordIndex).toBe(0);
+    expect(state.currentInput).toEqual([]);
+
+    for (const grapheme of "def f():\nreturn 1\ndone()") {
+      now += 20;
+      state = insert(state, grapheme, now);
+    }
+    expect(state.status).toBe("completed");
+  });
+
+  it("lets the deadline win while strict correction is in progress", () => {
+    const strictTimeConfig: TestConfig = {
+      ...config,
+      mode: "time",
+      modeValue: 1,
+      errorPolicy: "strict",
+    };
+    let state = createTypingState(
+      strictTimeConfig,
+      prompt(["cat", "dog", "fox"]),
+      "strict-deadline-run",
+    );
+    for (const [index, grapheme] of Array.from("cax dog ").entries()) {
+      state = insert(state, grapheme, index * 100);
+    }
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now: 800,
+      wallNow: 1_700_000_000_800,
+    });
+    state = typingReducer(state, {
+      type: "deleteWordBackward",
+      now: 850,
+      wallNow: 1_700_000_000_850,
+    });
+    state = typingReducer(state, {
+      type: "backspace",
+      now: 900,
+      wallNow: 1_700_000_000_900,
+    });
+    expect(state.wordIndex).toBe(0);
+    expect(state.currentInput.join("")).toBe("cax");
+
+    state = typingReducer(state, {
+      type: "backspace",
+      now: 1_000,
+      wallNow: 1_700_000_001_000,
+    });
+    expect(state.status).toBe("completed");
+    expect(state.result).toMatchObject({
+      durationMs: 1_000,
+      completionReason: "time",
     });
   });
 
