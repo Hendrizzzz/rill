@@ -10,7 +10,7 @@ import {
 } from "vitest";
 
 import { PromptView } from "./PromptView";
-import { createTypingState } from "./reducer";
+import { createTypingState, typingReducer } from "./reducer";
 import type { Prompt, TestConfig, TypingState } from "./types";
 
 beforeAll(() => {
@@ -166,5 +166,60 @@ describe("code prompt presentation", () => {
       container.querySelector('.prompt-code-row[data-active="true"]'),
     ).not.toBeNull();
     expect(container.querySelector(".typing-caret")).toBeNull();
+  });
+});
+
+describe("strict prompt presentation", () => {
+  it("keeps later matching characters red after the first mistake", () => {
+    const strictConfig: TestConfig = {
+      ...config,
+      contentType: "words",
+      errorPolicy: "strict",
+      modeValue: 2,
+    };
+    const strictPrompt: Prompt = {
+      ...prompt,
+      id: "strict-presentation",
+      words: ["cat", "dog"],
+    };
+    let state = createTypingState(
+      strictConfig,
+      strictPrompt,
+      "strict-presentation-run",
+    );
+    let now = 0;
+    for (const grapheme of ["c", "a", "x", " ", "d", "o", "g"]) {
+      state = typingReducer(state, {
+        type: "insert",
+        grapheme,
+        now,
+        wallNow: 1_700_000_000_000 + now,
+      });
+      now += 20;
+    }
+
+    const { container } = render(
+      <PromptView
+        state={state}
+        captureRef={createRef<HTMLTextAreaElement>()}
+        captureFocused={true}
+        compositionText=""
+      />,
+    );
+    const firstWordCharacters = Array.from(
+      container.querySelectorAll(
+        '[data-prompt-index="0"] .prompt-character',
+      ),
+      (character) => character.classList.contains("is-incorrect"),
+    );
+    const secondWordCharacters = Array.from(
+      container.querySelectorAll(
+        '[data-prompt-index="1"] .prompt-character',
+      ),
+      (character) => character.classList.contains("is-incorrect"),
+    );
+
+    expect(firstWordCharacters).toEqual([false, false, true]);
+    expect(secondWordCharacters).toEqual([true, true, true]);
   });
 });

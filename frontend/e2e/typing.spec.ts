@@ -279,16 +279,23 @@ test.describe("guest typing", () => {
     await input.pressSequentially(wrongFirst, { delay: 1 });
     await input.press("Space");
     await expect(page.locator("#current-target")).toContainText(
-      `Current word: ${firstTarget ?? ""}.`,
-    );
-    for (let index = 0; index < wrongFirst.length; index += 1) {
-      await input.press("Backspace");
-    }
-    await input.pressSequentially(firstTarget ?? "", { delay: 1 });
-    await input.press("Space");
-    await expect(page.locator("#current-target")).toContainText(
       `Current word: ${secondTarget ?? ""}.`,
     );
+    await input.pressSequentially(secondTarget ?? "", { delay: 1 });
+    await expect(
+      page.locator(
+        '[data-prompt-index="1"] .prompt-character.is-incorrect',
+      ),
+    ).toHaveCount(secondTarget?.length ?? 0);
+    await expect(
+      page.locator('[data-prompt-index="1"] .prompt-character.is-correct'),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Strict errors are on; after the first mistake, later input remains marked incorrect.",
+        { exact: false },
+      ),
+    ).toBeAttached();
   });
 
   test("supports history navigation, direct loads, and unknown-route fallback", async ({

@@ -23,6 +23,7 @@ interface WordProps {
   language: string;
   codeLanguage?: CodeLanguage | undefined;
   compositionText: string;
+  inputCorrectness?: readonly boolean[] | undefined;
 }
 
 const PromptWord = memo(function PromptWord({
@@ -34,6 +35,7 @@ const PromptWord = memo(function PromptWord({
   language,
   codeLanguage,
   compositionText,
+  inputCorrectness,
 }: WordProps) {
   const targetCharacters = segmentGraphemes(target, language);
   const syntaxKinds = useMemo(
@@ -54,12 +56,14 @@ const PromptWord = memo(function PromptWord({
     >
       {targetCharacters.map((character, index) => {
         const typed = input[index];
+        const typedCorrectly =
+          inputCorrectness?.[index] ?? typed === character;
         const stateClassName =
           typed === undefined
             ? committed
               ? "is-missing"
               : "is-pending"
-            : typed === character
+            : typedCorrectly
               ? "is-correct"
               : "is-incorrect";
         const className = [
@@ -147,6 +151,19 @@ export function PromptView({
   const [windowStart, setWindowStart] = useState(0);
   const windowEnd = Math.min(state.prompt.words.length, windowStart + 80);
   const words = state.prompt.words.slice(windowStart, windowEnd);
+  const inputCorrectnessByWord = useMemo(() => {
+    const correctness = new Map<number, boolean[]>();
+    for (const event of state.inputEvents) {
+      const wordCorrectness = correctness.get(event.wordIndex) ?? [];
+      if (event.type === "insert") {
+        wordCorrectness.push(event.correct);
+      } else {
+        wordCorrectness.pop();
+      }
+      correctness.set(event.wordIndex, wordCorrectness);
+    }
+    return correctness;
+  }, [state.inputEvents]);
 
   useLayoutEffect(() => {
     const windowElement = promptWindowRef.current;
@@ -337,6 +354,9 @@ export function PromptView({
                   : undefined
               }
               compositionText={showCaret ? compositionText : ""}
+              inputCorrectness={inputCorrectnessByWord
+                .get(absoluteIndex)
+                ?.slice(0, input?.length)}
             />
           );
           return state.config.contentType === "code" ? (

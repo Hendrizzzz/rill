@@ -188,14 +188,7 @@ function commitWord(
     return state;
   }
 
-  const target = currentTarget(state);
   const targetCharacters = currentTargetCharacters(state);
-  if (
-    state.config.errorPolicy === "strict" &&
-    state.currentInput.join("") !== target
-  ) {
-    return state;
-  }
   const missing = Math.max(
     0,
     targetCharacters.length - state.currentInput.length,
@@ -205,7 +198,11 @@ function commitWord(
     state.wordIndex === state.prompt.words.length - 1;
 
   const startedAt = state.startedAt ?? now;
+  const strictFailureActive =
+    state.config.errorPolicy === "strict" &&
+    state.counters.incorrectAttempts > 0;
   const spaceIsCorrect =
+    !strictFailureActive &&
     state.currentInput.length === targetCharacters.length;
   const withSpaceEvent = {
     ...state,
@@ -300,7 +297,12 @@ function insertGrapheme(
     grapheme,
     targetCharacters[index],
   );
-  const isCorrect = targetCharacters[index] === normalizedGrapheme;
+  const strictFailureActive =
+    state.config.errorPolicy === "strict" &&
+    state.counters.incorrectAttempts > 0;
+  const isCorrect =
+    !strictFailureActive &&
+    targetCharacters[index] === normalizedGrapheme;
   const isExtra = index >= targetCharacters.length;
   const startedAt = state.startedAt ?? now;
   const next: TypingState = {

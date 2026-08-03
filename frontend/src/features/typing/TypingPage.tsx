@@ -275,7 +275,7 @@ export function TypingPage() {
                 ? "Start typing to begin. Press Tab then Enter to restart. Escape also restarts. Use Shift plus Tab to move back through the prompt and test controls."
                 : "Typing test in progress. Elapsed time continues if focus leaves the input."}{" "}
               {state.config.errorPolicy === "strict"
-                ? "Strict errors are on; correct the current word before continuing. "
+                ? "Strict errors are on; after the first mistake, later input remains marked incorrect. "
                 : ""}
               {state.config.mode === "time"
                 ? `${String(state.config.modeValue)} second test.`

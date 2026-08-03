@@ -271,7 +271,7 @@ describe("typing reducer contract", () => {
     expect(state.currentInput.join("")).toBe("");
   });
 
-  it("strict mode blocks an imperfect word until it is corrected", () => {
+  it("strict mode advances while marking every attempt after an error incorrect", () => {
     const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
     let state = createTypingState(
       strictConfig,
@@ -281,22 +281,30 @@ describe("typing reducer contract", () => {
     state = insert(state, "c", 0);
     state = insert(state, "a", 100);
     state = insert(state, "x", 200);
-    const blocked = insert(state, " ", 300);
-
-    expect(blocked.wordIndex).toBe(0);
-    expect(blocked.currentInput).toEqual(["c", "a", "x"]);
-
-    state = typingReducer(blocked, {
-      type: "backspace",
-      now: 400,
-      wallNow: 1_700_000_000_400,
-    });
-    state = insert(state, "t", 500);
-    state = insert(state, " ", 600);
+    state = insert(state, " ", 300);
 
     expect(state.wordIndex).toBe(1);
     expect(state.currentInput).toEqual([]);
-    expect(state.committedWords).toEqual([["c", "a", "t"]]);
+    expect(state.committedWords).toEqual([["c", "a", "x"]]);
+
+    state = insert(state, "d", 400);
+    state = insert(state, "o", 500);
+    state = insert(state, "g", 600);
+
+    expect(state.status).toBe("completed");
+    expect(state.inputEvents.map((event) => event.correct)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(state.counters).toMatchObject({
+      correctAttempts: 2,
+      incorrectAttempts: 5,
+    });
   });
 
   it("scores one visible grapheme as one target character", () => {
