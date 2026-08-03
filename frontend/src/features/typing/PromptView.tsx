@@ -149,8 +149,15 @@ export function PromptView({
 }: PromptViewProps) {
   const promptWindowRef = useRef<HTMLSpanElement>(null);
   const [windowStart, setWindowStart] = useState(0);
-  const windowEnd = Math.min(state.prompt.words.length, windowStart + 80);
-  const words = state.prompt.words.slice(windowStart, windowEnd);
+  const visibleWindowStart =
+    state.wordIndex < windowStart
+      ? Math.max(0, state.wordIndex - 16)
+      : windowStart;
+  const windowEnd = Math.min(
+    state.prompt.words.length,
+    visibleWindowStart + 80,
+  );
+  const words = state.prompt.words.slice(visibleWindowStart, windowEnd);
   const inputCorrectnessByWord = useMemo(() => {
     const correctness = new Map<number, boolean[]>();
     for (const event of state.inputEvents) {
@@ -222,7 +229,7 @@ export function PromptView({
         windowEnd < state.prompt.words.length &&
         state.wordIndex >= windowEnd - 16 &&
         previousRow !== undefined &&
-        previousRow.firstWordIndex > windowStart
+        previousRow.firstWordIndex > visibleWindowStart
       ) {
         setWindowStart(previousRow.firstWordIndex);
       }
@@ -238,7 +245,7 @@ export function PromptView({
     state.prompt.words.length,
     state.wordIndex,
     windowEnd,
-    windowStart,
+    visibleWindowStart,
   ]);
 
   useLayoutEffect(() => {
@@ -319,7 +326,7 @@ export function PromptView({
         dir={state.config.contentType === "code" ? "ltr" : "auto"}
       >
         {words.map((target, offset) => {
-          const absoluteIndex = windowStart + offset;
+          const absoluteIndex = visibleWindowStart + offset;
           const codeMode = state.config.contentType === "code";
           const displayIndentation = codeMode
             ? leadingCodeIndentation(target)

@@ -170,7 +170,7 @@ describe("code prompt presentation", () => {
 });
 
 describe("strict prompt presentation", () => {
-  it("keeps later matching characters red after the first mistake", () => {
+  it("shows later matching characters as correct after an earlier mistake", () => {
     const strictConfig: TestConfig = {
       ...config,
       contentType: "words",
@@ -188,7 +188,7 @@ describe("strict prompt presentation", () => {
       "strict-presentation-run",
     );
     let now = 0;
-    for (const grapheme of ["c", "a", "x", " ", "d", "o", "g"]) {
+    for (const grapheme of ["x", "a", "t", " "]) {
       state = typingReducer(state, {
         type: "insert",
         grapheme,
@@ -219,7 +219,7 @@ describe("strict prompt presentation", () => {
       (character) => character.classList.contains("is-incorrect"),
     );
 
-    expect(firstWordCharacters).toEqual([false, false, true]);
-    expect(secondWordCharacters).toEqual([true, true, true]);
+    expect(firstWordCharacters).toEqual([true, false, false]);
+    expect(secondWordCharacters).toEqual([false, false, false]);
   });
 });

@@ -213,6 +213,29 @@ test.describe("guest typing", () => {
     ).toBeFocused();
   });
 
+  test("keeps the typing origin fixed across source modes", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => document.fonts.ready);
+    const source = page.getByRole("group", { name: "Text source" });
+    const firstCharacterTop = async () => {
+      const bounds = await page
+        .locator('[data-prompt-index="0"] .prompt-character')
+        .first()
+        .boundingBox();
+      expect(bounds).not.toBeNull();
+      return bounds?.y ?? 0;
+    };
+
+    const wordsTop = await firstCharacterTop();
+    await source.getByRole("button", { name: "quote", exact: true }).click();
+    const quoteTop = await firstCharacterTop();
+    await source.getByRole("button", { name: "code", exact: true }).click();
+    const codeTop = await firstCharacterTop();
+
+    expect(Math.abs(quoteTop - wordsTop)).toBeLessThan(1);
+    expect(Math.abs(codeTop - wordsTop)).toBeLessThan(1);
+  });
+
   test("supports attributed quotes, private Spanish custom text, and strict errors", async ({
     page,
   }) => {
@@ -234,6 +257,17 @@ test.describe("guest typing", () => {
       .getByRole("button", { name: "words", exact: true })
       .click();
     await page.getByRole("button", { name: "Spanish" }).click();
+    await page.getByRole("button", { name: "custom", exact: true }).click();
+    await page.getByRole("button", { name: "use text" }).click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "Enter at least two words.",
+    );
+    await page
+      .getByRole("group", { name: "Text source" })
+      .getByRole("button", { name: "words", exact: true })
+      .click();
+    await expect(page.getByLabel("Your practice text")).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     await page.getByRole("button", { name: "custom", exact: true }).click();
     await expect(
       page.getByText("It stays in this tab and is never uploaded.", {
@@ -279,20 +313,34 @@ test.describe("guest typing", () => {
     await input.pressSequentially(wrongFirst, { delay: 1 });
     await input.press("Space");
     await expect(page.locator("#current-target")).toContainText(
+      `Current word: ${firstTarget ?? ""}.`,
+    );
+    await expect(
+      page.locator(
+        '[data-prompt-index="0"] .prompt-character.is-incorrect',
+      ),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[data-prompt-index="0"] .prompt-character.is-correct'),
+    ).toHaveCount(Math.max(0, (firstTarget?.length ?? 0) - 1));
+    await input.press("Control+Backspace");
+    await input.pressSequentially(firstTarget ?? "", { delay: 1 });
+    await input.press("Space");
+    await expect(page.locator("#current-target")).toContainText(
       `Current word: ${secondTarget ?? ""}.`,
     );
     await input.pressSequentially(secondTarget ?? "", { delay: 1 });
     await expect(
+      page.locator('[data-prompt-index="1"] .prompt-character.is-correct'),
+    ).toHaveCount(secondTarget?.length ?? 0);
+    await expect(
       page.locator(
         '[data-prompt-index="1"] .prompt-character.is-incorrect',
       ),
-    ).toHaveCount(secondTarget?.length ?? 0);
-    await expect(
-      page.locator('[data-prompt-index="1"] .prompt-character.is-correct'),
     ).toHaveCount(0);
     await expect(
       page.getByText(
-        "Strict errors are on; after the first mistake, later input remains marked incorrect.",
+        "Strict errors are on; correct the current word or line before continuing.",
         { exact: false },
       ),
     ).toBeAttached();
@@ -410,16 +458,25 @@ test.describe("guest typing", () => {
       const layout = await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(".app-frame");
         const header = document.querySelector<HTMLElement>(".site-header");
+        const stageMain = document.querySelector<HTMLElement>(
+          ".typing-stage-main",
+        );
         const prompt = document.querySelector<HTMLElement>(".prompt-window");
         const words = Array.from(
           document.querySelectorAll<HTMLElement>(".prompt-word"),
         );
-        if (frame === null || header === null || prompt === null) {
+        if (
+          frame === null ||
+          header === null ||
+          stageMain === null ||
+          prompt === null
+        ) {
           throw new Error("Typing layout is incomplete.");
         }
 
         const frameRect = frame.getBoundingClientRect();
         const headerRect = header.getBoundingClientRect();
+        const stageMainRect = stageMain.getBoundingClientRect();
         const promptRect = prompt.getBoundingClientRect();
         return {
           viewportWidth: window.innerWidth,
@@ -430,6 +487,8 @@ test.describe("guest typing", () => {
           promptFontSize: getComputedStyle(prompt).fontSize,
           promptLeft: promptRect.left,
           promptRight: promptRect.right,
+          stageMainLeft: stageMainRect.left,
+          stageMainRight: stageMainRect.right,
           headerLeft: headerRect.left,
           headerRight: headerRect.right,
           wordRows: new Set(
@@ -449,11 +508,11 @@ test.describe("guest typing", () => {
       expect(layout.promptFontSize).toBe("32px");
       expect(layout.wordsInBounds).toBe(true);
       expect(layout.wordRows).toBeGreaterThanOrEqual(2);
-      expect(Math.abs(layout.promptLeft - layout.headerLeft)).toBeLessThanOrEqual(
-        1,
-      );
       expect(
-        Math.abs(layout.promptRight - layout.headerRight),
+        Math.abs(layout.promptLeft - layout.stageMainLeft),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(layout.promptRight - layout.stageMainRight),
       ).toBeLessThanOrEqual(1);
       expect(layout.frameWidth).toBeLessThanOrEqual(1600);
       expect(Math.abs(layout.frameLeft - layout.frameRight)).toBeLessThanOrEqual(
@@ -874,6 +933,11 @@ test.describe("guest typing", () => {
     const target = (await activeWord.getAttribute("data-prompt-target")) ?? "";
     const before = await nextWord.boundingBox();
     const targetCharacters = Array.from(target);
+    const beforeGlyphPositions = await activeWord
+      .locator(".prompt-slot")
+      .evaluateAll((slots) =>
+        slots.map((slot) => slot.getBoundingClientRect().left),
+      );
     const wrongGlyph =
       Array.from("qzxjkvbpdfghlmnrswty").find(
         (candidate) => !targetCharacters.includes(candidate),
@@ -897,6 +961,20 @@ test.describe("guest typing", () => {
     const caretAtTargetEnd = await page
       .locator(".prompt-word .typing-caret")
       .boundingBox();
+    const caretVerticalGeometry = await page
+      .locator(".prompt-word .typing-caret")
+      .evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const caretStyle = getComputedStyle(element, "::before");
+        const topGap = Number.parseFloat(caretStyle.top);
+        const caretHeight = Number.parseFloat(caretStyle.height);
+        return {
+          topGap,
+          bottomGap: bounds.height - topGap - caretHeight,
+          caretHeight,
+          fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+        };
+      });
     const typedGeometry = await activeWord
       .locator(".prompt-slot")
       .evaluateAll((slots) =>
@@ -923,6 +1001,14 @@ test.describe("guest typing", () => {
       );
     expect(afterSubstitutions).not.toBeNull();
     expect(caretAtTargetEnd).not.toBeNull();
+    expect(
+      Math.abs(
+        caretVerticalGeometry.topGap - caretVerticalGeometry.bottomGap,
+      ),
+    ).toBeLessThan(0.5);
+    expect(caretVerticalGeometry.caretHeight).toBeGreaterThan(
+      caretVerticalGeometry.fontSize,
+    );
     expect(typedGeometry).toHaveLength(targetCharacters.length);
     expect(
       await activeWord.locator(".prompt-character.is-incorrect").count(),
@@ -940,6 +1026,9 @@ test.describe("guest typing", () => {
       expect(glyph.measureText).toBe(glyph.visibleText);
       expect(glyph.visibleText).toBe(targetCharacters[index]);
       expect(glyph.visibleText).not.toBe(wrongGlyph);
+      expect(
+        Math.abs(glyph.left - (beforeGlyphPositions[index] ?? 0)),
+      ).toBeLessThan(1);
       expect(Math.abs(glyph.slotWidth - glyph.visibleWidth)).toBeLessThan(1);
       expect(Math.abs(glyph.measureWidth - glyph.visibleWidth)).toBeLessThan(1);
     }

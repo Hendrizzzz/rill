@@ -46,7 +46,8 @@ function AppFrame() {
     <div className="app-frame">
       <header className="site-header">
         <Link to="/" className="wordmark" aria-label="Rill home">
-          rill
+          <span>Rill</span>
+          <small aria-hidden="true">typing practice</small>
         </Link>
         <nav aria-label="Primary navigation">
           <NavLink to="/" end>test</NavLink>
@@ -81,7 +82,7 @@ function AppFrame() {
       </Routes>
       <footer className="site-footer">
         <span>tab · restart</span>
-        <span>rill / a quiet typing instrument</span>
+        <span>built for the daily practice</span>
       </footer>
       <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>

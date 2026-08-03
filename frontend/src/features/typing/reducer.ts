@@ -54,11 +54,15 @@ export function createTypingState(
   };
 }
 
-function currentTarget(state: TypingState): string {
+function targetAt(state: TypingState, wordIndex: number): string {
   return typableTarget(
-    state.prompt.words[state.wordIndex] ?? "",
+    state.prompt.words[wordIndex] ?? "",
     state.config.contentType,
   );
+}
+
+function currentTarget(state: TypingState): string {
+  return targetAt(state, state.wordIndex);
 }
 
 function currentTargetCharacters(state: TypingState): string[] {
@@ -67,6 +71,24 @@ function currentTargetCharacters(state: TypingState): string[] {
 
 function targetSeparator(state: TypingState): " " | "\n" {
   return state.config.contentType === "code" ? "\n" : " ";
+}
+
+function hasUnresolvedStrictError(state: TypingState): boolean {
+  if (state.config.errorPolicy !== "strict") {
+    return false;
+  }
+
+  const committedMismatch = state.committedWords.some(
+    (input, wordIndex) => input.join("") !== targetAt(state, wordIndex),
+  );
+  if (committedMismatch) {
+    return true;
+  }
+
+  const targetCharacters = currentTargetCharacters(state);
+  return state.currentInput.some(
+    (grapheme, index) => targetCharacters[index] !== grapheme,
+  );
 }
 
 function startIfReady(state: TypingState, now: number): TypingState {
@@ -198,13 +220,11 @@ function commitWord(
     state.wordIndex === state.prompt.words.length - 1;
 
   const startedAt = state.startedAt ?? now;
-  const strictFailureActive =
-    state.config.errorPolicy === "strict" &&
-    state.counters.incorrectAttempts > 0;
+  const strictFailureActive = hasUnresolvedStrictError(state);
   const spaceIsCorrect =
     !strictFailureActive &&
     state.currentInput.length === targetCharacters.length;
-  const withSpaceEvent = {
+  const withSpaceAttempt = {
     ...state,
     counters: {
       ...state.counters,
@@ -214,6 +234,17 @@ function commitWord(
       incorrectAttempts:
         state.counters.incorrectAttempts + (spaceIsCorrect ? 0 : 1),
     },
+  };
+
+  if (
+    state.config.errorPolicy === "strict" &&
+    (strictFailureActive || state.currentInput.length !== targetCharacters.length)
+  ) {
+    return withSpaceAttempt;
+  }
+
+  const withSpaceEvent = {
+    ...withSpaceAttempt,
     inputEvents: [
       ...state.inputEvents,
       {
@@ -297,12 +328,7 @@ function insertGrapheme(
     grapheme,
     targetCharacters[index],
   );
-  const strictFailureActive =
-    state.config.errorPolicy === "strict" &&
-    state.counters.incorrectAttempts > 0;
-  const isCorrect =
-    !strictFailureActive &&
-    targetCharacters[index] === normalizedGrapheme;
+  const isCorrect = targetCharacters[index] === normalizedGrapheme;
   const isExtra = index >= targetCharacters.length;
   const startedAt = state.startedAt ?? now;
   const next: TypingState = {
@@ -331,7 +357,8 @@ function insertGrapheme(
   const isExactFinalWord =
     next.config.mode === "words" &&
     next.wordIndex === next.prompt.words.length - 1 &&
-    next.currentInput.join("") === target;
+    next.currentInput.join("") === target &&
+    !hasUnresolvedStrictError(next);
   return isExactFinalWord ? complete(next, now, wallNow, "finished") : next;
 }
 
@@ -376,7 +403,10 @@ function backspace(
       previousSourceTarget,
       state.config.contentType,
     );
-    if (previousInput.join("") === previousTarget) {
+    if (
+      previousInput.join("") === previousTarget &&
+      !hasUnresolvedStrictError(state)
+    ) {
       return state;
     }
 

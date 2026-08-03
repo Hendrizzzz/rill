@@ -271,40 +271,84 @@ describe("typing reducer contract", () => {
     expect(state.currentInput.join("")).toBe("");
   });
 
-  it("strict mode advances while marking every attempt after an error incorrect", () => {
+  it("strict mode keeps matching characters correct and blocks an imperfect commit", () => {
     const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
     let state = createTypingState(
       strictConfig,
       prompt(["cat", "dog"]),
       "strict-run",
     );
-    state = insert(state, "c", 0);
+    state = insert(state, "x", 0);
     state = insert(state, "a", 100);
-    state = insert(state, "x", 200);
+    state = insert(state, "t", 200);
     state = insert(state, " ", 300);
+
+    expect(state.wordIndex).toBe(0);
+    expect(state.currentInput).toEqual(["x", "a", "t"]);
+    expect(state.committedWords).toEqual([]);
+    expect(
+      state.inputEvents
+        .filter((event) => event.type === "insert")
+        .map((event) => event.correct),
+    ).toEqual([false, true, true]);
+
+    for (const now of [400, 500, 600]) {
+      state = typingReducer(state, {
+        type: "backspace",
+        now,
+        wallNow: 1_700_000_000_000 + now,
+      });
+    }
+    state = insert(state, "c", 700);
+    state = insert(state, "a", 800);
+    state = insert(state, "t", 900);
+    state = insert(state, " ", 1_000);
 
     expect(state.wordIndex).toBe(1);
     expect(state.currentInput).toEqual([]);
-    expect(state.committedWords).toEqual([["c", "a", "x"]]);
+    expect(state.committedWords).toEqual([["c", "a", "t"]]);
+  });
 
-    state = insert(state, "d", 400);
-    state = insert(state, "o", 500);
-    state = insert(state, "g", 600);
+  it("strict code mode recovers after a wrong input is backspaced", () => {
+    const strictConfig: TestConfig = {
+      ...config,
+      contentType: "code",
+      codeLanguage: "python3",
+      errorPolicy: "strict",
+    };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["def binary_search():", "    return 1"]),
+      "strict-code-correction-run",
+    );
+    let now = 0;
+    for (const grapheme of "def binarx") {
+      state = insert(state, grapheme, now);
+      now += 100;
+    }
 
-    expect(state.status).toBe("completed");
-    expect(state.inputEvents.map((event) => event.correct)).toEqual([
-      true,
-      true,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ]);
-    expect(state.counters).toMatchObject({
-      correctAttempts: 2,
-      incorrectAttempts: 5,
+    expect(state.currentInput.join("")).toBe("def binarx");
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
     });
+    now += 100;
+    for (const grapheme of "y_search():") {
+      state = insert(state, grapheme, now);
+      now += 100;
+    }
+
+    expect(
+      state.inputEvents
+        .filter((event) => event.type === "insert" && event.wordIndex === 0)
+        .slice(-10)
+        .map((event) => event.correct),
+    ).toEqual(Array.from({ length: 10 }, () => true));
+
+    state = insert(state, "\n", now);
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput).toEqual([]);
   });
 
   it("scores one visible grapheme as one target character", () => {

@@ -170,104 +170,106 @@ export function TypingPage() {
               focusCapture();
             }}
           />
-          <div className="test-status" aria-hidden="true">
-            <span>
-              {state.config.mode === "time"
-                ? [
-                    String(
-                      Math.ceil(
-                        (remainingMs ?? state.config.modeValue * 1_000) / 1_000,
+          <div className="typing-stage">
+            <div className="test-status" aria-hidden="true">
+              <span>
+                {state.config.mode === "time"
+                  ? [
+                      String(
+                        Math.ceil(
+                          (remainingMs ?? state.config.modeValue * 1_000) /
+                            1_000,
+                        ),
                       ),
-                    ),
-                    "s",
-                  ].join("")
-                : [
-                    String(
-                      Math.min(
-                        state.wordIndex + 1,
-                        state.prompt.words.length,
+                      "s",
+                    ].join("")
+                  : [
+                      String(
+                        Math.min(
+                          state.wordIndex + 1,
+                          state.prompt.words.length,
+                        ),
                       ),
-                    ),
-                    String(state.prompt.words.length),
-                  ].join("/")}
-            </span>
-            <span>
-              {state.status === "ready"
-                ? "begin when ready"
-                : [(elapsedMs / 1_000).toFixed(1), " elapsed"].join("")}
-            </span>
-          </div>
-          {state.config.contentType === "code" ? (
-            <section
-              className="code-workbench"
-              data-capture-focused={captureFocused ? "true" : undefined}
-              aria-labelledby="code-exercise-title"
-            >
-              <header className="code-prompt-intro">
-                <div className="code-prompt-title">
-                  <p>{state.prompt.attribution}</p>
-                  <h2 id="code-exercise-title">{state.prompt.title}</h2>
-                </div>
-                <div className="code-prompt-learning">
-                  <p>{state.prompt.lesson}</p>
-                  <small>Assumes {state.prompt.assumptions}.</small>
-                </div>
-                <dl className="code-prompt-facts">
-                  <div>
-                    <dt>pattern</dt>
-                    <dd>{state.prompt.topic}</dd>
-                  </div>
-                  <div>
-                    <dt>cost</dt>
-                    <dd>{state.prompt.complexity}</dd>
-                  </div>
-                </dl>
-              </header>
-              <PromptView
-                key={state.runId}
-                state={state}
-                captureRef={captureRef}
-                captureFocused={captureFocused}
-                compositionText={compositionText}
-              />
-              <footer className="code-editor-status" aria-hidden="true">
-                <span>spaces: 4</span>
-                <span>
-                  line {String(state.wordIndex + 1)} of{" "}
-                  {String(state.prompt.words.length)}
-                </span>
-              </footer>
-            </section>
-          ) : (
-            <>
-              {state.prompt.attribution ? (
-                <p className="prompt-attribution">
-                  {state.prompt.attribution}
-                </p>
-              ) : null}
-              <PromptView
-                key={state.runId}
-                state={state}
-                captureRef={captureRef}
-                captureFocused={captureFocused}
-                compositionText={compositionText}
-              />
-            </>
-          )}
-          <div className="test-restart-row">
-            <button
-              ref={restartButtonRef}
-              type="button"
-              className="test-restart"
-              aria-label="Restart test"
-              title="Restart test"
-              onClick={restartAndFocus}
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M19 7v5h-5" />
-                <path d="M18.1 12a6.5 6.5 0 1 1-1.9-4.6L19 10" />
-              </svg>
-            </button>
+                      String(state.prompt.words.length),
+                    ].join("/")}
+              </span>
+              <span>
+                {state.status === "ready"
+                  ? "begin when ready"
+                  : [(elapsedMs / 1_000).toFixed(1), " elapsed"].join("")}
+              </span>
+            </div>
+            <div className="typing-stage-main">
+              <div className="prompt-context">
+                {state.config.contentType === "code" ? (
+                  <header className="code-prompt-intro">
+                    <div className="code-prompt-title">
+                      <p>{state.prompt.attribution}</p>
+                      <h2 id="code-exercise-title">{state.prompt.title}</h2>
+                    </div>
+                    <div className="code-prompt-learning">
+                      <p>{state.prompt.lesson}</p>
+                      <small className="sr-only">
+                        Assumes {state.prompt.assumptions}.
+                      </small>
+                    </div>
+                    <p className="code-prompt-facts">
+                      <span>{state.prompt.topic}</span>
+                      <span>{state.prompt.complexity}</span>
+                    </p>
+                  </header>
+                ) : state.prompt.attribution ? (
+                  <p className="prompt-attribution">
+                    {state.prompt.attribution}
+                  </p>
+                ) : null}
+              </div>
+              {state.config.contentType === "code" ? (
+                <section
+                  className="code-workbench"
+                  data-capture-focused={captureFocused ? "true" : undefined}
+                  aria-labelledby="code-exercise-title"
+                >
+                  <PromptView
+                    key={state.runId}
+                    state={state}
+                    captureRef={captureRef}
+                    captureFocused={captureFocused}
+                    compositionText={compositionText}
+                  />
+                  <footer className="code-editor-status" aria-hidden="true">
+                    <span>spaces: 4</span>
+                    <span>
+                      line {String(state.wordIndex + 1)} of{" "}
+                      {String(state.prompt.words.length)}
+                    </span>
+                  </footer>
+                </section>
+              ) : (
+                <PromptView
+                  key={state.runId}
+                  state={state}
+                  captureRef={captureRef}
+                  captureFocused={captureFocused}
+                  compositionText={compositionText}
+                />
+              )}
+              <div className="test-restart-row">
+                <button
+                  ref={restartButtonRef}
+                  type="button"
+                  className="test-restart"
+                  aria-label="Restart test"
+                  title="Restart test"
+                  onClick={restartAndFocus}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M19 7v5h-5" />
+                    <path d="M18.1 12a6.5 6.5 0 1 1-1.9-4.6L19 10" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
           <div className="typing-accessibility">
             <p id="typing-instructions">
@@ -275,7 +277,7 @@ export function TypingPage() {
                 ? "Start typing to begin. Press Tab then Enter to restart. Escape also restarts. Use Shift plus Tab to move back through the prompt and test controls."
                 : "Typing test in progress. Elapsed time continues if focus leaves the input."}{" "}
               {state.config.errorPolicy === "strict"
-                ? "Strict errors are on; after the first mistake, later input remains marked incorrect. "
+                ? "Strict errors are on; correct the current word or line before continuing. "
                 : ""}
               {state.config.mode === "time"
                 ? `${String(state.config.modeValue)} second test.`

@@ -53,8 +53,18 @@ export function TestControls({
     }
   }, [editorOpen]);
 
+  const applyConfig = (next: TestConfig, nextCustomText?: string) => {
+    setEditorOpen(false);
+    setCustomError("");
+    if (nextCustomText === undefined) {
+      onChange(next);
+    } else {
+      onChange(next, nextCustomText);
+    }
+  };
+
   const setMode = (mode: TestMode) => {
-    onChange({
+    applyConfig({
       ...config,
       contentType: "words",
       mode,
@@ -68,7 +78,7 @@ export function TestControls({
       setEditorOpen(true);
       return;
     }
-    onChange({
+    applyConfig({
       ...config,
       contentType,
       mode: contentType === "quote" ? "words" : config.mode,
@@ -85,11 +95,11 @@ export function TestControls({
   };
 
   const setLanguage = (language: TypingLanguage) => {
-    onChange({ ...config, language });
+    applyConfig({ ...config, language });
   };
 
   const setCodeLanguage = (codeLanguage: CodeLanguage) => {
-    onChange({ ...config, codeLanguage });
+    applyConfig({ ...config, codeLanguage });
   };
 
   const closeEditor = () => {
@@ -109,7 +119,7 @@ export function TestControls({
       setCustomError(validation.message);
       return;
     }
-    onChange(
+    applyConfig(
       {
         ...config,
         contentType: "custom",
@@ -126,7 +136,7 @@ export function TestControls({
 
   return (
     <div className="test-controls" aria-label="Test configuration">
-      <fieldset className="control-group">
+      <fieldset className="control-group" data-control-label="source">
         <legend className="sr-only">Text source</legend>
         {(["words", "quote", "code"] as const).map((contentType) => (
           <button
@@ -160,7 +170,7 @@ export function TestControls({
       {wordContent ? (
         <>
           <span className="control-divider" aria-hidden="true" />
-          <fieldset className="control-group">
+          <fieldset className="control-group" data-control-label="measure">
             <legend className="sr-only">Test limit</legend>
             {(["time", "words"] as const).map((mode) => (
               <button
@@ -176,7 +186,7 @@ export function TestControls({
               </button>
             ))}
           </fieldset>
-          <fieldset className="control-group">
+          <fieldset className="control-group" data-control-label="length">
             <legend className="sr-only">
               {config.mode === "time" ? "Seconds" : "Word count"}
             </legend>
@@ -187,7 +197,7 @@ export function TestControls({
                 disabled={disabled}
                 aria-pressed={config.modeValue === value}
                 onClick={() => {
-                  onChange({ ...config, modeValue: value });
+                  applyConfig({ ...config, modeValue: value });
                 }}
               >
                 {value}
@@ -200,7 +210,7 @@ export function TestControls({
       {codeContent ? (
         <>
           <span className="control-divider" aria-hidden="true" />
-          <label className="code-language-control">
+          <label className="code-language-control" data-control-label="language">
             <span className="sr-only">Code language</span>
             <select
               aria-label="Code language"
@@ -227,7 +237,7 @@ export function TestControls({
       config.contentType === "custom" ? (
         <>
           <span className="control-divider" aria-hidden="true" />
-          <fieldset className="control-group">
+          <fieldset className="control-group" data-control-label="language">
             <legend className="sr-only">Language</legend>
             {(["en", "es"] as const).map((language) => (
               <button
@@ -248,14 +258,17 @@ export function TestControls({
       ) : null}
 
       {wordContent ? (
-        <fieldset className="control-group control-group--modifiers">
+        <fieldset className="control-group control-group--modifiers" data-control-label="include">
           <legend className="sr-only">Word modifiers</legend>
           <button
             type="button"
             disabled={disabled}
             aria-pressed={config.punctuation}
             onClick={() => {
-              onChange({ ...config, punctuation: !config.punctuation });
+              applyConfig({
+                ...config,
+                punctuation: !config.punctuation,
+              });
             }}
           >
             punctuation
@@ -265,7 +278,7 @@ export function TestControls({
             disabled={disabled}
             aria-pressed={config.numbers}
             onClick={() => {
-              onChange({ ...config, numbers: !config.numbers });
+              applyConfig({ ...config, numbers: !config.numbers });
             }}
           >
             numbers
@@ -274,14 +287,14 @@ export function TestControls({
       ) : null}
 
       <span className="control-divider" aria-hidden="true" />
-      <fieldset className="control-group">
+      <fieldset className="control-group" data-control-label="errors">
         <legend className="sr-only">Error behavior</legend>
         <button
           type="button"
           disabled={disabled}
           aria-pressed={config.errorPolicy === "strict"}
           onClick={() => {
-            onChange({
+            applyConfig({
               ...config,
               errorPolicy:
                 config.errorPolicy === "strict" ? "normal" : "strict",

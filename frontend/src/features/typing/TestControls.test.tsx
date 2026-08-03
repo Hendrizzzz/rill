@@ -84,6 +84,29 @@ describe("TestControls", () => {
     expect(screen.queryByLabelText("Your practice text")).not.toBeInTheDocument();
   });
 
+  it("closes an unused custom editor when another configuration is chosen", () => {
+    const onChange = vi.fn();
+    render(
+      <TestControls config={config} disabled={false} onChange={onChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "custom" }));
+    fireEvent.click(screen.getByRole("button", { name: "use text" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter at least two words.",
+    );
+
+    const textSource = screen.getByRole("group", { name: "Text source" });
+    fireEvent.click(within(textSource).getByRole("button", { name: "words" }));
+
+    expect(screen.queryByLabelText("Your practice text")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "custom" }));
+    fireEvent.click(screen.getByRole("button", { name: "strict" }));
+    expect(screen.queryByLabelText("Your practice text")).not.toBeInTheDocument();
+  });
+
   it("offers the code corpus and switches its programming language", () => {
     const onChange = vi.fn();
     const codeConfig: TestConfig = {
