@@ -307,6 +307,48 @@ describe("typing reducer contract", () => {
     });
   });
 
+  it("strict code mode recovers after a wrong input is backspaced", () => {
+    const strictConfig: TestConfig = {
+      ...config,
+      contentType: "code",
+      codeLanguage: "python3",
+      errorPolicy: "strict",
+    };
+    let state = createTypingState(
+      strictConfig,
+      prompt(["def binary_search():", "    return 1"]),
+      "strict-code-correction-run",
+    );
+    let now = 0;
+    for (const grapheme of "def binarx") {
+      state = insert(state, grapheme, now);
+      now += 100;
+    }
+
+    expect(state.currentInput.join("")).toBe("def binarx");
+    state = typingReducer(state, {
+      type: "backspace",
+      now,
+      wallNow: 1_700_000_000_000 + now,
+    });
+    now += 100;
+    for (const grapheme of "y_search():") {
+      state = insert(state, grapheme, now);
+      now += 100;
+    }
+
+    expect(
+      state.inputEvents
+        .filter((event) => event.type === "insert" && event.wordIndex === 0)
+        .slice(-10)
+        .map((event) => event.correct),
+    ).toEqual(Array.from({ length: 10 }, () => true));
+
+    state = insert(state, "\n", now);
+    expect(state.wordIndex).toBe(1);
+    expect(state.currentInput).toEqual([]);
+  });
+
   it("backtracks through tainted words and clears the taint after correction", () => {
     const strictConfig: TestConfig = { ...config, errorPolicy: "strict" };
     let state = createTypingState(
