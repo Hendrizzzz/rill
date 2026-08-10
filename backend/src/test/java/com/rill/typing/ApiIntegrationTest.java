@@ -929,7 +929,17 @@ class ApiIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(previousBody))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+                .andExpect(jsonPath("$.wordListVersion").value("code-v2"))
+                .andExpect(jsonPath("$.oldestResultsPruned").value(0));
+
+        client.perform(get("/api/results/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.records.length()").value(2))
+                .andExpect(
+                        jsonPath(
+                                "$.records[*].key.wordListVersion",
+                                org.hamcrest.Matchers.containsInAnyOrder(
+                                        "code-v1", "code-v2")));
 
         String contextualBody =
                 dimensionedResultJson(
@@ -947,7 +957,8 @@ class ApiIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(contextualBody))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.wordListVersion").value("code-v3"));
+                .andExpect(jsonPath("$.wordListVersion").value("code-v3"))
+                .andExpect(jsonPath("$.oldestResultsPruned").value(1));
 
         client.perform(
                         post("/api/results")
@@ -960,16 +971,17 @@ class ApiIntegrationTest {
                                                 CodeLanguage.PYTHON3,
                                                 ErrorPolicy.NORMAL)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.wordListVersion").value("code-v4"));
+                .andExpect(jsonPath("$.wordListVersion").value("code-v4"))
+                .andExpect(jsonPath("$.oldestResultsPruned").value(1));
 
         client.perform(get("/api/results/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.records.length()").value(4))
+                .andExpect(jsonPath("$.records.length()").value(2))
                 .andExpect(
                         jsonPath(
                                 "$.records[*].key.wordListVersion",
                                 org.hamcrest.Matchers.containsInAnyOrder(
-                                        "code-v1", "code-v2", "code-v3", "code-v4")));
+                                        "code-v3", "code-v4")));
 
         String invalidVersion =
                 dimensionedResultJson(
@@ -1009,7 +1021,7 @@ class ApiIntegrationTest {
     void corpusVersionsPartitionOtherwiseIdenticalQuoteRecords() throws Exception {
         Client client = registeredClient("quote_versions");
 
-        for (String version : List.of("quote-v1", "quote-v2", "quote-v3")) {
+        for (String version : List.of("quote-v1", "quote-v2")) {
             String body =
                     dimensionedResultJson(
                                     UUID.randomUUID(),
@@ -1030,12 +1042,36 @@ class ApiIntegrationTest {
 
         client.perform(get("/api/results/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.records.length()").value(3))
+                .andExpect(jsonPath("$.records.length()").value(2))
                 .andExpect(
                         jsonPath(
                                 "$.records[*].key.wordListVersion",
                                 org.hamcrest.Matchers.containsInAnyOrder(
-                                        "quote-v1", "quote-v2", "quote-v3")));
+                                        "quote-v1", "quote-v2")));
+
+        String currentBody =
+                dimensionedResultJson(
+                        UUID.randomUUID(),
+                        ContentType.QUOTE,
+                        TypingLanguage.EN,
+                        null,
+                        ErrorPolicy.NORMAL);
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(currentBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("quote-v3"))
+                .andExpect(jsonPath("$.oldestResultsPruned").value(1));
+
+        client.perform(get("/api/results/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.records.length()").value(2))
+                .andExpect(
+                        jsonPath(
+                                "$.records[*].key.wordListVersion",
+                                org.hamcrest.Matchers.containsInAnyOrder(
+                                        "quote-v2", "quote-v3")));
     }
 
     @Test
