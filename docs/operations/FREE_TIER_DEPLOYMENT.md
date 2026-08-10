@@ -185,17 +185,21 @@ No database or backend secret belongs in Vercel. `frontend/vercel.json` serves
 the SPA, applies browser security headers, caches fingerprinted assets, forces
 API responses to `no-store`, and proxies `/api/*` to Render.
 
-Both provider manifests disable Git-triggered deployments. This prevents branch
-previews from writing to the production database and prevents a frontend from
-publishing before its backend contract is live.
+Render keeps Git-triggered deployments disabled. Vercel deploys only pushes to
+`main`; all other branches are denied by `frontend/vercel.json`, so preview
+branches cannot reach the production API. A merge to `main` therefore updates
+the production frontend automatically.
 
-For the first release, deploy Render first and wait for readiness, then manually
-deploy Vercel production. For every later release:
+For the first release, deploy Render first and wait for readiness, then create
+the Vercel project from `main`. For every later release:
 
 1. review migrations for backward compatibility with the currently running API;
 2. run CI and back up Neon;
-3. manually deploy Render and complete API/account smoke tests;
-4. manually deploy Vercel production and repeat the public-origin smoke tests.
+3. when backend behavior changes, manually deploy the reviewed,
+   backward-compatible Render revision and complete API/account smoke tests
+   before merging;
+4. merge the reviewed change to `main`; Vercel deploys production automatically;
+5. repeat the public-origin smoke tests against the new Vercel build.
 
 Never add a migration that removes a column/default or makes a field mandatory
 while the old binary can still write. Use expand/contract releases: add

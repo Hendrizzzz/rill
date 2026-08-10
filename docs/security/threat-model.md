@@ -233,9 +233,10 @@ neither secret may enter source, frontend configuration, build arguments, or
 logs. Arbitrary server-code execution could still read both secrets; accepting
 that residual risk is specific to this free topology.
 
-Provider Git-triggered deployments are disabled. Releases are manual and
-backend-first because a failed or backward-incompatible Flyway migration cannot
-be rolled back by Render health gating after it changes the shared database.
-Future schema changes must use expand/contract releases, with an operator backup
-and public-origin smoke checks as documented in
-`docs/operations/FREE_TIER_DEPLOYMENT.md`.
+Render Git-triggered deployments remain disabled. Vercel accepts automatic Git
+deployments only from `main`; preview branches are denied. Cross-contract
+releases remain backend-first because a failed or backward-incompatible Flyway
+migration cannot be rolled back by Render health gating after it changes the
+shared database. Future schema changes must use expand/contract releases, with
+an operator backup, a manual backend deployment before merge, and public-origin
+smoke checks as documented in `docs/operations/FREE_TIER_DEPLOYMENT.md`.
