@@ -779,7 +779,7 @@ class ApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.contentType").value("QUOTE"))
                 .andExpect(jsonPath("$.language").value("EN"))
-                .andExpect(jsonPath("$.wordListVersion").value("quote-v1"))
+                .andExpect(jsonPath("$.wordListVersion").value("quote-v3"))
                 .andExpect(jsonPath("$.errorPolicy").value("STRICT"));
 
         client.perform(
@@ -810,7 +810,7 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.contentType").value("CODE"))
                 .andExpect(jsonPath("$.language").value("EN"))
                 .andExpect(jsonPath("$.codeLanguage").value("PYTHON3"))
-                .andExpect(jsonPath("$.wordListVersion").value("code-v2"))
+                .andExpect(jsonPath("$.wordListVersion").value("code-v4"))
                 .andExpect(jsonPath("$.oldestResultsPruned").value(1));
 
         MvcResult summary =
@@ -824,7 +824,7 @@ class ApiIntegrationTest {
             JsonNode key = record.get("key");
             if ("CODE".equals(key.get("contentType").stringValue())
                     && "PYTHON3".equals(key.get("codeLanguage").stringValue())
-                    && "code-v2".equals(key.get("wordListVersion").stringValue())) {
+                    && "code-v4".equals(key.get("wordListVersion").stringValue())) {
                 matchingCodeRecords++;
             }
         }
@@ -874,7 +874,7 @@ class ApiIntegrationTest {
                     .andExpect(jsonPath("$.contentType").value("CODE"))
                     .andExpect(jsonPath("$.language").value("EN"))
                     .andExpect(jsonPath("$.codeLanguage").value(language.name()))
-                    .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+                    .andExpect(jsonPath("$.wordListVersion").value("code-v4"));
         }
     }
 
@@ -890,7 +890,7 @@ class ApiIntegrationTest {
                                 CodeLanguage.PYTHON3,
                                 ErrorPolicy.NORMAL)
                         .replace(
-                                "\"wordListVersion\":\"code-v2\"",
+                                "\"wordListVersion\":\"code-v4\"",
                                 "\"wordListVersion\":\"code-v1\"");
 
         client.perform(
@@ -913,6 +913,42 @@ class ApiIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("RESULT_IDEMPOTENCY_CONFLICT"));
 
+        String previousBody =
+                dimensionedResultJson(
+                                UUID.randomUUID(),
+                                ContentType.CODE,
+                                TypingLanguage.EN,
+                                CodeLanguage.PYTHON3,
+                                ErrorPolicy.NORMAL)
+                        .replace(
+                                "\"wordListVersion\":\"code-v4\"",
+                                "\"wordListVersion\":\"code-v2\"");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(previousBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+
+        String contextualBody =
+                dimensionedResultJson(
+                                UUID.randomUUID(),
+                                ContentType.CODE,
+                                TypingLanguage.EN,
+                                CodeLanguage.PYTHON3,
+                                ErrorPolicy.NORMAL)
+                        .replace(
+                                "\"wordListVersion\":\"code-v4\"",
+                                "\"wordListVersion\":\"code-v3\"");
+
+        client.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(contextualBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("code-v3"));
+
         client.perform(
                         post("/api/results")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -924,16 +960,16 @@ class ApiIntegrationTest {
                                                 CodeLanguage.PYTHON3,
                                                 ErrorPolicy.NORMAL)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.wordListVersion").value("code-v2"));
+                .andExpect(jsonPath("$.wordListVersion").value("code-v4"));
 
         client.perform(get("/api/results/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.records.length()").value(2))
+                .andExpect(jsonPath("$.records.length()").value(4))
                 .andExpect(
                         jsonPath(
                                 "$.records[*].key.wordListVersion",
                                 org.hamcrest.Matchers.containsInAnyOrder(
-                                        "code-v1", "code-v2")));
+                                        "code-v1", "code-v2", "code-v3", "code-v4")));
 
         String invalidVersion =
                 dimensionedResultJson(
@@ -943,7 +979,7 @@ class ApiIntegrationTest {
                                 CodeLanguage.PYTHON3,
                                 ErrorPolicy.NORMAL)
                         .replace(
-                                "\"wordListVersion\":\"code-v2\"",
+                                "\"wordListVersion\":\"code-v4\"",
                                 "\"wordListVersion\":\"en-v1\"");
         client.perform(
                         post("/api/results")
@@ -960,13 +996,66 @@ class ApiIntegrationTest {
                                 TypingLanguage.EN,
                                 CodeLanguage.PYTHON3,
                                 ErrorPolicy.NORMAL)
-                        .replace("\"wordListVersion\":\"code-v2\",", "");
+                        .replace("\"wordListVersion\":\"code-v4\",", "");
         legacyClient.perform(
                         post("/api/results")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(omittedVersion))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.wordListVersion").value("code-v1"));
+    }
+
+    @Test
+    void corpusVersionsPartitionOtherwiseIdenticalQuoteRecords() throws Exception {
+        Client client = registeredClient("quote_versions");
+
+        for (String version : List.of("quote-v1", "quote-v2", "quote-v3")) {
+            String body =
+                    dimensionedResultJson(
+                                    UUID.randomUUID(),
+                                    ContentType.QUOTE,
+                                    TypingLanguage.EN,
+                                    null,
+                                    ErrorPolicy.NORMAL)
+                            .replace(
+                                    "\"wordListVersion\":\"quote-v3\"",
+                                    "\"wordListVersion\":\"" + version + "\"");
+            client.perform(
+                            post("/api/results")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(body))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.wordListVersion").value(version));
+        }
+
+        client.perform(get("/api/results/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.records.length()").value(3))
+                .andExpect(
+                        jsonPath(
+                                "$.records[*].key.wordListVersion",
+                                org.hamcrest.Matchers.containsInAnyOrder(
+                                        "quote-v1", "quote-v2", "quote-v3")));
+    }
+
+    @Test
+    void omittedLegacyQuoteVersionUsesOriginalCorpusIdentity() throws Exception {
+        Client legacyClient = registeredClient("quote_version_omitted");
+        String omittedVersion =
+                dimensionedResultJson(
+                                UUID.randomUUID(),
+                                ContentType.QUOTE,
+                                TypingLanguage.EN,
+                                null,
+                                ErrorPolicy.NORMAL)
+                        .replace("\"wordListVersion\":\"quote-v3\",", "");
+
+        legacyClient.perform(
+                        post("/api/results")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(omittedVersion))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.wordListVersion").value("quote-v1"));
     }
 
     @Test
@@ -1944,9 +2033,9 @@ class ApiIntegrationTest {
                 "wordListVersion",
                 switch (contentType) {
                     case WORDS -> language == TypingLanguage.ES ? "es-v1" : "en-v1";
-                    case QUOTE -> "quote-v1";
+                    case QUOTE -> "quote-v3";
                     case CUSTOM -> "custom-v1";
-                    case CODE -> "code-v2";
+                    case CODE -> "code-v4";
                 });
         body.put("errorPolicy", errorPolicy.name());
         body.put("durationMs", 1_000);

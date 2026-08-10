@@ -215,6 +215,22 @@ class DeploymentManifestTest {
                 .containsEntry("path", "backend/target/dependency-check-report.*");
     }
 
+    @Test
+    void flywayMigrationsUseUniqueVersionNumbers() throws IOException {
+        Path migrations =
+                repositoryRoot().resolve("backend/src/main/resources/db/migration");
+        List<String> versions;
+        try (var files = Files.list(migrations)) {
+            versions =
+                    files.map(path -> path.getFileName().toString())
+                            .filter(name -> name.matches("V[0-9]+__.+\\.sql"))
+                            .map(name -> name.substring(0, name.indexOf("__")))
+                            .toList();
+        }
+
+        assertThat(versions).isNotEmpty().doesNotHaveDuplicates();
+    }
+
     private static Path repositoryRoot() {
         Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         if (Files.isRegularFile(current.resolve("render.yaml"))) {

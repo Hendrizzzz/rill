@@ -200,8 +200,13 @@ public class TypingResultService {
                         || request.wordListVersion().equals(
                                 wordListVersion(
                                         request.contentType(), request.language()))
+                        || (request.contentType() == ContentType.QUOTE
+                                && (request.wordListVersion().equals("quote-v1")
+                                        || request.wordListVersion().equals("quote-v2")))
                         || (request.contentType() == ContentType.CODE
-                                && request.wordListVersion().equals("code-v1"));
+                                && (request.wordListVersion().equals("code-v1")
+                                        || request.wordListVersion().equals("code-v2")
+                                        || request.wordListVersion().equals("code-v3")));
         boolean modeValid;
         if (request.contentType() == ContentType.WORDS) {
             modeValid =
@@ -458,9 +463,9 @@ public class TypingResultService {
             ContentType contentType, TypingLanguage language) {
         return switch (contentType) {
             case WORDS -> language == TypingLanguage.ES ? "es-v1" : "en-v1";
-            case QUOTE -> "quote-v1";
+            case QUOTE -> "quote-v3";
             case CUSTOM -> "custom-v1";
-            case CODE -> "code-v2";
+            case CODE -> "code-v4";
         };
     }
 
@@ -468,9 +473,11 @@ public class TypingResultService {
         if (request.wordListVersion() != null) {
             return request.wordListVersion();
         }
-        return request.contentType() == ContentType.CODE
-                ? "code-v1"
-                : wordListVersion(request.contentType(), request.language());
+        return switch (request.contentType()) {
+            case CODE -> "code-v1";
+            case QUOTE -> "quote-v1";
+            default -> wordListVersion(request.contentType(), request.language());
+        };
     }
 
     private static BigDecimal rounded(double value) {
