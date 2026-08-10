@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:code-corpus": "node scripts/validate-code-corpus.mjs",
+    "corpus:quotes:build": "node scripts/build-literary-quotes.mjs",
     "test:coverage": "vitest run --coverage",
     "test:parity:oracle": "vitest run --config vitest.parity.config.ts",
     "test:parity:campaign": "vitest run --config vitest.campaign.config.ts",

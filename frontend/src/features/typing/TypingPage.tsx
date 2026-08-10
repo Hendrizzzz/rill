@@ -209,7 +209,7 @@ export function TypingPage() {
                     </div>
                     <div className="code-prompt-learning">
                       <p>{state.prompt.lesson}</p>
-                      <small className="sr-only">
+                      <small className="code-prompt-assumptions">
                         Assumes {state.prompt.assumptions}.
                       </small>
                     </div>
@@ -220,7 +220,25 @@ export function TypingPage() {
                   </header>
                 ) : state.prompt.attribution ? (
                   <p className="prompt-attribution">
-                    {state.prompt.attribution}
+                    {state.prompt.sourceUrl ? (
+                      <a
+                        href={state.prompt.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        {state.prompt.attribution}
+                        {state.prompt.theme ? (
+                          <span className="prompt-theme">
+                            {" "}· {state.prompt.theme}
+                          </span>
+                        ) : null}
+                        <span className="sr-only">
+                          {" "}(opens source in a new tab)
+                        </span>
+                      </a>
+                    ) : (
+                      state.prompt.attribution
+                    )}
                   </p>
                 ) : null}
               </div>

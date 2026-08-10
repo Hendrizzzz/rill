@@ -1,6 +1,6 @@
 import type { Prompt, TestConfig } from "./types";
 import { codeLanguageLabel, selectCodeExercise } from "./codeCorpus";
-import { PRACTICE_QUOTES_V1 } from "./quotes";
+import { PRACTICE_QUOTES_V3 } from "./quotes";
 import { SPANISH_WORDS_V1 } from "./spanishWordList";
 import { ENGLISH_WORDS_V1 } from "./wordList";
 
@@ -93,7 +93,7 @@ export function generatePrompt(
     return {
       id: exercise.id,
       seed: seed >>> 0,
-      wordListVersion: "code-v2",
+      wordListVersion: "code-v4",
       generatorVersion: 1,
       language: "en",
       codeLanguage: exercise.language,
@@ -126,20 +126,22 @@ export function generatePrompt(
 
   if (config.contentType === "quote") {
     const quote =
-      PRACTICE_QUOTES_V1[(seed >>> 0) % PRACTICE_QUOTES_V1.length] ??
-      PRACTICE_QUOTES_V1[0];
+      PRACTICE_QUOTES_V3[(seed >>> 0) % PRACTICE_QUOTES_V3.length] ??
+      PRACTICE_QUOTES_V3[0];
     if (quote === undefined) {
       throw new Error("The quote corpus is empty.");
     }
     const words = quote.text.normalize("NFC").split(/\s+/u);
     return {
-      id: `quote-v1-${quote.id}`,
+      id: `quote-v3-${quote.id}`,
       seed: seed >>> 0,
-      wordListVersion: "quote-v1",
+      wordListVersion: "quote-v3",
       generatorVersion: 1,
       language: "en",
       sourceId: quote.id,
       attribution: quote.attribution,
+      sourceUrl: quote.sourceUrl,
+      theme: quote.theme,
       words,
     };
   }

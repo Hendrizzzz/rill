@@ -215,7 +215,7 @@ describe("API client", () => {
       contentType: "code",
       language: "en",
       codeLanguage: "go",
-      wordListVersion: "code-v2",
+      wordListVersion: "code-v4",
       completionReason: "finished",
     };
     const fetchMock = vi
@@ -228,7 +228,7 @@ describe("API client", () => {
             modeValue: 7,
             contentType: "CODE",
             codeLanguage: "GO",
-            wordListVersion: "code-v2",
+            wordListVersion: "code-v4",
             completionReason: "FINISHED",
           }),
         ),
@@ -247,7 +247,7 @@ describe("API client", () => {
       contentType: "CODE",
       language: "EN",
       codeLanguage: "GO",
-      wordListVersion: "code-v2",
+      wordListVersion: "code-v4",
     });
   });
 

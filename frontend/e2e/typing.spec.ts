@@ -243,7 +243,12 @@ test.describe("guest typing", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "quote", exact: true }).click();
-    await expect(page.locator(".prompt-attribution")).toBeVisible();
+    const attribution = page.locator(".prompt-attribution");
+    await expect(attribution).toBeVisible();
+    await expect(attribution.getByRole("link")).toHaveAttribute(
+      "href",
+      /^https:\/\//u,
+    );
     const quote = await readPromptTargets(page);
     expect(quote.length).toBeGreaterThanOrEqual(2);
     await page
@@ -546,12 +551,15 @@ test.describe("guest typing", () => {
 
     const language = page.getByRole("combobox", { name: "Code language" });
     await expect(language).toHaveValue("python3");
-    await expect(page.getByText("16 patterns · 512 drills")).toBeVisible();
+    await expect(
+      page.getByText("512 Python 3 drills · 32 concepts · 16 contexts"),
+    ).toBeVisible();
     await expect(page.locator(".code-prompt-intro h2")).not.toBeEmpty();
     await expect(page.locator(".code-prompt-learning > p")).not.toBeEmpty();
     await expect(page.locator(".code-prompt-learning > small")).toContainText(
       "Assumes ",
     );
+    await expect(page.locator(".code-prompt-learning > small")).toBeVisible();
     await expect(page.locator(".code-prompt-facts")).toContainText(
       /O\(/u,
     );
@@ -693,6 +701,15 @@ test.describe("guest typing", () => {
         "font-size",
         "16px",
       );
+      await expect(page.locator(".code-prompt-learning > p")).toBeVisible();
+      await expect(
+        page.locator(".code-prompt-learning > small"),
+      ).toBeVisible();
+      expect(
+        await page.locator(".code-prompt-learning > p").evaluate(
+          (element) => element.scrollHeight <= element.clientHeight + 1,
+        ),
+      ).toBe(true);
       const editorBounds = await page.locator(".code-workbench").boundingBox();
       expect(editorBounds?.x ?? -1).toBeGreaterThanOrEqual(0);
       expect(

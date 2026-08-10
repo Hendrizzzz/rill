@@ -21,9 +21,13 @@ export type WordListVersion =
   | "en-v1"
   | "es-v1"
   | "quote-v1"
+  | "quote-v2"
+  | "quote-v3"
   | "custom-v1"
   | "code-v1"
-  | "code-v2";
+  | "code-v2"
+  | "code-v3"
+  | "code-v4";
 
 export interface TestConfig {
   mode: TestMode;
@@ -50,6 +54,8 @@ export interface Prompt {
   assumptions?: string;
   complexity?: string;
   attribution?: string;
+  sourceUrl?: string;
+  theme?: string;
   words: readonly string[];
 }
 
