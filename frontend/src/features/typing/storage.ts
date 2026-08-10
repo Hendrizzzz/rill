@@ -52,9 +52,13 @@ function isWordListVersion(value: unknown): value is WordListVersion {
     value === "en-v1" ||
     value === "es-v1" ||
     value === "quote-v1" ||
+    value === "quote-v2" ||
+    value === "quote-v3" ||
     value === "custom-v1" ||
     value === "code-v1" ||
-    value === "code-v2"
+    value === "code-v2" ||
+    value === "code-v3" ||
+    value === "code-v4"
   );
 }
 
@@ -92,7 +96,11 @@ function wordListVersionMatchesDimensions(
       (value.language === "es" ? "es-v1" : "en-v1");
   }
   if (value.contentType === "quote") {
-    return value.wordListVersion === "quote-v1";
+    return (
+      value.wordListVersion === "quote-v1" ||
+      value.wordListVersion === "quote-v2" ||
+      value.wordListVersion === "quote-v3"
+    );
   }
   if (value.contentType === "custom") {
     return value.wordListVersion === "custom-v1";
@@ -100,7 +108,9 @@ function wordListVersionMatchesDimensions(
   return (
     value.contentType === "code" &&
     (value.wordListVersion === "code-v1" ||
-      value.wordListVersion === "code-v2")
+      value.wordListVersion === "code-v2" ||
+      value.wordListVersion === "code-v3" ||
+      value.wordListVersion === "code-v4")
   );
 }
 

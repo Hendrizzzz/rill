@@ -86,11 +86,39 @@ describe("prompt generation", () => {
 
     expect(quote).toMatchObject({
       language: "en",
-      wordListVersion: "quote-v1",
+      wordListVersion: "quote-v3",
     });
     expect(quote.sourceId).toBeTruthy();
     expect(quote.attribution).toBeTruthy();
+    expect(quote.sourceUrl).toBeTruthy();
+    expect(quote.theme).toBeTruthy();
     expect(quote.words.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("pins representative seed mappings for the immutable quote-v3 corpus", () => {
+    const quoteConfig: TestConfig = {
+      ...config,
+      mode: "words",
+      contentType: "quote",
+      punctuation: false,
+      numbers: false,
+    };
+
+    expect(
+      [0, 5, 6, 109, 110, 129, 130, 1_029, 1_030].map(
+        (seed) => generatePrompt(quoteConfig, seed).id,
+      ),
+    ).toEqual([
+      "quote-v3-austen-emma-01",
+      "quote-v3-wilde-dorian-gray-01",
+      "quote-v3-craft-01",
+      "quote-v3-beginnings-08",
+      "quote-v3-scene-01",
+      "quote-v3-scene-20",
+      "quote-v3-literary-alice-01",
+      "quote-v3-literary-call-wild-36",
+      "quote-v3-austen-emma-01",
+    ]);
   });
 
   it("builds a line-preserving code prompt with learning metadata", () => {
@@ -109,9 +137,9 @@ describe("prompt generation", () => {
     expect(code).toMatchObject({
       language: "en",
       codeLanguage: "python3",
-      wordListVersion: "code-v2",
+      wordListVersion: "code-v4",
     });
-    expect(code.id).toMatch(/^code-v2-python3-/u);
+    expect(code.id).toMatch(/^code-v4-python3-/u);
     expect(code.title).toBeTruthy();
     expect(code.topic).toBeTruthy();
     expect(code.lesson).toBeTruthy();

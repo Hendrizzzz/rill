@@ -8,28 +8,64 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import ts from "typescript";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const frontendDirectory = resolve(scriptDirectory, "..");
+const temporaryDirectory = mkdtempSync(join(tmpdir(), "rill-code-corpus-"));
 const corpusPath = resolve(
   frontendDirectory,
   "src/features/typing/codeCorpus.ts",
 );
-const corpusSource = readFileSync(corpusPath, "utf8");
-const transpiledCorpus = ts.transpileModule(corpusSource, {
-  compilerOptions: {
+const corpusExpansionPath = resolve(
+  frontendDirectory,
+  "src/features/typing/codeCorpusExpansion.ts",
+);
+const corpusMorePath = resolve(
+  frontendDirectory,
+  "src/features/typing/codeCorpusMore.ts",
+);
+let corpus;
+
+async function loadCorpus() {
+  const compilerOptions = {
     module: ts.ModuleKind.ES2022,
     target: ts.ScriptTarget.ES2022,
-  },
-}).outputText;
-const corpus = await import(
-  `data:text/javascript;base64,${Buffer.from(transpiledCorpus).toString("base64")}`
-);
+  };
+  const corpusExpansionSource = readFileSync(corpusExpansionPath, "utf8");
+  const transpiledCorpusExpansion = ts.transpileModule(
+    corpusExpansionSource,
+    { compilerOptions },
+  ).outputText;
+  writeFileSync(
+    join(temporaryDirectory, "codeCorpusExpansion.mjs"),
+    transpiledCorpusExpansion,
+    "utf8",
+  );
+  const corpusMoreSource = readFileSync(corpusMorePath, "utf8");
+  const transpiledCorpusMore = ts.transpileModule(corpusMoreSource, {
+    compilerOptions,
+  }).outputText;
+  writeFileSync(
+    join(temporaryDirectory, "codeCorpusMore.mjs"),
+    transpiledCorpusMore,
+    "utf8",
+  );
+  const corpusSource = readFileSync(corpusPath, "utf8");
+  const transpiledCorpus = ts
+    .transpileModule(corpusSource, {
+      compilerOptions,
+    })
+    .outputText
+    .replace('"./codeCorpusExpansion"', '"./codeCorpusExpansion.mjs"')
+    .replace('"./codeCorpusMore"', '"./codeCorpusMore.mjs"');
+  const corpusModulePath = join(temporaryDirectory, "codeCorpus.mjs");
+  writeFileSync(corpusModulePath, transpiledCorpus, "utf8");
+  return import(pathToFileURL(corpusModulePath).href);
+}
 
-const temporaryDirectory = mkdtempSync(join(tmpdir(), "rill-code-corpus-"));
 const results = [];
 
 function commandResult(command, args, cwd = temporaryDirectory) {
@@ -161,6 +197,75 @@ const runtimeCases = {
     { args: [0], expected: 1 },
     { args: [5], expected: 8 },
   ],
+  "Find a value by scanning": [
+    { args: [[], 4], expected: -1 },
+    { args: [[4, 2, 4], 4], expected: 0 },
+  ],
+  "Find the minimum": [
+    { args: [[-3]], expected: -3 },
+    { args: [[4, -2, 8]], expected: -2 },
+  ],
+  "Count matching values": [
+    { args: [[], 2], expected: 0 },
+    { args: [[2, 1, 2], 2], expected: 2 },
+  ],
+  "Check sorted order": [
+    { args: [[]], expected: true },
+    { args: [[1, 1, 3]], expected: true },
+    { args: [[2, 1]], expected: false },
+  ],
+  "Calculate a factorial": [
+    { args: [0], expected: 1 },
+    { args: [5], expected: 120 },
+  ],
+  "Check a prime number": [
+    { args: [-1], expected: false },
+    { args: [2], expected: true },
+    { args: [25], expected: false },
+  ],
+  "Build prefix sums": [
+    { args: [[]], expected: [] },
+    { args: [[2, -1, 3]], expected: [2, 1, 4] },
+  ],
+  "Find the best contiguous sum": [
+    { args: [[-3]], expected: -3 },
+    { args: [[-2, 1, -3, 4, -1, 2, 1, -5, 4]], expected: 6 },
+  ],
+  "Calculate a Fibonacci number": [
+    { args: [0], expected: 0 },
+    { args: [1], expected: 1 },
+    { args: [10], expected: 55 },
+  ],
+  "Sum the digits": [
+    { args: [0], expected: 0 },
+    { args: [90_708], expected: 24 },
+  ],
+  "Count set bits": [
+    { args: [0], expected: 0 },
+    { args: [0b101101], expected: 4 },
+  ],
+  "Find the first insertion point": [
+    { args: [[], 4], expected: 0 },
+    { args: [[1, 3, 3, 8], 3], expected: 1 },
+    { args: [[1, 3, 3, 8], 9], expected: 4 },
+  ],
+  "Find the second distinct maximum": [
+    { args: [[5, 1]], expected: 1 },
+    { args: [[4, 4, 2, 7, 7, 5]], expected: 5 },
+    { args: [[-5, -2, -9]], expected: -5 },
+  ],
+  "Find the majority value": [
+    { args: [[3]], expected: 3 },
+    { args: [[2, 2, 1, 1, 1, 2, 2]], expected: 2 },
+  ],
+  "Measure the longest increasing run": [
+    { args: [[]], expected: 0 },
+    { args: [[1, 2, 2, 3, 4, 5, 1]], expected: 4 },
+  ],
+  "Count distinct sorted values": [
+    { args: [[]], expected: 0 },
+    { args: [[1, 1, 2, 2, 2, 5]], expected: 3 },
+  ],
 };
 
 function valuesEqual(actual, expected) {
@@ -168,8 +273,11 @@ function valuesEqual(actual, expected) {
 }
 
 function validateRuntime(language, toJavaScript) {
-  const selected = exercises(language).filter(
-    (exercise) => exercise.variation === 1,
+  const selected = exercises(language);
+  const casesByPattern = new Map(
+    selected
+      .filter((exercise) => exercise.variation === 1)
+      .map((exercise) => [exercise.pattern, runtimeCases[exercise.title]]),
   );
   let executed = 0;
   for (const exercise of selected) {
@@ -181,9 +289,9 @@ function validateRuntime(language, toJavaScript) {
     const implementation = Function(
       `"use strict";\n${source}\nreturn ${functionName};`,
     )();
-    const cases = runtimeCases[exercise.title];
+    const cases = casesByPattern.get(exercise.pattern);
     if (cases === undefined) {
-      throw new Error(`No runtime cases exist for ${exercise.title}.`);
+      throw new Error(`No runtime cases exist for ${exercise.pattern}.`);
     }
     for (const testCase of cases) {
       const args = structuredClone(testCase.args);
@@ -216,7 +324,7 @@ function validateAlwaysAvailableLanguages() {
   ]);
   const javascriptCases = validateRuntime("javascript", (source) => source);
   results.push(
-    `JavaScript: 64/64 parsed; ${String(javascriptCases)} behavior cases passed`,
+    `JavaScript: ${String(exercises("javascript").length)} parsed; ${String(javascriptCases)} behavior cases passed`,
   );
 
   const typescriptPath = join(temporaryDirectory, "corpus.ts");
@@ -251,7 +359,7 @@ function validateAlwaysAvailableLanguages() {
       }).outputText,
   );
   results.push(
-    `TypeScript: 64/64 passed strict semantic validation; ${String(typescriptCases)} behavior cases passed`,
+    `TypeScript: ${String(exercises("typescript").length)} passed strict semantic validation; ${String(typescriptCases)} behavior cases passed`,
   );
 }
 
@@ -264,7 +372,7 @@ function validateOptionalLanguages() {
       "py_compile",
       path,
     ]);
-    results.push("Python 3: 64/64 compiled");
+    results.push(`Python 3: ${String(exercises("python3").length)} compiled`);
   } else {
     results.push("Python 3: skipped (python unavailable)");
   }
@@ -277,7 +385,9 @@ function validateOptionalLanguages() {
       "utf8",
     );
     requireSuccess("Java compilation", "javac", ["--release", "21", path]);
-    results.push("Java: 64/64 compiled in a java.util wrapper");
+    results.push(
+      `Java: ${String(exercises("java").length)} compiled in a java.util wrapper`,
+    );
   } else {
     results.push("Java: skipped (javac unavailable)");
   }
@@ -313,7 +423,9 @@ function validateOptionalLanguages() {
       "-fsyntax-only",
       path,
     ]);
-    results.push("C: 64/64 compiled in a standard-header wrapper");
+    results.push(
+      `C: ${String(exercises("c").length)} compiled in a standard-header wrapper`,
+    );
   } else {
     results.push("C: skipped (gcc unavailable or not operational)");
   }
@@ -341,7 +453,9 @@ function validateOptionalLanguages() {
       "-fsyntax-only",
       path,
     ]);
-    results.push("C++: 64/64 compiled in a standard-library wrapper");
+    results.push(
+      `C++: ${String(exercises("cpp").length)} compiled in a standard-library wrapper`,
+    );
   } else {
     results.push("C++: skipped (g++ unavailable or not operational)");
   }
@@ -378,7 +492,9 @@ function validateOptionalLanguages() {
       ["build", "--nologo", "--verbosity", "quiet"],
       projectDirectory,
     );
-    results.push("C#: 64/64 compiled in an SDK wrapper");
+    results.push(
+      `C#: ${String(exercises("csharp").length)} compiled in an SDK wrapper`,
+    );
   } else {
     results.push("C#: skipped (a .NET SDK is unavailable)");
   }
@@ -391,17 +507,28 @@ function validateOptionalLanguages() {
       "utf8",
     );
     requireSuccess("Go compilation", "go", ["test", path]);
-    results.push("Go: 64/64 compiled in a package wrapper");
+    results.push(
+      `Go: ${String(exercises("go").length)} compiled in a package wrapper`,
+    );
   } else {
     results.push("Go: skipped (go unavailable)");
   }
 }
 
 try {
+  corpus = await loadCorpus();
   validateAlwaysAvailableLanguages();
   validateOptionalLanguages();
   for (const result of results) {
     process.stdout.write(`${result}\n`);
+  }
+  if (process.env.RILL_REQUIRE_ALL_CODE_TOOLCHAINS === "true") {
+    const skipped = results.filter((result) => result.includes("skipped"));
+    if (skipped.length > 0) {
+      throw new Error(
+        `Required code-corpus toolchains are unavailable:\n${skipped.join("\n")}`,
+      );
+    }
   }
 } finally {
   if (process.env.RILL_KEEP_CORPUS_TMP === "true") {

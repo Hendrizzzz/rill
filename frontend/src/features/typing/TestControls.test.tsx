@@ -124,7 +124,9 @@ describe("TestControls", () => {
       />,
     );
 
-    expect(screen.getByText("16 patterns · 512 drills")).toBeVisible();
+    expect(
+      screen.getByText("512 Python 3 drills · 32 concepts · 16 contexts"),
+    ).toBeVisible();
     const language = screen.getByRole("combobox", {
       name: "Code language",
     });

@@ -213,28 +213,45 @@ test.describe("guest typing", () => {
     ).toBeFocused();
   });
 
-  test("keeps the typing origin fixed across source modes", async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => document.fonts.ready);
-    const source = page.getByRole("group", { name: "Text source" });
-    const firstCharacterTop = async () => {
-      const bounds = await page
-        .locator('[data-prompt-index="0"] .prompt-character')
-        .first()
-        .boundingBox();
-      expect(bounds).not.toBeNull();
-      return bounds?.y ?? 0;
-    };
+  test(
+    "keeps the typing origin fixed across source modes",
+    async ({ page }, testInfo) => {
+      const responsiveWidths =
+        testInfo.project.name === "chromium"
+          ? [1280, 768, 390, 320]
+          : [undefined];
 
-    const wordsTop = await firstCharacterTop();
-    await source.getByRole("button", { name: "quote", exact: true }).click();
-    const quoteTop = await firstCharacterTop();
-    await source.getByRole("button", { name: "code", exact: true }).click();
-    const codeTop = await firstCharacterTop();
+      for (const width of responsiveWidths) {
+        if (width !== undefined) {
+          await page.setViewportSize({ width, height: 900 });
+        }
+        await page.goto("/");
+        await page.evaluate(() => document.fonts.ready);
+        const source = page.getByRole("group", { name: "Text source" });
+        const firstCharacterTop = async () => {
+          const bounds = await page
+            .locator('[data-prompt-index="0"] .prompt-character')
+            .first()
+            .boundingBox();
+          expect(bounds).not.toBeNull();
+          return bounds?.y ?? 0;
+        };
 
-    expect(Math.abs(quoteTop - wordsTop)).toBeLessThan(1);
-    expect(Math.abs(codeTop - wordsTop)).toBeLessThan(1);
-  });
+        const wordsTop = await firstCharacterTop();
+        await source
+          .getByRole("button", { name: "quote", exact: true })
+          .click();
+        const quoteTop = await firstCharacterTop();
+        await source
+          .getByRole("button", { name: "code", exact: true })
+          .click();
+        const codeTop = await firstCharacterTop();
+
+        expect(Math.abs(quoteTop - wordsTop)).toBeLessThan(1);
+        expect(Math.abs(codeTop - wordsTop)).toBeLessThan(1);
+      }
+    },
+  );
 
   test("supports attributed quotes, private Spanish custom text, and strict errors", async ({
     page,
@@ -243,7 +260,12 @@ test.describe("guest typing", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "quote", exact: true }).click();
-    await expect(page.locator(".prompt-attribution")).toBeVisible();
+    const attribution = page.locator(".prompt-attribution");
+    await expect(attribution).toBeVisible();
+    await expect(attribution.getByRole("link")).toHaveAttribute(
+      "href",
+      /^https:\/\//u,
+    );
     const quote = await readPromptTargets(page);
     expect(quote.length).toBeGreaterThanOrEqual(2);
     await page
@@ -546,12 +568,15 @@ test.describe("guest typing", () => {
 
     const language = page.getByRole("combobox", { name: "Code language" });
     await expect(language).toHaveValue("python3");
-    await expect(page.getByText("16 patterns · 512 drills")).toBeVisible();
+    await expect(
+      page.getByText("512 Python 3 drills · 32 concepts · 16 contexts"),
+    ).toBeVisible();
     await expect(page.locator(".code-prompt-intro h2")).not.toBeEmpty();
-    await expect(page.locator(".code-prompt-learning > p")).not.toBeEmpty();
-    await expect(page.locator(".code-prompt-learning > small")).toContainText(
+    await expect(page.locator(".code-learning-notes > p")).not.toBeEmpty();
+    await expect(page.locator(".code-learning-notes > small")).toContainText(
       "Assumes ",
     );
+    await expect(page.locator(".code-learning-notes > small")).toBeVisible();
     await expect(page.locator(".code-prompt-facts")).toContainText(
       /O\(/u,
     );
@@ -693,6 +718,23 @@ test.describe("guest typing", () => {
         "font-size",
         "16px",
       );
+      const title = page.locator(".code-prompt-title h2");
+      const lesson = page.locator(".code-learning-notes > p");
+      const assumptions = page.locator(".code-learning-notes > small");
+      await expect(title).toBeVisible();
+      const titleText = await title.textContent();
+      expect(titleText).not.toBeNull();
+      await expect(title).toHaveAttribute("title", titleText ?? "");
+      expect((await title.boundingBox())?.width ?? 0).toBeGreaterThan(80);
+      await expect(lesson).toBeVisible();
+      await expect(assumptions).toBeVisible();
+      for (const note of [lesson, assumptions]) {
+        expect(
+          await note.evaluate(
+            (element) => element.scrollWidth <= element.clientWidth + 1,
+          ),
+        ).toBe(true);
+      }
       const editorBounds = await page.locator(".code-workbench").boundingBox();
       expect(editorBounds?.x ?? -1).toBeGreaterThanOrEqual(0);
       expect(
@@ -1936,7 +1978,7 @@ test("account result, export, logout, and deletion lifecycle", async ({ page }) 
   const username = `e2e_${suffix}`;
   const password = "quiet-river-password";
 
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "account", exact: true }).click();
   const accountDialog = page.getByRole("dialog");
   await expect(accountDialog).toHaveAccessibleName("Account");

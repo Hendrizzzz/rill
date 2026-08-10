@@ -205,13 +205,9 @@ export function TypingPage() {
                   <header className="code-prompt-intro">
                     <div className="code-prompt-title">
                       <p>{state.prompt.attribution}</p>
-                      <h2 id="code-exercise-title">{state.prompt.title}</h2>
-                    </div>
-                    <div className="code-prompt-learning">
-                      <p>{state.prompt.lesson}</p>
-                      <small className="sr-only">
-                        Assumes {state.prompt.assumptions}.
-                      </small>
+                      <h2 id="code-exercise-title" title={state.prompt.title}>
+                        {state.prompt.title}
+                      </h2>
                     </div>
                     <p className="code-prompt-facts">
                       <span>{state.prompt.topic}</span>
@@ -220,31 +216,60 @@ export function TypingPage() {
                   </header>
                 ) : state.prompt.attribution ? (
                   <p className="prompt-attribution">
-                    {state.prompt.attribution}
+                    {state.prompt.sourceUrl ? (
+                      <a
+                        href={state.prompt.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        {state.prompt.attribution}
+                        {state.prompt.theme ? (
+                          <span className="prompt-theme">
+                            {" "}· {state.prompt.theme}
+                          </span>
+                        ) : null}
+                        <span className="sr-only">
+                          {" "}(opens source in a new tab)
+                        </span>
+                      </a>
+                    ) : (
+                      state.prompt.attribution
+                    )}
                   </p>
                 ) : null}
               </div>
               {state.config.contentType === "code" ? (
-                <section
-                  className="code-workbench"
-                  data-capture-focused={captureFocused ? "true" : undefined}
-                  aria-labelledby="code-exercise-title"
-                >
-                  <PromptView
-                    key={state.runId}
-                    state={state}
-                    captureRef={captureRef}
-                    captureFocused={captureFocused}
-                    compositionText={compositionText}
-                  />
-                  <footer className="code-editor-status" aria-hidden="true">
-                    <span>spaces: 4</span>
-                    <span>
-                      line {String(state.wordIndex + 1)} of{" "}
-                      {String(state.prompt.words.length)}
-                    </span>
-                  </footer>
-                </section>
+                <>
+                  <section
+                    className="code-workbench"
+                    data-capture-focused={captureFocused ? "true" : undefined}
+                    aria-labelledby="code-exercise-title"
+                  >
+                    <PromptView
+                      key={state.runId}
+                      state={state}
+                      captureRef={captureRef}
+                      captureFocused={captureFocused}
+                      compositionText={compositionText}
+                    />
+                    <footer className="code-editor-status" aria-hidden="true">
+                      <span>spaces: 4</span>
+                      <span>
+                        line {String(state.wordIndex + 1)} of{" "}
+                        {String(state.prompt.words.length)}
+                      </span>
+                    </footer>
+                  </section>
+                  <aside
+                    className="code-learning-notes"
+                    aria-label="Code exercise notes"
+                  >
+                    <p>{state.prompt.lesson}</p>
+                    <small className="code-prompt-assumptions">
+                      Assumes {state.prompt.assumptions}.
+                    </small>
+                  </aside>
+                </>
               ) : (
                 <PromptView
                   key={state.runId}

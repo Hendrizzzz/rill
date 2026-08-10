@@ -12,6 +12,8 @@ import {
   CODE_EXERCISE_COUNT,
   CODE_LANGUAGES,
   CODE_PATTERN_COUNT,
+  CODE_SCENARIO_COUNT,
+  codeLanguageLabel,
 } from "./codeCorpus";
 import {
   TIME_VALUES,
@@ -226,8 +228,12 @@ export function TestControls({
                 </option>
               ))}
             </select>
-            <span aria-hidden="true">
-              {CODE_PATTERN_COUNT} patterns · {CODE_EXERCISE_COUNT} drills
+            <span className="code-corpus-size">
+              {(CODE_EXERCISE_COUNT / CODE_LANGUAGES.length).toLocaleString(
+                "en-US",
+              )}{" "}
+              {codeLanguageLabel(config.codeLanguage ?? "python3")} drills ·{" "}
+              {CODE_PATTERN_COUNT} concepts · {CODE_SCENARIO_COUNT} contexts
             </span>
           </label>
         </>

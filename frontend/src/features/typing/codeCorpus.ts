@@ -1,7 +1,9 @@
 import type { CodeLanguage } from "./types";
+import { EXPANDED_CODE_TEMPLATES } from "./codeCorpusExpansion";
+import { MORE_CODE_TEMPLATES } from "./codeCorpusMore";
+import type { CodeTemplate } from "./codeCorpusModel";
 
-// Keep this module runtime-self-contained: the corpus validator imports it from a
-// data URL. This mirrors the editor's structural indentation contract.
+// This mirrors the editor's structural indentation contract.
 const EMITTED_CODE_INDENT_WIDTH = 4;
 
 export interface CodeLanguageOption {
@@ -14,6 +16,8 @@ export interface CodeLanguageOption {
 export interface CodeExercise {
   id: string;
   language: CodeLanguage;
+  pattern: string;
+  scenario: string;
   title: string;
   topic: string;
   lesson: string;
@@ -23,15 +27,12 @@ export interface CodeExercise {
   code: string;
 }
 
-interface CodeTemplate {
-  slug: string;
-  title: string;
-  topic: string;
-  functionName: string;
-  lesson?: string;
-  assumptions?: string;
-  complexity?: string;
-  code: string;
+interface CodeScenario {
+  id: string;
+  label: string;
+  functionSuffix: string;
+  framing: string;
+  vocabulary: Readonly<Record<string, string>>;
 }
 
 export const CODE_LANGUAGES: readonly CodeLanguageOption[] = [
@@ -1797,18 +1798,216 @@ const GO_TEMPLATES: readonly CodeTemplate[] = [
 ] as const;
 
 const TEMPLATES: Readonly<Record<CodeLanguage, readonly CodeTemplate[]>> = {
-  cpp: CPP_TEMPLATES,
-  java: JAVA_TEMPLATES,
-  python3: PYTHON_TEMPLATES,
-  c: C_TEMPLATES,
-  csharp: CSHARP_TEMPLATES,
-  javascript: JAVASCRIPT_TEMPLATES,
-  typescript: TYPESCRIPT_TEMPLATES,
-  go: GO_TEMPLATES,
+  cpp: [...CPP_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.cpp, ...MORE_CODE_TEMPLATES.cpp],
+  java: [...JAVA_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.java, ...MORE_CODE_TEMPLATES.java],
+  python3: [...PYTHON_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.python3, ...MORE_CODE_TEMPLATES.python3],
+  c: [...C_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.c, ...MORE_CODE_TEMPLATES.c],
+  csharp: [...CSHARP_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.csharp, ...MORE_CODE_TEMPLATES.csharp],
+  javascript: [
+    ...JAVASCRIPT_TEMPLATES,
+    ...EXPANDED_CODE_TEMPLATES.javascript,
+    ...MORE_CODE_TEMPLATES.javascript,
+  ],
+  typescript: [
+    ...TYPESCRIPT_TEMPLATES,
+    ...EXPANDED_CODE_TEMPLATES.typescript,
+    ...MORE_CODE_TEMPLATES.typescript,
+  ],
+  go: [...GO_TEMPLATES, ...EXPANDED_CODE_TEMPLATES.go, ...MORE_CODE_TEMPLATES.go],
 };
 
-const VARIATION_SUFFIXES = ["", "Practice", "Scan", "Review"] as const;
-export const CODE_PATTERN_COUNT = CPP_TEMPLATES.length;
+const CODE_SCENARIOS: readonly CodeScenario[] = [
+  {
+    id: "core",
+    label: "Core drill",
+    functionSuffix: "",
+    framing: "",
+    vocabulary: {},
+  },
+  {
+    id: "cinema",
+    label: "Cinema night",
+    functionSuffix: "Cinema",
+    framing: "Anchor {topic} to a cinema-night decision.",
+    vocabulary: {
+      values: "ratings",
+      value: "rating",
+      text: "subtitle",
+      target: "cutoff",
+    },
+  },
+  {
+    id: "arcade",
+    label: "Arcade run",
+    functionSuffix: "Arcade",
+    framing: "Use an arcade high-score run to remember {topic}.",
+    vocabulary: {
+      values: "scores",
+      value: "score",
+      text: "combo",
+      target: "goal",
+    },
+  },
+  {
+    id: "recording-studio",
+    label: "Recording studio",
+    functionSuffix: "Studio",
+    framing: "Picture {topic} unfolding during a final recording take.",
+    vocabulary: {
+      values: "takes",
+      value: "take",
+      text: "script",
+      target: "cue",
+    },
+  },
+  {
+    id: "orbit",
+    label: "Orbital mission",
+    functionSuffix: "Orbit",
+    framing: "Attach the {topic} invariant to telemetry arriving from orbit.",
+    vocabulary: {
+      values: "signals",
+      value: "signal",
+      text: "transmission",
+      target: "frequency",
+    },
+  },
+  {
+    id: "road-trip",
+    label: "Road trip",
+    functionSuffix: "RoadTrip",
+    framing: "Map each {topic} state change to a road-trip checkpoint.",
+    vocabulary: {
+      values: "mileposts",
+      value: "milepost",
+      text: "route",
+      target: "destination",
+    },
+  },
+  {
+    id: "kitchen",
+    label: "Kitchen shift",
+    functionSuffix: "Kitchen",
+    framing: "Use a busy kitchen service as a memory cue for {topic}.",
+    vocabulary: {
+      values: "portions",
+      value: "portion",
+      text: "recipe",
+      target: "servings",
+    },
+  },
+  {
+    id: "library",
+    label: "Library desk",
+    functionSuffix: "Library",
+    framing: "Shelve the steps of {topic} at a quiet library desk.",
+    vocabulary: {
+      values: "pages",
+      value: "page",
+      text: "title",
+      target: "chapter",
+    },
+  },
+  {
+    id: "garden",
+    label: "Community garden",
+    functionSuffix: "Garden",
+    framing: "Let a community garden mark the stages of {topic}.",
+    vocabulary: {
+      values: "seeds",
+      value: "seed",
+      text: "label",
+      target: "harvest",
+    },
+  },
+  {
+    id: "workshop",
+    label: "Repair workshop",
+    functionSuffix: "Workshop",
+    framing: "Lay out the {topic} invariant like parts on a repair bench.",
+    vocabulary: {
+      values: "parts",
+      value: "part",
+      text: "blueprint",
+      target: "fit",
+    },
+  },
+  {
+    id: "concert",
+    label: "Concert set",
+    functionSuffix: "Concert",
+    framing: "Give {topic} the steady rhythm of a concert set.",
+    vocabulary: {
+      values: "beats",
+      value: "beat",
+      text: "melody",
+      target: "tempo",
+    },
+  },
+  {
+    id: "newsroom",
+    label: "Newsroom deadline",
+    functionSuffix: "Newsroom",
+    framing: "Use a newsroom deadline to remember what {topic} must preserve.",
+    vocabulary: {
+      values: "reports",
+      value: "report",
+      text: "headline",
+      target: "deadline",
+    },
+  },
+  {
+    id: "expedition",
+    label: "Field expedition",
+    functionSuffix: "Expedition",
+    framing: "Tie each {topic} decision to a field-expedition checkpoint.",
+    vocabulary: {
+      values: "supplies",
+      value: "supply",
+      text: "fieldnote",
+      target: "checkpoint",
+    },
+  },
+  {
+    id: "cafe",
+    label: "Neighborhood cafe",
+    functionSuffix: "Cafe",
+    framing: "Use a neighborhood cafe rush to rehearse {topic}.",
+    vocabulary: {
+      values: "orders",
+      value: "order",
+      text: "menu",
+      target: "table",
+    },
+  },
+  {
+    id: "classroom",
+    label: "Study session",
+    functionSuffix: "Study",
+    framing: "Connect {topic} to a focused study-session memory cue.",
+    vocabulary: {
+      values: "answers",
+      value: "answer",
+      text: "note",
+      target: "score",
+    },
+  },
+  {
+    id: "time-capsule",
+    label: "Time capsule",
+    functionSuffix: "TimeCapsule",
+    framing: "Place the key {topic} invariant inside a time-capsule image.",
+    vocabulary: {
+      values: "memories",
+      value: "memory",
+      text: "letter",
+      target: "year",
+    },
+  },
+] as const;
+
+export const CODE_SCENARIO_COUNT = CODE_SCENARIOS.length;
+export const CODE_PATTERN_COUNT = TEMPLATES.cpp.length;
 
 const LESSONS: Readonly<
   Record<
@@ -1896,19 +2095,117 @@ const LESSONS: Readonly<
     assumptions: "steps are nonnegative and the result fits the integer type",
     complexity: "O(n) time · O(1) space",
   },
+  "linear-search": {
+    lesson: "Scan from the beginning and return as soon as the target appears.",
+    assumptions: "the first matching index is the desired result",
+    complexity: "O(n) time · O(1) space",
+  },
+  minimum: {
+    lesson: "Keep the smallest value seen so far as the loop invariant.",
+    assumptions: "the input array is non-empty",
+    complexity: "O(n) time · O(1) space",
+  },
+  "count-occurrences": {
+    lesson: "Increment one counter whenever the current value matches the target.",
+    assumptions: "comparison uses the selected language's integer equality",
+    complexity: "O(n) time · O(1) space",
+  },
+  "sorted-check": {
+    lesson: "One descending adjacent pair is enough to disprove sorted order.",
+    assumptions: "nondecreasing order allows equal neighboring values",
+    complexity: "O(n) time · O(1) space",
+  },
+  factorial: {
+    lesson: "Accumulate the product from two through the requested number.",
+    assumptions: "the number is nonnegative and the product fits the return type",
+    complexity: "O(n) time · O(1) space",
+  },
+  "prime-check": {
+    lesson: "A composite number has a divisor no larger than its paired divisor.",
+    assumptions: "the input is represented by the selected integer type",
+    complexity: "O(√n) time · O(1) space",
+  },
+  "prefix-sums": {
+    lesson: "Store each running total so later range work can reuse it.",
+    assumptions: "every cumulative sum fits the chosen output integer type",
+    complexity: "O(n) time · O(n) space",
+  },
+  "maximum-subarray": {
+    lesson: "At each value, choose between starting fresh and extending the current run.",
+    assumptions: "the input array is non-empty and sums fit the return type",
+    complexity: "O(n) time · O(1) space",
+  },
+  fibonacci: {
+    lesson: "Carry only the previous two values because every new term depends on that pair.",
+    assumptions: "the index is nonnegative and the result fits the return type",
+    complexity: "O(n) time · O(1) space",
+  },
+  "digit-sum": {
+    lesson: "Take the final decimal digit with remainder, then remove it with integer division.",
+    assumptions: "the input is a nonnegative base-ten integer",
+    complexity: "O(log n) time · O(1) space",
+  },
+  "count-set-bits": {
+    lesson: "Clearing the lowest set bit makes the loop run once for each one bit.",
+    assumptions: "the input is a nonnegative value representable by the parameter type",
+    complexity: "O(k) time · O(1) space",
+  },
+  "lower-bound": {
+    lesson: "Keep a half-open search range and discard only positions that cannot be first.",
+    assumptions: "the input array is sorted in nondecreasing order",
+    complexity: "O(log n) time · O(1) space",
+  },
+  "second-largest": {
+    lesson: "Track the largest value and the best distinct value below it in one pass.",
+    assumptions: "the input contains at least two distinct values",
+    complexity: "O(n) time · O(1) space",
+  },
+  "majority-element": {
+    lesson: "Cancel unlike pairs so a value occurring more than half the time remains.",
+    assumptions: "the input is non-empty and a strict majority is guaranteed",
+    complexity: "O(n) time · O(1) space",
+  },
+  "longest-increasing-run": {
+    lesson: "Reset the current run at each break and preserve the longest run seen.",
+    assumptions: "only contiguous strictly increasing values count",
+    complexity: "O(n) time · O(1) space",
+  },
+  "unique-count-sorted": {
+    lesson: "In sorted input, every change from the previous value begins one new group.",
+    assumptions: "the input array is sorted in nondecreasing order",
+    complexity: "O(n) time · O(1) space",
+  },
 };
 
 function variantFunctionName(
   language: CodeLanguage,
   baseName: string,
-  variation: number,
+  scenario: CodeScenario,
 ): string {
-  const suffix = VARIATION_SUFFIXES[variation] ?? "";
+  const suffix = scenario.functionSuffix;
   if (suffix.length === 0) return baseName;
   if (language === "python3" || language === "c") {
     return `${baseName}_${suffix.toLowerCase()}`;
   }
   return `${baseName}${suffix}`;
+}
+
+function applyScenarioVocabulary(
+  value: string,
+  vocabulary: Readonly<Record<string, string>>,
+): string {
+  return Object.entries(vocabulary).reduce(
+    (code, [source, replacement]) =>
+      code.replace(
+        new RegExp(`\\b${source}\\b`, "gu"),
+        (match, offset: number, complete: string) => {
+          const prefix = complete.slice(Math.max(0, offset - 3), offset);
+          const memberAccess = prefix.endsWith(".") && !prefix.endsWith("...");
+          return memberAccess ? match : replacement;
+        },
+      ),
+    value,
+  );
 }
 
 function normalizeCode(value: string): string {
@@ -1934,46 +2231,70 @@ export function exercisesForLanguage(
   language: CodeLanguage,
 ): readonly CodeExercise[] {
   return TEMPLATES[language].flatMap((template) =>
-    VARIATION_SUFFIXES.map((_, variation) => {
-      const learning = LESSONS[template.slug];
-      if (learning === undefined) {
-        throw new Error(`Missing learning note for ${template.slug}.`);
-      }
-      return {
-        id: `code-v2-${language}-${template.slug}-${String(variation + 1)}`,
-        language,
-        title: template.title,
-        topic: template.topic,
-        lesson: template.lesson ?? learning.lesson,
-        assumptions: template.assumptions ?? learning.assumptions,
-        complexity: template.complexity ?? learning.complexity,
-        variation: variation + 1,
-        code: normalizeCode(
-          template.code.replaceAll(
-            "__FN__",
-            variantFunctionName(language, template.functionName, variation),
-          ),
-        ),
-      };
-    }),
+    CODE_SCENARIOS.map((scenario, variation) =>
+      createExercise(language, template, scenario, variation),
+    ),
   );
 }
 
-export const CODE_EXERCISE_COUNT = CODE_LANGUAGES.reduce(
-  (total, language) => total + exercisesForLanguage(language.id).length,
-  0,
-);
+function createExercise(
+  language: CodeLanguage,
+  template: CodeTemplate,
+  scenario: CodeScenario,
+  variation: number,
+): CodeExercise {
+  const learning = LESSONS[template.slug];
+  if (learning === undefined) {
+    throw new Error(`Missing learning note for ${template.slug}.`);
+  }
+  const baseLesson = template.lesson ?? learning.lesson;
+  const contextualFraming = scenario.framing.replace("{topic}", template.topic);
+  return {
+    id: `code-v4-${language}-${template.slug}-${scenario.id}`,
+    language,
+    pattern: template.slug,
+    scenario: scenario.id,
+    title:
+      scenario.id === "core"
+        ? template.title
+        : `${scenario.label} · ${template.title}`,
+    topic: template.topic,
+    lesson:
+      contextualFraming.length === 0
+        ? baseLesson
+        : `${contextualFraming} ${baseLesson}`,
+    assumptions: template.assumptions ?? learning.assumptions,
+    complexity: template.complexity ?? learning.complexity,
+    variation: variation + 1,
+    code: normalizeCode(
+      applyScenarioVocabulary(
+        template.code.replaceAll(
+          "__FN__",
+          variantFunctionName(language, template.functionName, scenario),
+        ),
+        scenario.vocabulary,
+      ),
+    ),
+  };
+}
+
+export const CODE_EXERCISE_COUNT =
+  CODE_LANGUAGES.length * CODE_PATTERN_COUNT * CODE_SCENARIO_COUNT;
 
 export function selectCodeExercise(
   language: CodeLanguage,
   seed: number,
 ): CodeExercise {
-  const exercises = exercisesForLanguage(language);
-  const selected = exercises[(seed >>> 0) % exercises.length];
-  if (selected === undefined) {
+  const templates = TEMPLATES[language];
+  const exercisesPerLanguage = templates.length * CODE_SCENARIO_COUNT;
+  const selectedIndex = (seed >>> 0) % exercisesPerLanguage;
+  const template = templates[Math.floor(selectedIndex / CODE_SCENARIO_COUNT)];
+  const scenarioIndex = selectedIndex % CODE_SCENARIO_COUNT;
+  const scenario = CODE_SCENARIOS[scenarioIndex];
+  if (template === undefined || scenario === undefined) {
     throw new Error(`The ${language} code corpus is empty.`);
   }
-  return selected;
+  return createExercise(language, template, scenario, scenarioIndex);
 }
 
 export function codeLanguageLabel(language: CodeLanguage): string {
