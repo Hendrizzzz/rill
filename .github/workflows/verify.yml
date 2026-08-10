@@ -120,6 +120,8 @@ jobs:
       - run: npm run lint
       - run: npm run test:coverage
       - run: npm run test:code-corpus
+        env:
+          RILL_REQUIRE_ALL_CODE_TOOLCHAINS: "true"
       - run: npm run build
 
   parity-smoke:
