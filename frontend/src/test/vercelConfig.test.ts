@@ -8,10 +8,22 @@ interface HeaderRule {
 }
 
 interface VercelConfig {
+  git: {
+    deploymentEnabled: Record<string, boolean>;
+  };
   headers: HeaderRule[];
 }
 
 const config = configJson as VercelConfig;
+
+describe("Vercel deployment policy", () => {
+  it("deploys main automatically without creating branch previews", () => {
+    expect(config.git.deploymentEnabled).toEqual({
+      "*": false,
+      main: true,
+    });
+  });
+});
 
 describe("Vercel security headers", () => {
   it("applies the complete page security policy to both the root and nested routes", () => {

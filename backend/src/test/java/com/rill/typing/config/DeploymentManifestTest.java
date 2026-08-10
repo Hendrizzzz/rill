@@ -112,7 +112,10 @@ class DeploymentManifestTest {
                 JsonMapper.builder()
                         .build()
                         .readTree(repository.resolve("frontend/vercel.json").toFile());
-        assertThat(vercel.get("git").get("deploymentEnabled").booleanValue()).isFalse();
+        JsonNode deploymentEnabled = vercel.get("git").get("deploymentEnabled");
+        assertThat(deploymentEnabled.size()).isEqualTo(2);
+        assertThat(deploymentEnabled.get("*").booleanValue()).isFalse();
+        assertThat(deploymentEnabled.get("main").booleanValue()).isTrue();
         JsonNode rewrites = vercel.get("rewrites");
         assertThat(rewrites).isNotNull();
         assertThat(rewrites.size()).isEqualTo(2);
