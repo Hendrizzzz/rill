@@ -1,6 +1,6 @@
 # Rill zero-cost deployment
 
-Last updated: 2026-07-30
+Last updated: 2026-08-10
 
 ## Scope and tradeoffs
 
@@ -185,20 +185,24 @@ No database or backend secret belongs in Vercel. `frontend/vercel.json` serves
 the SPA, applies browser security headers, caches fingerprinted assets, forces
 API responses to `no-store`, and proxies `/api/*` to Render.
 
-Render keeps Git-triggered deployments disabled. Vercel deploys only pushes to
-`main`; all other branches are denied by `frontend/vercel.json`, so preview
-branches cannot reach the production API. A merge to `main` therefore updates
-the production frontend automatically.
+Render keeps Git-triggered deployments disabled. A push to `main` triggers a
+Vercel production deployment; after its build succeeds, the production alias
+updates. `frontend/vercel.json` suppresses automatic preview builds for other
+branch names. Manual Dashboard, CLI, or API deployments remain
+operator-controlled; deployments built from this repository configuration use
+the same production Render API rewrite.
 
 For the first release, deploy Render first and wait for readiness, then create
 the Vercel project from `main`. For every later release:
 
 1. review migrations for backward compatibility with the currently running API;
-2. run CI and back up Neon;
+2. run CI, wait for every expected non-skipped check to pass, and back up Neon;
+   the current private-repository plan makes this an operator-enforced gate;
 3. when backend behavior changes, manually deploy the reviewed,
    backward-compatible Render revision and complete API/account smoke tests
    before merging;
-4. merge the reviewed change to `main`; Vercel deploys production automatically;
+4. merge the reviewed change to `main`; Vercel starts a production deployment
+   and updates the production alias after the build succeeds;
 5. repeat the public-origin smoke tests against the new Vercel build.
 
 Never add a migration that removes a column/default or makes a field mandatory

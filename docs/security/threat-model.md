@@ -1,7 +1,7 @@
 # Rill threat model
 
 Status: implementation-grounded release-1 model; local verification complete
-Last updated: 2026-07-30
+Last updated: 2026-08-10
 
 ## Assumption-validation check-in
 
@@ -233,10 +233,14 @@ neither secret may enter source, frontend configuration, build arguments, or
 logs. Arbitrary server-code execution could still read both secrets; accepting
 that residual risk is specific to this free topology.
 
-Render Git-triggered deployments remain disabled. Vercel accepts automatic Git
-deployments only from `main`; preview branches are denied. Cross-contract
-releases remain backend-first because a failed or backward-incompatible Flyway
-migration cannot be rolled back by Render health gating after it changes the
-shared database. Future schema changes must use expand/contract releases, with
-an operator backup, a manual backend deployment before merge, and public-origin
-smoke checks as documented in `docs/operations/FREE_TIER_DEPLOYMENT.md`.
+Render Git-triggered deployments remain disabled. The repository enables
+automatic Vercel Git deployments only for `main` and suppresses automatic
+preview builds for other branch names. Manual Vercel deployments remain an
+operator-controlled path; deployments built from this repository configuration
+use the same production API rewrite.
+Cross-contract releases remain backend-first because a failed or
+backward-incompatible Flyway migration cannot be rolled back by Render health
+gating after it changes the shared database. Future schema changes must use
+expand/contract releases, with an operator backup, a manual backend deployment
+before merge, and public-origin smoke checks as documented in
+`docs/operations/FREE_TIER_DEPLOYMENT.md`.

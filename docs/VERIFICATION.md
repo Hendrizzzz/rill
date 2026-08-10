@@ -2,13 +2,49 @@
 
 ## Authoritative release verification
 
-Last reconciled: 2026-07-30 (Asia/Manila)
+Last reconciled: 2026-08-10 (Asia/Manila)
 
 Source binding: this record applies to the source in the same Git commit.
 Provider-specific deployed commits and live observations are identified in the
-dated deployment sections. The 2026-07-28 local matrix remains historical
-baseline evidence; the 2026-07-30 sections contain the current deployment and
-post-review delta evidence.
+dated deployment sections. The current section below contains the latest
+provider observation. Earlier dated sections are retained as historical
+evidence and do not describe the present deployment state.
+
+### 2026-08-10 public deployment and release policy
+
+The last independently observed production frontend was live at
+`https://typewriting-three.vercel.app`. Vercel recorded a successful Production
+deployment for merged `main` commit
+`bbb6a2b3e81ead0d2f2d58d8ad1d2b01ccc3d7f5`; the live `/build.json` returned
+`source-450378d503e61c56` and the deployed HTML, JavaScript, CSS, and build
+manifest matched a fresh local build from that commit byte for byte.
+
+`frontend/vercel.json` enables automatic Git deployment for `main` and
+suppresses automatic preview builds for flat and slash-containing branch
+names. This is deployment-trigger policy, not an access-control boundary:
+manual Dashboard, CLI, or API deployments remain possible for an operator and
+deployments built from this repository configuration use the same production
+Render API rewrite. Render Git-triggered deployment remains disabled so backend
+and database changes keep the backend-first release sequence documented in
+`docs/operations/FREE_TIER_DEPLOYMENT.md`.
+
+The OWASP Dependency-Check gate suppresses `CVE-2026-66299` only for the
+`tomcat-embed-core` and `tomcat-embed-websocket` artifacts to which the scanner
+maps it. Apache identifies the issue in Tomcat's optional WebSocket chat example
+and states that installations without the examples application are not
+affected; Rill's embedded Spring Boot application does not package that
+application. This is a documented non-applicability suppression, not a claim
+that Tomcat 11.0.24 has remediated the issue.
+
+Current-source local checks on 2026-08-10 passed `npm audit
+--audit-level=high`, typecheck, lint, 267 Vitest cases with coverage, corpus
+validation, production build, six Vercel-policy tests, two backend manifest
+tests, and the OWASP scan against refreshed vulnerability data. The two browser
+regressions from the prior CI run—paper-theme prompt and accent contrast—passed
+8/8 focused cases across Chromium, Firefox, WebKit, and mobile Chromium after
+the token correction. The full backend integration suite was not rerun locally
+because Docker was unavailable; the GitHub runner remains authoritative for
+that Testcontainers gate.
 
 ### Verified baseline gates
 
@@ -79,15 +115,14 @@ were automatically removed after the Maven processes exited.
 - History/export retain the code language and statistics, not the exact
   exercise ID; per-algorithm progression is deferred.
 - No physical mobile keyboard, real screen reader, low-end-device benchmark,
-  public Vercel deployment, off-host restore, distributed rate limiter, or
-  multi-user load test was available. The Render API has since been verified
-  over public TLS as recorded below.
+  off-host restore, distributed rate limiter, or multi-user load test was
+  available. The public Vercel frontend and Render API have since been verified
+  over TLS as recorded in the dated deployment sections.
 - The earlier pinned-Monkeytype 10,000-trace parity campaign and broader
   Dependency-Check/Compose security evidence remain recorded below but were not
   rerun for this code-learning increment.
 - Commit, push, CI, and provider claims are made only where a dated section
-  records the exact source or run. Vercel is explicitly excluded until its
-  account-controlled two-factor challenge is completed.
+  records the exact source or run.
 
 Historical release run date: 2026-07-26
 
@@ -360,8 +395,8 @@ hardware, networks, assistive technology, or production traffic.
 - The GitHub Actions workflow was expanded and locally inspected but was not
   executed on GitHub.
 - No physical mobile software keyboard or real screen reader was available.
-- No public deployment, TLS certificate, DNS, firewall, registry, or off-host
-  monitoring/backup was configured.
+- At the 2026-07-26 run, no public deployment, TLS certificate, DNS, firewall,
+  registry, or off-host monitoring/backup was configured.
 - No multi-user backend load test or worst-case 1,000-result export benchmark
   was run.
 - UI modules remain lightly covered by Vitest; the behavior is exercised through
@@ -541,12 +576,13 @@ backend API integration assertions compiled but were not executed against
 PostgreSQL because this run deliberately did not start or alter the user's
 Docker services.
 
-## 2026-07-30 zero-cost deployment preparation
+## Historical: 2026-07-30 zero-cost deployment preparation
 
-The repository now contains a Render Blueprint for the Spring Boot API, a
+The repository then gained a Render Blueprint for the Spring Boot API, a
 Vercel project configuration for the Vite frontend and same-origin API rewrite,
 and a Neon/Render/Vercel operator runbook. Git-triggered provider deployments
-are disabled so the backend can be released and verified before the frontend.
+were initially disabled so the backend could be released and verified before
+the frontend. The current Vercel policy is recorded at the top of this file.
 Render startup requires certificate/hostname-verified PostgreSQL TLS with
 channel binding and the JVM trust store, uses separate Flyway and runtime
 credentials, and retains at most 100 results per account.
@@ -588,10 +624,11 @@ The browser run used an isolated production preview on port 4174. Its exact
 process was stopped afterward and the port was confirmed released. Port 4173,
 Docker, and the user's other running sessions were not changed.
 
-Neon and Render have since accepted the production database and API
-configuration. The Vercel project and public same-origin browser checks remain
-blocked by the account's two-factor authentication gate. The provider evidence
-and exact remaining boundary are recorded below.
+At that point Neon and Render had accepted the production database and API
+configuration, while the Vercel project and public same-origin browser checks
+remained blocked by the account's two-factor authentication gate. That Vercel
+block was later resolved; the current provider evidence is recorded at the top
+of this file.
 
 ## 2026-07-30 subsecond scoring and persistence boundary
 
@@ -801,9 +838,8 @@ reveals it again and switches account modes; both boundaries restore
 `type="password"`, an empty value, and `aria-pressed="false"`. The focused
 Chromium test passed after the fix.
 
-Vercel is not deployed or claimed verified. GitHub authentication reaches
-Vercel's six-digit authenticator challenge, and this environment has neither a
-Vercel CLI session nor `VERCEL_TOKEN`. Until that account-controlled step is
-completed, the Vercel production URL, same-origin rewrite, security headers,
-SPA deep links, host-only cookie scope, and public browser workflows remain
-unverified.
+At the time of this 2026-07-30 check, Vercel was not deployed or claimed
+verified because GitHub authentication reached Vercel's six-digit authenticator
+challenge and the environment had neither a Vercel CLI session nor
+`VERCEL_TOKEN`. That historical limitation was later resolved; the current
+production verification is recorded at the top of this file.
