@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { minimatch } from "minimatch";
 
 import configJson from "../../vercel.json";
 
@@ -16,10 +17,29 @@ interface VercelConfig {
 
 const config = configJson as VercelConfig;
 
+function automaticDeploymentIsEnabled(branch: string): boolean {
+  const matchingRules = Object.entries(config.git.deploymentEnabled).filter(
+    ([pattern]) => minimatch(branch, pattern),
+  );
+
+  return matchingRules.length === 0 || matchingRules.some(([, enabled]) => enabled);
+}
+
 describe("Vercel deployment policy", () => {
-  it("deploys main automatically without creating branch previews", () => {
+  it("deploys main automatically", () => {
+    expect(automaticDeploymentIsEnabled("main")).toBe(true);
+  });
+
+  it.each(["feature", "agent/fix", "release/2026/august"])(
+    "suppresses automatic preview deployment for %s",
+    (branch) => {
+      expect(automaticDeploymentIsEnabled(branch)).toBe(false);
+    },
+  );
+
+  it("keeps one broad deny rule and the explicit main override", () => {
     expect(config.git.deploymentEnabled).toEqual({
-      "*": false,
+      "**": false,
       main: true,
     });
   });

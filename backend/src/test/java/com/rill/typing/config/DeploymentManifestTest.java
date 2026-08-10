@@ -114,7 +114,7 @@ class DeploymentManifestTest {
                         .readTree(repository.resolve("frontend/vercel.json").toFile());
         JsonNode deploymentEnabled = vercel.get("git").get("deploymentEnabled");
         assertThat(deploymentEnabled.size()).isEqualTo(2);
-        assertThat(deploymentEnabled.get("*").booleanValue()).isFalse();
+        assertThat(deploymentEnabled.get("**").booleanValue()).isFalse();
         assertThat(deploymentEnabled.get("main").booleanValue()).isTrue();
         JsonNode rewrites = vercel.get("rewrites");
         assertThat(rewrites).isNotNull();
@@ -201,6 +201,7 @@ class DeploymentManifestTest {
                 .contains("-DautoUpdate=false")
                 .contains("-DfailBuildOnCVSS=7")
                 .contains("-DdataDirectory=\"$RUNNER_TEMP/dependency-check-data\"")
+                .contains("-DsuppressionFiles=dependency-check-suppressions.xml")
                 .contains("-DossindexAnalyzerEnabled=false");
 
         Map<String, Object> upload =

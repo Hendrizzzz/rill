@@ -1935,8 +1935,8 @@ kbd {
   --ink: #171916;
   --muted: #6c6a61;
   --faint: #c9c3b5;
-  --prompt-pending: #77756c;
-  --accent: #df3f27;
+  --prompt-pending: #6f6d65;
+  --accent: #c93722;
   --error: #b72b21;
   --success: #24704c;
   --page-gutter: clamp(1.25rem, 4vw, 4.75rem);
