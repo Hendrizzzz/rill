@@ -1,11 +1,11 @@
 # Code-learning corpus
 
-Status: release-1 content policy  
-Last updated: 2026-07-28
+Status: code-v4 content policy
+Last updated: 2026-08-10
 
 ## Scope
 
-Rill bundles 16 familiar interview-algorithm patterns:
+Rill bundles 32 familiar algorithm concepts:
 
 1. duplicate detection
 2. palindrome checking
@@ -23,10 +23,32 @@ Rill bundles 16 familiar interview-algorithm patterns:
 14. first-unique-character lookup
 15. Euclid's greatest-common-divisor algorithm
 16. constant-space stair-count dynamic programming
+17. linear search
+18. minimum scanning
+19. occurrence counting
+20. sorted-order checking
+21. iterative factorial
+22. square-root-bounded prime checking
+23. prefix-sum construction
+24. maximum-subarray dynamic programming
+25. iterative Fibonacci calculation
+26. decimal digit summation
+27. set-bit counting
+28. lower-bound binary search
+29. second-distinct-maximum tracking
+30. Boyer-Moore majority voting
+31. longest contiguous increasing-run scanning
+32. distinct-value counting in sorted input
 
-Each pattern has four named repetition drills in C++, Java, Python 3, C, C#,
-JavaScript, TypeScript, and Go. This produces 512 drills, but only 16 distinct
-algorithm patterns. The product UI shows both counts.
+Each pattern is presented through 16 mnemonic contexts, including a cinema night,
+recording studio, orbital mission, road trip, community garden, repair
+workshop, newsroom, cafe, and study session. Identifiers and the short learning
+frame change with the setting while the algorithmic invariant stays explicit.
+Across C++, Java, Python 3, C, C#, JavaScript, TypeScript, and Go this produces
+4,096 contextual typing drills, but still only 32 distinct algorithm concepts.
+These contexts are memory cues rather than claims that each algorithm models a
+real task in the named setting. The product UI reports the 512 drills available
+for the selected language alongside concept and context counts.
 
 The eight languages are a deliberate popular subset of LeetCode's broader
 runtime catalog. This is a scope decision, not a claim that these are the only
@@ -73,9 +95,11 @@ Every drill must:
 - remain short enough to practise as one focused typing test; and
 - avoid placeholder text and incomplete pseudocode.
 
-Four variants of one pattern intentionally repeat the same implementation with
-a different function name. This is spaced repetition, not additional algorithm
-coverage.
+Scenario variants intentionally retain the same algorithm while changing its
+application frame, function name, and core identifiers. This is contextual
+spaced repetition, not additional algorithm coverage. New concept counts may
+only be increased by adding a genuinely different algorithm and its verified
+implementations.
 
 The drills are function-focused fragments, matching the concise editor format
 used by interview-practice sites. C, C++, Java, C#, and Go fragments assume the
@@ -98,4 +122,5 @@ Before adding or changing a pattern:
 
 Completed results persist the corpus/scoring identity. Historical pre-release
 code results are `code-v1`; automatic structural indentation and four-space
-emission are `code-v2`. Personal records keep those versions separate.
+emission are `code-v2`; the first contextual learning corpus is `code-v3`; the
+32-concept expansion is `code-v4`. Personal records keep those versions separate.

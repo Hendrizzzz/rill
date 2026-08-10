@@ -28,14 +28,17 @@ The product must feel:
 - Optional punctuation and numbers.
 - Deterministic, seeded prompt generation from bundled English and Spanish word
   lists.
-- A small, attributed corpus of public-domain English quotations.
+- A curated corpus of 1,030 English quotations: 906 attributed public-domain
+  literary excerpts and 124 project-original Rill entries, including concise
+  observations and longer narrative micro-scenes.
 - Plain custom text (2–300 words, at most 2,000 characters) held only in the
   active browser tab; prompt text is never persisted or uploaded.
-- Code practice built from 16 common interview-algorithm patterns, repeated as
-  four named drills in each of C++, Java, Python 3, C, C#, JavaScript,
-  TypeScript, and Go (512 drills total). Every implementation and teaching note
-  is authored for Rill; no third-party problem statement, editorial, or
-  submission is bundled.
+- Code practice built from 32 common algorithm concepts in 16
+  mnemonic contexts across C++, Java, Python 3, C, C#, JavaScript, TypeScript,
+  and Go (4,096 contextual drills total; 512 per language). Every implementation and teaching
+  note is authored for Rill; no third-party problem statement, editorial, or
+  submission is bundled. Contextual drills are not presented as distinct
+  algorithms.
 - Code practice renders source on a four-space indentation grid, automatically
   positions the caret at the next line's first typable character, uses Enter as
   a scored line boundary, and excludes structural indentation from typing

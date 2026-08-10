@@ -1,5 +1,109 @@
 # Rill verification record
 
+## Unreleased content-expansion candidate
+
+Verified locally: 2026-08-10 (Asia/Manila)
+
+Scope: the committed `agent/content-expansion` candidate rebased onto the
+current `origin/main`. This section is local evidence, not a claim about GitHub
+Actions or either public deployment.
+
+- `quote-v3` contains 1,030 entries: 906 linked public-domain literary excerpts
+  and 124 project-original entries. Corpus tests check exact counts, IDs,
+  normalized text uniqueness, lengths, themes, rights labels, balanced quotation
+  marks, source distribution, attributions, HTTPS source URLs, common fragment
+  artifacts, and a semantic fingerprint of every persisted quote field. The
+  25 downloaded editions are protected by pinned source SHA-256 values.
+  Two consecutive generator runs produced the same literary-corpus SHA-256,
+  `AED191DC654A822452C67CC2F4EC2AE002832E29F9DDB92A82C89575CDF69350`.
+- `code-v4` contains 32 distinct algorithm concepts, 16 mnemonic contexts,
+  and eight language implementations: 4,096 contextual drills total and 512
+  per selected language. Context changes are not counted as additional
+  algorithms.
+- Bundled Node 24 ran the TypeScript project build (`tsc -b`), ESLint, and the
+  complete Vitest suite.
+  Type checking and lint returned exit 0; Vitest passed 279 tests in 20 files
+  with zero failures. `vite build` transformed 106 modules and emitted 511.68
+  kB JavaScript (156.36 kB gzip) and 40.57 kB CSS (8.82 kB gzip). Vite reported
+  its default warning for a raw chunk above 500 kB; the corpus uses compact
+  source metadata and excerpt strings, but remains eagerly available so prompt
+  creation stays synchronous without a runtime fetch or loading state.
+- `node scripts/validate-code-corpus.mjs` parsed all 512 JavaScript drills and
+  type-checked all 512 TypeScript drills with `strict: true`. Both languages
+  passed 1,120 shared behavior cases covering every concept in every contextual
+  setting.
+  All 512 Python 3 drills compiled, and all 512 Java
+  drills compiled inside the validator wrapper. C, C++, C#, and Go were skipped
+  because operational local toolchains were unavailable; no local compilation
+  is claimed for those languages. The workflow now sets
+  `RILL_REQUIRE_ALL_CODE_TOOLCHAINS=true`, turning any such skip into a CI
+  failure instead of silently accepting reduced language coverage.
+- `backend/mvnw.cmd clean -DskipTests package` produced the repackaged Spring Boot
+  JAR with `BUILD SUCCESS`. A targeted non-container suite covering security
+  configuration, production database safety, deployment metadata, principal
+  resolution, authentication throttling, and unique Flyway version numbering
+  passed 13 tests with zero
+  failures, errors, or skips.
+- Browser automation used a separate `http://127.0.0.1:4174` preview and did
+  not touch the existing Docker services or server session. At 320, 375, 640,
+  768, 1024, and 1440 CSS pixels, the code-language/corpus control was visible,
+  stayed within the viewport, and produced no horizontal page overflow. Code
+  and quote modes both loaded the new corpus metadata, mobile learning copy
+  remained visible, quote provenance rendered as a safe external link, and the
+  browser console contained no warning or error entries. The isolated preview
+  had no API on port 8080, so its session proxy logged `ECONNREFUSED` and the UI
+  correctly remained in guest mode; account flows were not part of this check.
+- Two repository Playwright scenarios then passed in headless Chromium against
+  the same isolated preview: the line-aware responsive code-learning test
+  (including axe, three themes, and six viewports) and the attributed-quote,
+  Spanish custom-text, and strict-error workflow. Each ran with one worker and
+  zero failures. The runner emitted only its environment-level notice that
+  `NO_COLOR` was ignored because `FORCE_COLOR` was set.
+- A fresh `npm audit --audit-level=high` initially found high-severity advisories
+  in the locked transitive `brace-expansion` 5.0.8 and `nanoid` 3.3.16 packages.
+  The lockfile now resolves 5.0.9 and 3.3.18 respectively; the repeated audit
+  reported `found 0 vulnerabilities`. No runtime dependency was added.
+- PostgreSQL/Flyway integration tests, C/C++/C#/Go compiler checks, the full
+  Playwright project matrix, the backend Dependency-Check and broader security
+  scans, public deployment, and GitHub Actions have not been run for this
+  uncommitted candidate. Existing
+  Docker-backed sessions were deliberately left undisturbed.
+
+### Five-specialist audit disposition
+
+Five independent specialists reviewed the implemented candidate from distinct
+perspectives; their recommendations were evaluated against the code and tests:
+
+1. **Quote provenance and copyright:** accepted the public-domain/original
+   boundary, then strengthened it with pinned Gutenberg source hashes, HTTPS
+   assertions, deterministic corpus fingerprinting, and explicit wording that
+   the generated bank is not a claim of human-curated "greatest" quotations.
+2. **Algorithm correctness and teaching claims:** accepted the concept model;
+   fixed Python and JavaScript/TypeScript slice allocations in two drills whose
+   metadata promised constant auxiliary space, clarified the set-bit input
+   assumption, and added cross-language seed sentinels. Independent specialist
+   execution also passed 272 Python and 128 Java cases for the eight newest
+   concepts; this is supplemental review evidence, not part of the checked-in
+   validator.
+3. **Backend versioning and data integrity:** accepted the version partition;
+   confirmed unique Flyway V1-V10 numbering after the migration rename, added
+   a quote-v1/v2/v3 result-partition regression, and fixed omitted legacy quote
+   clients to normalize to `quote-v1`. The V10 constraint replacement may scan
+   the result table; it is accepted for the current small dataset but should be
+   scheduled deliberately once the table is large.
+4. **Frontend performance, usability, and accessibility:** accepted synchronous
+   prompt construction at the measured 156.36 kB gzip bundle size, while
+   retaining Vite's raw-size warning as visible evidence. Material code-input
+   assumptions are now visible rather than screen-reader-only and are covered
+   at six viewport sizes.
+5. **Release-gap review:** rejected the first automatically selected excerpt
+   set because it admitted abbreviation splits, incomplete dialogue, and OCR
+   artifacts. Those filters and regression tests were added and the evidence
+   above was regenerated. The reviewer also identified a two-commit base lag;
+   the branch was rebased cleanly and the complete local gate set was rerun.
+   Green CI remains the release gate for Docker-backed PostgreSQL and the full
+   language/browser matrix.
+
 ## Authoritative release verification
 
 Last reconciled: 2026-08-10 (Asia/Manila)

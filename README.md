@@ -4,11 +4,13 @@ Rill is a quiet, keyboard-first typing practice application. The typing loop
 runs entirely in the browser; an optional account preserves results across
 devices through a Spring Boot API.
 
-The product includes word and timed tests, English and Spanish word lists,
-attributed public-domain quotes, tab-private custom text, strict error behavior,
-punctuation and number modifiers, and an original code-learning corpus with 16
-common algorithm patterns rendered as 512 drills across C++, Java, Python 3, C,
-C#, JavaScript, TypeScript, and Go. It also includes deterministic prompts,
+The product includes word and timed tests, English and Spanish word lists, 1,030
+attributed public-domain or Rill-original quotations, tab-private custom text,
+strict error behavior, punctuation and number modifiers, and an original
+code-learning corpus with 32 algorithm concepts placed in 16 mnemonic contexts
+across C++, Java, Python 3, C, C#, JavaScript, TypeScript, and Go. That produces
+4,096 contextual typing drills, not 4,096 distinct algorithms. It also includes
+deterministic prompts,
 restart shortcuts, detailed scoring, three original themes, guest history,
 account history, JSON export, and password-confirmed account deletion. It does
 not send a request for each keystroke.

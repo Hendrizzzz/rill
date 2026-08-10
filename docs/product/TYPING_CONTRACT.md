@@ -364,7 +364,7 @@ After committing `cat`, any additional space while the next `currentInput` is em
 ## Prompt supply and identity
 
 - Prompt identity is `(seed, wordListVersion, generatorVersion, config)`.
-- Release 1 uses `en-v1`, `es-v1`, `quote-v1`, `custom-v1`, and `code-v2`,
+- The current release uses `en-v1`, `es-v1`, `quote-v3`, `custom-v1`, and `code-v4`,
   all with `generatorVersion = 1`.
 - Word modes generate exactly the configured number of words.
 - Time modes generate 500 words, enough for a 500-WPM 60-second run at one word per five-character WPM unit. If fewer than 60 words remain, the deterministic generator appends another 250 without resetting its PRNG.
@@ -373,12 +373,12 @@ After committing `cat`, any additional space while the next `currentInput` is em
   visual line when the active word reaches the third row. Near the end of the
   bounded window, it rebases on a complete row boundary. Stable prompt indices
   are React keys.
-- Quote prompts select deterministically from the bundled, attributed
-  public-domain corpus.
-- Code prompts select deterministically from `code-v2`: 16 common algorithm
-  patterns, four repetition drills per pattern, in eight programming languages
-  (512 drills total). The UI states both counts so drills are not misrepresented
-  as distinct algorithms.
+- Quote prompts select deterministically from `quote-v3`: 906 attributed
+  public-domain literary excerpts and 124 documented Rill-original entries.
+- Code prompts select deterministically from `code-v4`: 32 common algorithm
+  concepts in 16 mnemonic contexts and eight programming languages (4,096
+  drills total; 512 per language). The UI states selected-language drills, concepts, and contexts
+  separately so contextual repetition is not misrepresented as new algorithms.
 - Code snippets, titles, invariant notes, and complexity labels are original
   Rill content. No LeetCode statement, example, editorial, source code, user
   submission, branding, or proprietary asset is included. The corpus is bundled
@@ -406,7 +406,8 @@ After committing `cat`, any additional space while the next `currentInput` is em
   contentType, language, codeLanguage, wordListVersion, errorPolicy)`.
 - Every result persists `wordListVersion` as the corpus/scoring contract
   identity. Pre-release code results without the field migrate to `code-v1`;
-  structural-indentation results use `code-v2`, so their records never compete.
+  structural-indentation results use `code-v2`; the first contextual corpus uses
+  `code-v3`; the expanded corpus uses `code-v4`, so their records never compete.
 - Record ordering is WPM descending, accuracy descending, then earliest completion timestamp.
 
 ## Accessibility behavior

@@ -184,11 +184,12 @@ Bounds and invariants:
   `EN` and one of `CPP`, `JAVA`, `PYTHON3`, `C`, `CSHARP`, `JAVASCRIPT`,
   `TYPESCRIPT`, or `GO`;
 - `wordListVersion` is the corpus/scoring contract identity: `en-v1` or
-  `es-v1` for word lists, `quote-v1`, `custom-v1`, or `code-v1`/`code-v2`.
+  `es-v1` for word lists, `quote-v1`/`quote-v2`/`quote-v3`, `custom-v1`, or
+  `code-v1`/`code-v2`/`code-v3`/`code-v4`.
   It must match the content dimensions. Current clients send it; an omitted
-  value is accepted only for pre-V8 compatibility. Omitted code results are
-  classified as legacy `code-v1`; other omitted values are inferred from their
-  content/language dimensions;
+  value is accepted only for pre-V8 compatibility. Omitted code and quote
+  results are classified as legacy `code-v1` and `quote-v1` respectively;
+  other omitted values are inferred from their content/language dimensions;
 - `WORDS` content uses `TIME` with 15/30/60 or `WORDS` with 10/25/50;
 - `QUOTE`, `CUSTOM`, and `CODE` use `WORDS` mode with the actual prompt word or
   line count from 2–300, and both modifiers false. The bundled quote and code
@@ -268,6 +269,10 @@ V8 persists `word_list_version`, backfills historical code rows as `code-v1`
 and other rows from their content/language dimensions, and partitions records
 by the version so results from different corpus/scoring contracts do not
 compete.
+V9 rejects new word-mode results shorter than one second at the database layer,
+matching the API's persistence threshold. V10 expands the corpus-version check
+to retain quote v1-v2 and code v1-v3 records while accepting current
+`quote-v3` and `code-v4` results.
 
 First creation: `201` with canonical `TypingResult`, including the persisted
 `completionReason` and `wordListVersion`.
