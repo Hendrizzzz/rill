@@ -23,8 +23,8 @@ Actions or either public deployment.
 - Bundled Node 24 ran the TypeScript project build (`tsc -b`), ESLint, and the
   complete Vitest suite.
   Type checking and lint returned exit 0; Vitest passed 279 tests in 20 files
-  with zero failures. `vite build` transformed 106 modules and emitted 511.68
-  kB JavaScript (156.36 kB gzip) and 40.57 kB CSS (8.82 kB gzip). Vite reported
+  with zero failures. `vite build` transformed 106 modules and emitted 511.77
+  kB JavaScript (156.38 kB gzip) and 40.78 kB CSS (8.85 kB gzip). Vite reported
   its default warning for a raw chunk above 500 kB; the corpus uses compact
   source metadata and excerpt strings, but remains eagerly available so prompt
   creation stays synchronous without a runtime fetch or loading state.

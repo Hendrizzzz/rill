@@ -457,22 +457,6 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.code-prompt-learning {
-  min-width: 0;
-  line-height: 1.55;
-}
-
-.code-prompt-learning p {
-  color: color-mix(in srgb, var(--code-text), transparent 12%);
-}
-
-.code-prompt-learning small {
-  display: block;
-  margin-top: 0.25rem;
-  color: var(--code-comment);
-  font-size: 0.62rem;
-}
-
 .code-prompt-facts {
   margin: 0;
   display: grid;
@@ -2284,7 +2268,7 @@ body {
   height: 3.5rem;
   padding: 0 0.25rem 0.7rem;
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.1fr) auto;
+  grid-template-columns: minmax(12rem, 1fr) auto;
   align-items: end;
   gap: 1.5rem;
   border: 0;
@@ -2306,19 +2290,32 @@ body {
   line-height: 1.1;
 }
 
-.code-prompt-learning {
-  overflow: hidden;
+.code-learning-notes {
+  min-width: 0;
+  margin: 0.55rem 0.25rem 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
   color: var(--muted);
   font-size: 0.65rem;
   line-height: 1.45;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.code-prompt-learning p {
+.code-learning-notes p,
+.code-learning-notes small {
+  min-width: 0;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+}
+
+.code-learning-notes p {
+  color: color-mix(in srgb, var(--code-text), transparent 12%);
+}
+
+.code-learning-notes small {
+  color: var(--code-comment);
+  font-size: 0.62rem;
+  text-align: right;
 }
 
 .code-prompt-facts {
@@ -2399,19 +2396,15 @@ body {
   }
 
   .prompt-context:has(.code-prompt-intro) {
-    height: 4.75rem;
+    height: 3.5rem;
   }
 
   .code-prompt-intro {
-    height: 4.75rem;
+    height: 3.5rem;
+    padding-bottom: 0.45rem;
     grid-template-columns: minmax(10rem, 1fr) auto;
-    grid-template-rows: auto auto;
-    gap: 0.3rem 1rem;
-  }
-
-  .code-prompt-learning {
-    display: block;
-    grid-column: 1 / -1;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 1rem;
   }
 
   .code-prompt-facts {
@@ -2519,14 +2512,14 @@ body {
     height: 3rem;
   }
 
-  .prompt-context:has(.code-prompt-intro),
-  .code-prompt-intro {
-    height: auto;
-    min-height: 5rem;
+  .prompt-context:has(.code-prompt-intro) {
+    height: 3rem;
+    overflow: hidden;
   }
 
-  .prompt-context:has(.code-prompt-intro) {
-    overflow: visible;
+  .code-prompt-intro {
+    height: 3rem;
+    min-height: 0;
   }
 
   .prompt-focus-surface,
@@ -2542,17 +2535,39 @@ body {
   }
 
   .code-prompt-intro {
-    padding-bottom: 0.55rem;
+    padding-bottom: 0.35rem;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.1rem;
   }
 
-  .code-prompt-learning {
-    white-space: normal;
+  .code-prompt-title {
+    overflow: hidden;
   }
 
-  .code-prompt-learning p {
-    overflow: visible;
-    text-overflow: clip;
+  .code-prompt-title > p {
+    width: 100%;
+    margin: 0 0 0.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .code-prompt-title h2 {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .code-learning-notes {
+    margin-top: 0.65rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+
+  .code-learning-notes small {
+    text-align: left;
   }
 
   .code-prompt-facts {
