@@ -420,6 +420,9 @@ test.describe("guest typing", () => {
     await expect(timer).toHaveAttribute("aria-live", "off");
     await expect(timer).toContainText("seconds remaining");
     for (const theme of ["paper", "nocturne", "tide"]) {
+      while ((await page.locator("html").getAttribute("data-theme")) !== theme) {
+        await page.getByRole("button", { name: /Theme:/ }).click();
+      }
       await expect(
         page.getByRole("button", {
           name: new RegExp(`Theme: ${theme}`),
@@ -427,7 +430,6 @@ test.describe("guest typing", () => {
       ).toBeVisible();
       const initial = await new AxeBuilder({ page }).analyze();
       expect(initial.violations).toEqual([]);
-      await page.getByRole("button", { name: new RegExp(`Theme: ${theme}`) }).click();
     }
 
     await completeTenWords(page);
@@ -455,8 +457,9 @@ test.describe("guest typing", () => {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    await page.getByRole("button", { name: /Theme: paper/ }).click();
     await expect(page.getByRole("button", { name: /Theme: nocturne/ })).toBeVisible();
+    await page.getByRole("button", { name: /Theme: nocturne/ }).click();
+    await expect(page.getByRole("button", { name: /Theme: tide/ })).toBeVisible();
   });
 
   test("keeps prompt type fixed and wraps it across the viewport matrix", async ({

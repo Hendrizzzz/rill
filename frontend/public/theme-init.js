@@ -1,8 +1,9 @@
 try {
   const theme = localStorage.getItem("rill.theme.v1");
-  if (theme === "nocturne" || theme === "tide") {
-    document.documentElement.dataset.theme = theme;
-  }
+  document.documentElement.dataset.theme =
+    theme === "paper" || theme === "nocturne" || theme === "tide"
+      ? theme
+      : "nocturne";
 } catch {
-  // The application will use the Paper theme when storage is unavailable.
+  document.documentElement.dataset.theme = "nocturne";
 }

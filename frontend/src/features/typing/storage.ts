@@ -479,9 +479,9 @@ export function saveTestConfig(config: TestConfig): boolean {
 export function loadTheme(): ThemeName {
   try {
     const theme = localStorage.getItem(THEME_KEY);
-    return theme === "nocturne" || theme === "tide" ? theme : "paper";
+    return theme === "paper" || theme === "tide" ? theme : "nocturne";
   } catch {
-    return "paper";
+    return "nocturne";
   }
 }
 

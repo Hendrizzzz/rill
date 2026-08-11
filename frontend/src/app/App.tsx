@@ -39,7 +39,7 @@ function AppFrame() {
 
   const cycleTheme = () => {
     const index = THEMES.indexOf(theme);
-    setTheme(THEMES[(index + 1) % THEMES.length] ?? "paper");
+    setTheme(THEMES[(index + 1) % THEMES.length] ?? "nocturne");
   };
 
   return (
