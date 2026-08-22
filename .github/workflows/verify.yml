@@ -90,7 +90,7 @@ jobs:
             -DsuppressionFiles=dependency-check-suppressions.xml \
             -DossindexAnalyzerEnabled=false
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-dependency-check
           path: backend/target/dependency-check-report.*
@@ -154,7 +154,7 @@ jobs:
       - run: npm run test:parity:oracle
       - run: npm run test:parity:campaign
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parity-smoke
           path: ${{ github.workspace }}/parity-smoke.json
@@ -192,7 +192,7 @@ jobs:
       - run: npm run test:parity:campaign
       - run: npm run parity:report
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parity-campaign
           path: |
@@ -259,7 +259,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: production-browser-and-image-evidence
           path: |
