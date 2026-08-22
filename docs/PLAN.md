@@ -1,4 +1,4 @@
-# Rill implementation and verification plan
+# TypeThock implementation and verification plan
 
 Status: implementation, hardening, and local verification complete
 Last updated: 2026-07-26
@@ -154,7 +154,7 @@ The OWASP dependency check may depend on an external vulnerability feed and can 
 
 Commits are only created if the user’s repository workflow permits it. Intended logical slices:
 
-1. `chore: establish rill project contracts and toolchains`
+1. `chore: establish typethock project contracts and toolchains`
 2. `feat: add deterministic guest typing experience`
 3. `feat: add secure accounts and result persistence`
 4. `feat: integrate history and account lifecycle`
@@ -172,7 +172,7 @@ Commits are only created if the user’s repository workflow permits it. Intende
 - 2026-07-26: upgraded the frontend directly from React Router 7.11 to
   React Router 8.3 after two independent advisory reviews. The current v8
   release clears the known advisory set, preserves the declarative APIs used by
-  Rill, and requires a Node 22.22 minimum; production and CI use Node 24.18.
+  TypeThock, and requires a Node 22.22 minimum; production and CI use Node 24.18.
 - 2026-07-26: final review lowered default account retention from 10,000 to
   1,000. A 64-KiB result body made the original worst-case export too expensive;
   summary now uses aggregate/record queries and export is separately rate

@@ -44,7 +44,7 @@ export interface ResultSummary {
   records: ResultRecord[];
 }
 
-export const SESSION_EXPIRED_EVENT = "rill:session-expired";
+export const SESSION_EXPIRED_EVENT = "typethock:session-expired";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 interface ServerResult
@@ -467,7 +467,7 @@ export async function downloadAccountExport(): Promise<{
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const filename =
     disposition.match(/filename="?([^";]+)"?/i)?.[1] ??
-    "rill-account-export.json";
+    "typethock-account-export.json";
   return { blob: await response.blob(), filename };
 }
 

@@ -39,14 +39,14 @@ function AppFrame() {
 
   const cycleTheme = () => {
     const index = THEMES.indexOf(theme);
-    setTheme(THEMES[(index + 1) % THEMES.length] ?? "paper");
+    setTheme(THEMES[(index + 1) % THEMES.length] ?? "nocturne");
   };
 
   return (
     <div className="app-frame">
       <header className="site-header">
-        <Link to="/" className="wordmark" aria-label="Rill home">
-          <span>Rill</span>
+        <Link to="/" className="wordmark" aria-label="TypeThock home">
+          <span>TypeThock</span>
           <small aria-hidden="true">typing practice</small>
         </Link>
         <nav aria-label="Primary navigation">

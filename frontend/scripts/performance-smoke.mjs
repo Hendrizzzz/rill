@@ -26,7 +26,7 @@ page.on("pageerror", (error) => {
 });
 
 await page.addInitScript(() => {
-  window.__rillPerformanceAudit = {
+  window.__typethockPerformanceAudit = {
     beforeInputFrames: [],
     cspViolations: [],
     eventTimings: [],
@@ -38,7 +38,7 @@ await page.addInitScript(() => {
     (event) => {
       const start = performance.now();
       requestAnimationFrame((frameTime) => {
-        window.__rillPerformanceAudit.beforeInputFrames.push({
+        window.__typethockPerformanceAudit.beforeInputFrames.push({
           inputType: event.inputType,
           duration: frameTime - start,
         });
@@ -47,7 +47,7 @@ await page.addInitScript(() => {
     { capture: true },
   );
   document.addEventListener("securitypolicyviolation", (event) => {
-    window.__rillPerformanceAudit.cspViolations.push({
+    window.__typethockPerformanceAudit.cspViolations.push({
       blockedURI: event.blockedURI,
       effectiveDirective: event.effectiveDirective,
       violatedDirective: event.violatedDirective,
@@ -57,7 +57,7 @@ await page.addInitScript(() => {
   if (PerformanceObserver.supportedEntryTypes.includes("longtask")) {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        window.__rillPerformanceAudit.longTasks.push({
+        window.__typethockPerformanceAudit.longTasks.push({
           startTime: entry.startTime,
           duration: entry.duration,
         });
@@ -67,7 +67,7 @@ await page.addInitScript(() => {
   if (PerformanceObserver.supportedEntryTypes.includes("layout-shift")) {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        window.__rillPerformanceAudit.layoutShifts.push({
+        window.__typethockPerformanceAudit.layoutShifts.push({
           startTime: entry.startTime,
           value: entry.value,
           hadRecentInput: entry.hadRecentInput,
@@ -78,7 +78,7 @@ await page.addInitScript(() => {
   if (PerformanceObserver.supportedEntryTypes.includes("event")) {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        window.__rillPerformanceAudit.eventTimings.push({
+        window.__typethockPerformanceAudit.eventTimings.push({
           name: entry.name,
           startTime: entry.startTime,
           duration: entry.duration,
@@ -153,7 +153,7 @@ try {
     }) => {
       const navigation = performance.getEntriesByType("navigation")[0];
       const resources = performance.getEntriesByType("resource");
-      const audit = window.__rillPerformanceAudit;
+      const audit = window.__typethockPerformanceAudit;
       const afterTyping = (entry) => entry.startTime >= typingStart;
       const duringTyping = (entry) =>
         entry.startTime >= typingStart && entry.startTime <= typingEnd;

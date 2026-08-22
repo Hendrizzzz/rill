@@ -158,7 +158,7 @@ export function TypingPage() {
 
   return (
     <main className={`test-page test-page--${state.status}`}>
-      <h1 className="sr-only">Rill typing test</h1>
+      <h1 className="sr-only">TypeThock typing test</h1>
       {state.status !== "completed" ? (
         <>
           <TestControls

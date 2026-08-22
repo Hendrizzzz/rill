@@ -15,11 +15,11 @@ interface PendingEntry {
   result: TypingResult;
 }
 
-const KEY = "rill.pending-account-results.v2";
-const LEGACY_KEY = "rill.pending-account-results.v1";
+const KEY = "typethock.pending-account-results.v2";
+const LEGACY_KEY = "typethock.pending-account-results.v1";
 const MAX_PENDING = 20;
 const MAX_TOTAL_PENDING = 100;
-export const PENDING_RESULTS_CHANGED_EVENT = "rill:pending-results-changed";
+export const PENDING_RESULTS_CHANGED_EVENT = "typethock:pending-results-changed";
 export type QueueOutcome = "queued" | "duplicate" | "full" | "unavailable";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

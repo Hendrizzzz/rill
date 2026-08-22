@@ -50,7 +50,7 @@ const result: TypingResult = {
 
 describe("typing local storage", () => {
   it("falls back from corrupt configuration", () => {
-    localStorage.setItem("rill.test-config.v1", "{broken");
+    localStorage.setItem("typethock.test-config.v1", "{broken");
     expect(loadTestConfig()).toEqual(DEFAULT_CONFIG);
   });
 
@@ -70,7 +70,7 @@ describe("typing local storage", () => {
 
   it("migrates the legacy configuration to explicit default dimensions", () => {
     localStorage.setItem(
-      "rill.test-config.v1",
+      "typethock.test-config.v1",
       JSON.stringify({
         mode: "words",
         modeValue: 50,
@@ -112,7 +112,7 @@ describe("typing local storage", () => {
       language: "es",
       errorPolicy: "strict",
     });
-    expect(localStorage.getItem("rill.test-config.v2")).not.toContain("custom");
+    expect(localStorage.getItem("typethock.test-config.v2")).not.toContain("custom");
   });
 
   it("migrates v2 guest results to the original words-mode dimensions", () => {
@@ -121,7 +121,7 @@ describe("typing local storage", () => {
     Reflect.deleteProperty(legacy, "language");
     Reflect.deleteProperty(legacy, "errorPolicy");
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({ version: 2, results: [legacy] }),
     );
 
@@ -136,7 +136,7 @@ describe("typing local storage", () => {
     };
     Reflect.deleteProperty(legacyCode, "wordListVersion");
     localStorage.setItem(
-      "rill.guest-results.v4",
+      "typethock.guest-results.v4",
       JSON.stringify({ version: 4, results: [legacyCode] }),
     );
 
@@ -206,7 +206,7 @@ describe("typing local storage", () => {
 
   it("drops structurally plausible results with invalid dates", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [{ ...result, completedAt: "not-a-date" }],
@@ -218,7 +218,7 @@ describe("typing local storage", () => {
 
   it("rejects structurally valid results with fabricated derived metrics", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [
@@ -237,7 +237,7 @@ describe("typing local storage", () => {
 
   it("rejects corrected errors without a corresponding incorrect attempt", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [{ ...result, correctedErrors: 1 }],
@@ -254,7 +254,7 @@ describe("typing local storage", () => {
     "rejects an impossible words/$completionReason completion combination",
     ({ completionReason }) => {
       localStorage.setItem(
-        "rill.guest-results.v2",
+        "typethock.guest-results.v2",
         JSON.stringify({
           version: 2,
           results: [{ ...result, completionReason }],
@@ -358,7 +358,7 @@ describe("typing local storage", () => {
 
   it("rejects a raw graph duration at the next aggregate boundary", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [
@@ -389,7 +389,7 @@ describe("typing local storage", () => {
 
   it("drops results whose pace buckets do not match their totals", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [
@@ -430,7 +430,7 @@ describe("typing local storage", () => {
       },
     ];
     localStorage.setItem(
-      "rill.guest-results.v4",
+      "typethock.guest-results.v4",
       JSON.stringify({
         version: 4,
         results: [
@@ -487,7 +487,7 @@ describe("typing local storage", () => {
 
   it("rejects a word-result tail below the canonical 500ms cutoff", () => {
     localStorage.setItem(
-      "rill.guest-results.v2",
+      "typethock.guest-results.v2",
       JSON.stringify({
         version: 2,
         results: [
@@ -537,7 +537,7 @@ describe("typing local storage", () => {
       paceBuckets: [{ durationMs: 1_000, typedCharacters: 3 }],
     };
     localStorage.setItem(
-      "rill.guest-results.v1",
+      "typethock.guest-results.v1",
       JSON.stringify({ version: 1, results: [legacy] }),
     );
 
@@ -547,7 +547,7 @@ describe("typing local storage", () => {
       ok: true,
       deduplicated: false,
     });
-    expect(localStorage.getItem("rill.guest-results.v1")).toContain(
+    expect(localStorage.getItem("typethock.guest-results.v1")).toContain(
       "result-1",
     );
     expect(loadGuestResults()).toEqual([result]);

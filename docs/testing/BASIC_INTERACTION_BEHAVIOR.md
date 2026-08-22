@@ -17,7 +17,7 @@ layers.
 
 | ID | Case | Expected behavior | Automated evidence |
 | --- | --- | --- | --- |
-| BI-001 | `Ctrl+Tab` while ready or running | Rill does not cancel the chord, start the timer, or mutate typing state; the browser remains responsible for changing tabs | `TypingCapture.test.tsx`; `typing-behavior.spec.ts` |
+| BI-001 | `Ctrl+Tab` while ready or running | TypeThock does not cancel the chord, start the timer, or mutate typing state; the browser remains responsible for changing tabs | `TypingCapture.test.tsx`; `typing-behavior.spec.ts` |
 | BI-002 | `Ctrl+Shift+Tab` while ready or running | Same pass-through behavior for reverse tab navigation | `TypingCapture.test.tsx`; `typing-behavior.spec.ts` |
 | BI-003 | Correct non-empty prefix then `Space` | Commit the unfinished word, classify its untyped suffix as missing, score the separator as incorrect, and activate the next word | `reducer.test.ts`; `typing-behavior.spec.ts` |
 | BI-004 | `Space` on an empty word | Ignore it without advancing, starting, or adding a phantom attempt | `reducer.test.ts`; `typing-behavior.spec.ts` |
@@ -56,7 +56,7 @@ input `m`, `u`, `Space` produced:
 - `stand` became active; and
 - another `Space` at the empty `stand` input did not advance.
 
-The same rendered-browser sequence in Rill used `path ground`: `p`, `a`,
+The same rendered-browser sequence in TypeThock used `path ground`: `p`, `a`,
 `Space` committed `path`, marked `t` and `h` missing, and activated `ground`.
 
 The pinned Monkeytype source at
@@ -69,7 +69,7 @@ policies:
 ## Evidence boundary
 
 Web applications cannot perform browser-chrome tab switching themselves. The
-automated assertion is therefore the relevant application contract: Rill must
+automated assertion is therefore the relevant application contract: TypeThock must
 leave `Ctrl+Tab` and `Ctrl+Shift+Tab` uncancelled and must not mutate its typing
 state. The browser or operating system owns the actual tab change.
 
@@ -90,12 +90,12 @@ These are tracked separately and are not implied by the completed matrix above:
 - composition interrupted by an actual browser tab switch or visibility
   change; and
 - physical browser-chrome focus behavior after focus has already left the page;
-  while the typing capture owns focus, plain `Tab` is verified to focus Rill's
+  while the typing capture owns focus, plain `Tab` is verified to focus TypeThock's
   visible restart action.
 
 ## Specialist audit and engineering decisions
 
-An independent source audit compared Rill with pinned Monkeytype commit
+An independent source audit compared TypeThock with pinned Monkeytype commit
 `7feea96c5df21a59af9553fa7c52eb33af5997b8`. The accepted findings were
 whole-word deletion, Unicode separators, same-event timestamps, IME lifecycle
 guards and feedback, smart punctuation, bounded overtyping, navigation-key
@@ -103,19 +103,19 @@ blocking, focus recovery, and immediate rejection of unsupported mutations.
 
 The following findings were deliberately not copied:
 
-- Monkeytype's UTF-16 character assumptions: Rill remains grapheme-aware.
-- Rendering the entered wrong glyph: Rill keeps the expected glyph in place
+- Monkeytype's UTF-16 character assumptions: TypeThock remains grapheme-aware.
+- Rendering the entered wrong glyph: TypeThock keeps the expected glyph in place
   and marks it red, preserving stable spacing.
 - Command palette, zen mode, funboxes, freedom/confidence modes, and
   literal-tab prompts: these are product
   features, not universal single-player typing-input behavior.
-- Monkeytype separates freedom, stop-on-error, and confidence settings. Rill's
+- Monkeytype separates freedom, stop-on-error, and confidence settings. TypeThock's
   cascading-red strict policy is an intentional product contract rather than
   a claim that one Monkeytype setting behaves identically.
 - Monkeytype's configurable command palette and alternate quick-restart
-  bindings remain absent. Rill now exposes the familiar visible restart action
+  bindings remain absent. TypeThock now exposes the familiar visible restart action
   and `Tab`-then-`Enter` sequence directly.
-- Aggregate word-delete events: Rill emits one retained-input deletion event
+- Aggregate word-delete events: TypeThock emits one retained-input deletion event
   per removed grapheme because its replay/statistics model requires that
   granularity.
 
@@ -193,9 +193,9 @@ Completed and verified:
   corrections, and 0 unclassified differences. The machine-readable evidence
   is `docs/testing/evidence/parity-campaign/latest.json`.
 - The current source and rendered reruns preserve the reconciled specialist
-  decisions: Rill remains grapheme-aware; wrong input marks the stable expected
+  decisions: TypeThock remains grapheme-aware; wrong input marks the stable expected
   glyph rather than substituting the entered glyph; graph rollover corrections
-  remain limited to TM-023/TM-024; plain `Tab` focuses Rill's restart action
+  remain limited to TM-023/TM-024; plain `Tab` focuses TypeThock's restart action
   while modified browser-tab chords remain browser-owned; and
   word deletion retains per-grapheme replay events. No previously accepted
   audit finding regressed.

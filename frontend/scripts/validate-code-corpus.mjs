@@ -14,7 +14,7 @@ import ts from "typescript";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const frontendDirectory = resolve(scriptDirectory, "..");
-const temporaryDirectory = mkdtempSync(join(tmpdir(), "rill-code-corpus-"));
+const temporaryDirectory = mkdtempSync(join(tmpdir(), "typethock-code-corpus-"));
 const corpusPath = resolve(
   frontendDirectory,
   "src/features/typing/codeCorpus.ts",
@@ -522,7 +522,7 @@ try {
   for (const result of results) {
     process.stdout.write(`${result}\n`);
   }
-  if (process.env.RILL_REQUIRE_ALL_CODE_TOOLCHAINS === "true") {
+  if (process.env.TYPETHOCK_REQUIRE_ALL_CODE_TOOLCHAINS === "true") {
     const skipped = results.filter((result) => result.includes("skipped"));
     if (skipped.length > 0) {
       throw new Error(
@@ -531,7 +531,7 @@ try {
     }
   }
 } finally {
-  if (process.env.RILL_KEEP_CORPUS_TMP === "true") {
+  if (process.env.TYPETHOCK_KEEP_CORPUS_TMP === "true") {
     process.stderr.write(`Kept validation files at ${temporaryDirectory}\n`);
   } else {
     rmSync(temporaryDirectory, { recursive: true, force: true });

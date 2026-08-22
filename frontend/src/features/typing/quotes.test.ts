@@ -34,7 +34,7 @@ describe("quote corpus", () => {
     expect(PRACTICE_QUOTE_COUNT).toBe(1_030);
     expect(PRACTICE_QUOTES_V3).toHaveLength(PRACTICE_QUOTE_COUNT);
     expect(
-      PRACTICE_QUOTES_V3.filter((quote) => quote.rights === "rill-original"),
+      PRACTICE_QUOTES_V3.filter((quote) => quote.rights === "typethock-original"),
     ).toHaveLength(124);
     expect(
       PRACTICE_QUOTES_V3.filter((quote) =>
@@ -69,7 +69,7 @@ describe("quote corpus", () => {
 
   it("keeps meaningful structural variety in the original collection", () => {
     const originals = PRACTICE_QUOTES_V3.filter(
-      (quote) => quote.rights === "rill-original",
+      (quote) => quote.rights === "typethock-original",
     );
     const longerPassages = originals.filter(
       (quote) => quote.text.split(/\s+/u).length >= 15,
@@ -141,6 +141,6 @@ describe("quote corpus", () => {
   });
 
   it("pins the complete quote-v3 semantic corpus", () => {
-    expect(corpusFingerprint()).toBe("4ad89fe4");
+    expect(corpusFingerprint()).toBe("72e006b0");
   });
 });

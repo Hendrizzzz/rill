@@ -25,9 +25,9 @@ test("serves the expected source build", async ({ page }) => {
   await page.goto("/");
   const expectedBuildId = process.env.E2E_EXPECTED_BUILD_ID;
   const html = page.locator("html");
-  await expect(html).toHaveAttribute("data-rill-build-id", /^(source-[a-f0-9]{16}|[A-Za-z0-9._-]+)$/);
+  await expect(html).toHaveAttribute("data-typethock-build-id", /^(source-[a-f0-9]{16}|[A-Za-z0-9._-]+)$/);
   if (expectedBuildId !== undefined) {
-    await expect(html).toHaveAttribute("data-rill-build-id", expectedBuildId);
+    await expect(html).toHaveAttribute("data-typethock-build-id", expectedBuildId);
   }
 });
 
@@ -420,6 +420,9 @@ test.describe("guest typing", () => {
     await expect(timer).toHaveAttribute("aria-live", "off");
     await expect(timer).toContainText("seconds remaining");
     for (const theme of ["paper", "nocturne", "tide"]) {
+      while ((await page.locator("html").getAttribute("data-theme")) !== theme) {
+        await page.getByRole("button", { name: /Theme:/ }).click();
+      }
       await expect(
         page.getByRole("button", {
           name: new RegExp(`Theme: ${theme}`),
@@ -427,7 +430,6 @@ test.describe("guest typing", () => {
       ).toBeVisible();
       const initial = await new AxeBuilder({ page }).analyze();
       expect(initial.violations).toEqual([]);
-      await page.getByRole("button", { name: new RegExp(`Theme: ${theme}`) }).click();
     }
 
     await completeTenWords(page);
@@ -455,8 +457,9 @@ test.describe("guest typing", () => {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    await page.getByRole("button", { name: /Theme: paper/ }).click();
     await expect(page.getByRole("button", { name: /Theme: nocturne/ })).toBeVisible();
+    await page.getByRole("button", { name: /Theme: nocturne/ }).click();
+    await expect(page.getByRole("button", { name: /Theme: tide/ })).toBeVisible();
   });
 
   test("keeps prompt type fixed and wraps it across the viewport matrix", async ({
@@ -1017,20 +1020,25 @@ test.describe("guest typing", () => {
     const caretAtTargetEnd = await page
       .locator(".prompt-word .typing-caret")
       .boundingBox();
-    const caretVerticalGeometry = await page
-      .locator(".prompt-word .typing-caret")
-      .evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        const caretStyle = getComputedStyle(element, "::before");
-        const topGap = Number.parseFloat(caretStyle.top);
-        const caretHeight = Number.parseFloat(caretStyle.height);
-        return {
-          topGap,
-          bottomGap: bounds.height - topGap - caretHeight,
-          caretHeight,
-          fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
-        };
-      });
+    const caretVerticalGeometry = await page.evaluate(() => {
+      const anchor = document.querySelector<HTMLElement>(
+        ".prompt-word .typing-caret",
+      );
+      const visual = document.querySelector<HTMLElement>(
+        ".typing-caret-visual",
+      );
+      if (anchor === null || visual === null) {
+        throw new Error("The typing caret elements are missing.");
+      }
+      const anchorBounds = anchor.getBoundingClientRect();
+      const visualBounds = visual.getBoundingClientRect();
+      return {
+        topGap: visualBounds.top - anchorBounds.top,
+        bottomGap: anchorBounds.bottom - visualBounds.bottom,
+        caretHeight: visualBounds.height,
+        fontSize: Number.parseFloat(getComputedStyle(anchor).fontSize),
+      };
+    });
     const typedGeometry = await activeWord
       .locator(".prompt-slot")
       .evaluateAll((slots) =>
@@ -1057,6 +1065,7 @@ test.describe("guest typing", () => {
       );
     expect(afterSubstitutions).not.toBeNull();
     expect(caretAtTargetEnd).not.toBeNull();
+    expect(caretVerticalGeometry).not.toBeNull();
     expect(
       Math.abs(
         caretVerticalGeometry.topGap - caretVerticalGeometry.bottomGap,
@@ -1311,7 +1320,7 @@ test.describe("guest typing", () => {
   }, testInfo) => {
     await page.addInitScript(() => {
       localStorage.setItem(
-        "rill.guest-results.v2",
+        "typethock.guest-results.v2",
         JSON.stringify({
           version: 2,
           results: [
@@ -1391,7 +1400,7 @@ test.describe("guest typing", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.addInitScript(() => {
       localStorage.setItem(
-        "rill.guest-results.v2",
+        "typethock.guest-results.v2",
         JSON.stringify({
           version: 2,
           results: [
@@ -1561,7 +1570,7 @@ test.describe("guest typing", () => {
 
   test("applies a saved dark theme before application startup", async ({ page }) => {
     await page.addInitScript(() => {
-      localStorage.setItem("rill.theme.v1", "nocturne");
+      localStorage.setItem("typethock.theme.v1", "nocturne");
     });
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "nocturne");
@@ -1711,12 +1720,12 @@ test.describe("guest typing", () => {
     await expect(input).toBeVisible();
     await page.waitForLoadState("networkidle");
     const baseline = requests.length;
-    await input.pressSequentially("<img src=x onerror=window.__rillXss=1>", {
+    await input.pressSequentially("<img src=x onerror=window.__typethockXss=1>", {
       delay: 1,
     });
     expect(
       await page.evaluate(() =>
-        Object.prototype.hasOwnProperty.call(window, "__rillXss"),
+        Object.prototype.hasOwnProperty.call(window, "__typethockXss"),
       ),
     ).toBe(false);
     await expect(page.locator(".prompt-window img")).toHaveCount(0);
@@ -1880,7 +1889,7 @@ test("keeps a signed-in pending result visible when sync is unavailable", async 
   await page.addInitScript(
     ({ accountId }) => {
       localStorage.setItem(
-        "rill.pending-account-results.v2",
+        "typethock.pending-account-results.v2",
         JSON.stringify({
           version: 2,
           entries: [
@@ -2030,7 +2039,7 @@ test("account result, export, logout, and deletion lifecycle", async ({ page }) 
   const downloadPromise = page.waitForEvent("download");
   await signedInDialog.getByRole("button", { name: "export data" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^rill-export-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(download.suggestedFilename()).toMatch(/^typethock-export-\d{4}-\d{2}-\d{2}\.json$/);
   await signedInDialog.getByRole("button", { name: "sign out" }).click();
   await expect(page.getByRole("button", { name: "account", exact: true })).toBeVisible();
 

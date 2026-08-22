@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: rill-typewriting-api
+    name: typethock-typewriting-api
     runtime: docker
     plan: free
     region: singapore
@@ -18,33 +18,33 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: RILL_COOKIE_SECURE
+      - key: TYPETHOCK_COOKIE_SECURE
         value: "true"
-      - key: RILL_FLYWAY_ENABLED
+      - key: TYPETHOCK_FLYWAY_ENABLED
         value: "true"
-      - key: RILL_REQUIRE_VERIFIED_DATABASE_TLS
+      - key: TYPETHOCK_REQUIRE_VERIFIED_DATABASE_TLS
         value: "true"
-      - key: RILL_MAX_RESULTS_PER_ACCOUNT
+      - key: TYPETHOCK_MAX_RESULTS_PER_ACCOUNT
         value: "100"
-      - key: RILL_MAX_SESSIONS_PER_ACCOUNT
+      - key: TYPETHOCK_MAX_SESSIONS_PER_ACCOUNT
         value: "5"
-      - key: RILL_DATABASE_MAX_POOL_SIZE
+      - key: TYPETHOCK_DATABASE_MAX_POOL_SIZE
         value: "5"
-      - key: RILL_DATABASE_MIN_IDLE
+      - key: TYPETHOCK_DATABASE_MIN_IDLE
         value: "0"
-      - key: RILL_MAX_AUTH_ATTEMPTS_PER_MINUTE
+      - key: TYPETHOCK_MAX_AUTH_ATTEMPTS_PER_MINUTE
         value: "30"
-      - key: RILL_MAX_REGISTRATIONS_PER_HOUR
+      - key: TYPETHOCK_MAX_REGISTRATIONS_PER_HOUR
         value: "60"
-      - key: RILL_DATABASE_URL
+      - key: TYPETHOCK_DATABASE_URL
         sync: false
-      - key: RILL_DATABASE_USERNAME
+      - key: TYPETHOCK_DATABASE_USERNAME
         sync: false
-      - key: RILL_DATABASE_PASSWORD
+      - key: TYPETHOCK_DATABASE_PASSWORD
         sync: false
-      - key: RILL_FLYWAY_URL
+      - key: TYPETHOCK_FLYWAY_URL
         sync: false
-      - key: RILL_FLYWAY_USERNAME
+      - key: TYPETHOCK_FLYWAY_USERNAME
         sync: false
-      - key: RILL_FLYWAY_PASSWORD
+      - key: TYPETHOCK_FLYWAY_PASSWORD
         sync: false

@@ -1,4 +1,4 @@
-# Rill HTTP and persistence contract
+# TypeThock HTTP and persistence contract
 
 Status: normative release-1 contract
 Last updated: 2026-07-27
@@ -53,7 +53,7 @@ Errors use `application/problem+json`:
 
 ### Session cookie
 
-- Name: `RILL_SESSION`.
+- Name: `TYPETHOCK_SESSION`.
 - Value: 32 cryptographically random bytes encoded Base64 URL-safe without padding.
 - Only a SHA-256 hash of the value is stored.
 - Attributes: `HttpOnly`, `Path=/`, `SameSite=Lax`, seven-day absolute `Max-Age`.
@@ -95,7 +95,7 @@ For a guest, `authenticated` is false and `user` is absent/null. This endpoint n
 ### `POST /api/auth/register`
 
 Request: `{ "username": "...", "password": "..." }`
-Success: `201`, same authenticated session body as above, plus `RILL_SESSION`.
+Success: `201`, same authenticated session body as above, plus `TYPETHOCK_SESSION`.
 Errors: `400 VALIDATION_FAILED`, `409 USERNAME_UNAVAILABLE`, `429 RATE_LIMITED`.
 
 ### `POST /api/auth/login`
@@ -113,7 +113,7 @@ Unauthenticated: `401 AUTHENTICATION_REQUIRED`.
 
 ### `GET /api/account/export`
 
-Success: `200`, attachment filename `rill-export-YYYY-MM-DD.json`.
+Success: `200`, attachment filename `typethock-export-YYYY-MM-DD.json`.
 
 ```json
 {
@@ -213,10 +213,10 @@ Bounds and invariants:
   (495ms is included; 494.99ms is omitted). Relative to the rounded aggregate,
   the complete raw graph duration is in the exact `-5.00ms` through `+4.99ms`
   window;
-- for a whole-second aggregate, the canonical Rill payload covers the full
+- for a whole-second aggregate, the canonical TypeThock payload covers the full
   duration. The server also accepts the pinned reference's legacy rollover
   shape that is shorter by exactly one second, so historical/imported
-  `1.995s -> 2.00s` data remains readable. Rill itself does not emit that
+  `1.995s -> 2.00s` data remains readable. TypeThock itself does not emit that
   lossy shape;
 - interval insertion totals do not exceed historical attempts, and equal them
   when the complete duration is represented;

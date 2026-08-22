@@ -121,7 +121,7 @@ jobs:
       - run: npm run test:coverage
       - run: npm run test:code-corpus
         env:
-          RILL_REQUIRE_ALL_CODE_TOOLCHAINS: "true"
+          TYPETHOCK_REQUIRE_ALL_CODE_TOOLCHAINS: "true"
       - run: npm run build
 
   parity-smoke:
@@ -204,11 +204,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      RILL_POSTGRES_ADMIN_PASSWORD: ci-admin-not-for-production
-      RILL_MIGRATOR_DB_PASSWORD: ci-migrator-not-for-production
-      RILL_APP_DB_PASSWORD: ci-app-not-for-production
-      RILL_SPRING_PROFILES_ACTIVE: local
-      RILL_COOKIE_SECURE: "false"
+      TYPETHOCK_POSTGRES_ADMIN_PASSWORD: ci-admin-not-for-production
+      TYPETHOCK_MIGRATOR_DB_PASSWORD: ci-migrator-not-for-production
+      TYPETHOCK_APP_DB_PASSWORD: ci-app-not-for-production
+      TYPETHOCK_SPRING_PROFILES_ACTIVE: local
+      TYPETHOCK_COOKIE_SECURE: "false"
     steps:
       - uses: actions/checkout@v6
       - run: mkdir -p artifacts
@@ -242,7 +242,7 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          image-ref: rill-backend:latest
+          image-ref: typethock-backend:latest
           format: json
           output: artifacts/trivy-backend.json
           scanners: vuln
@@ -252,7 +252,7 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          image-ref: rill-web:latest
+          image-ref: typethock-web:latest
           format: json
           output: artifacts/trivy-web.json
           scanners: vuln

@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   compareResults,
   runOracleBatch,
-  runRill,
+  runTypethock,
   type ParityResult,
   type ParityTrace,
 } from "./support/parityHarness";
@@ -187,7 +187,7 @@ function shrinkRandomFailure(
           ? runOracleBatch([trace], oracleRoot).results[0]
           : { ...cached, traceId: trace.id };
       if (oracleResult === undefined) return false;
-      return compareResults(trace, runRill(trace), oracleResult).kind !== "different";
+      return compareResults(trace, runTypethock(trace), oracleResult).kind !== "different";
     }),
     {
       seed,
@@ -209,7 +209,7 @@ function shrinkRandomFailure(
   const comparison =
     oracleResult === undefined
       ? { kind: "different" as const, differences: ["Oracle returned no result."] }
-      : compareResults(trace, runRill(trace), oracleResult);
+      : compareResults(trace, runTypethock(trace), oracleResult);
   return {
     status: "shrunk",
     path: details.counterexamplePath,
@@ -280,8 +280,8 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
       });
       const classifications = {
         equal: 0,
-        "rill-rollover-correction": 0,
-        "rill-terminal-rollover-correction": 0,
+        "typethock-rollover-correction": 0,
+        "typethock-terminal-rollover-correction": 0,
         different: 0,
       };
       let firstFailure:
@@ -298,7 +298,7 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
         if (oracleResult === undefined) {
           throw new Error(`Oracle omitted result ${String(index)}.`);
         }
-        const comparison = compareResults(trace, runRill(trace), oracleResult);
+        const comparison = compareResults(trace, runTypethock(trace), oracleResult);
         classifications[comparison.kind] += 1;
         if (comparison.kind === "different" && firstFailure === undefined) {
           firstFailure = {
@@ -336,7 +336,7 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
         devDependencies: Record<string, string>;
       };
       const evidenceWithoutDigest = {
-        version: "rill-parity-campaign/1",
+        version: "typethock-parity-campaign/1",
         generatedAt: new Date().toISOString(),
         seed,
         requestedRuns,
@@ -344,7 +344,7 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
         replayTrace: process.env.PARITY_REPLAY_TRACE ?? null,
         source: oracle.source,
         harness: {
-          rillSourceSha256: sourceDigest(),
+          typethockSourceSha256: sourceDigest(),
           tooling: {
             node: process.version,
             vitest: packageMetadata.devDependencies.vitest,
@@ -380,12 +380,12 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
             {
               id: "TM-023",
               description:
-                "Rill retains one normalized final graph bucket when a word test rounds upward to an exact second by at most 5ms; all non-graph fields and graph prefixes must match.",
+                "TypeThock retains one normalized final graph bucket when a word test rounds upward to an exact second by at most 5ms; all non-graph fields and graph prefixes must match.",
             },
             {
               id: "TM-024",
               description:
-                "Rill includes terminal input in the existing final graph bucket when a word test rounds downward to an exact second by less than 5ms; only recomputed consistency and the recomputed final WPM/raw/burst sample may differ.",
+                "TypeThock includes terminal input in the existing final graph bucket when a word test rounds downward to an exact second by less than 5ms; only recomputed consistency and the recomputed final WPM/raw/burst sample may differ.",
             },
           ],
         },
@@ -428,8 +428,8 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
       expect(classifications.different).toBe(0);
       expect(
         classifications.equal +
-          classifications["rill-rollover-correction"] +
-          classifications["rill-terminal-rollover-correction"],
+          classifications["typethock-rollover-correction"] +
+          classifications["typethock-terminal-rollover-correction"],
       ).toBe(traces.length);
     },
     600_000,
@@ -440,7 +440,7 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
       TARGETED_DESCRIPTORS[0] as TraceDescriptor,
       "mutation-sentinel",
     );
-    const baseline = runRill(trace);
+    const baseline = runTypethock(trace);
     const mutant = cloneResult(baseline);
     mutant.metrics.wpm += 1;
     const comparison = compareResults(trace, baseline, mutant);
@@ -461,9 +461,9 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
     expect(oracleResult).toBeDefined();
     if (oracleResult === undefined) return;
 
-    const baseline = runRill(trace);
+    const baseline = runTypethock(trace);
     expect(compareResults(trace, baseline, oracleResult).kind).toBe(
-      "rill-rollover-correction",
+      "typethock-rollover-correction",
     );
 
     for (const series of ["wpm", "raw", "burst", "errors"] as const) {
@@ -497,9 +497,9 @@ describe("pinned Monkeytype deterministic parity campaign", () => {
     expect(oracleResult).toBeDefined();
     if (oracleResult === undefined) return;
 
-    const baseline = runRill(trace);
+    const baseline = runTypethock(trace);
     expect(compareResults(trace, baseline, oracleResult).kind).toBe(
-      "rill-terminal-rollover-correction",
+      "typethock-terminal-rollover-correction",
     );
 
     const aggregateMutant = cloneResult(baseline);

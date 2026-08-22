@@ -19,7 +19,7 @@ import type {
 } from "./types";
 
 /**
- * Independent Rill reference model.
+ * Independent TypeThock reference model.
  *
  * The formulas were cross-checked against the official
  * Monkeytype repository at commit
@@ -28,7 +28,7 @@ import type {
  * - frontend/src/ts/test/test-logic.ts
  * - packages/util/src/numbers.ts
  *
- * The model deliberately does not import Rill reducer/scoring helpers. It is
+ * The model deliberately does not import TypeThock reducer/scoring helpers. It is
  * not executed Monkeytype code and is not presented as an MT-ENGINE oracle.
  */
 
@@ -635,7 +635,7 @@ function expectReferenceState(
   }).toEqual(expected);
 }
 
-describe("independent Rill typing reference model", () => {
+describe("independent TypeThock typing reference model", () => {
   it("matches character classification across exhaustive small words", () => {
     const alphabet = ["", "a", "b", " ", "aa", "ab", "a ", "ba", "bbb"];
     for (const input of alphabet) {

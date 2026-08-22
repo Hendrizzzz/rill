@@ -201,7 +201,7 @@ function graphBoundaries(endMs: number, mode: TestConfig["mode"]): number[] {
     normalizedEndMs - endMs <= 5;
   if (roundedIntoNextWholeSecond) {
     // The pinned reference drops up to 995 ms here because its rounded
-    // fractional part rolls to zero. Rill deliberately keeps the normalized
+    // fractional part rolls to zero. TypeThock deliberately keeps the normalized
     // whole-second boundary instead of copying that data-loss defect.
     boundaries.push(normalizedEndMs);
     return boundaries;

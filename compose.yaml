@@ -1,19 +1,19 @@
-name: rill
+name: typethock
 
 services:
   database:
     image: postgres:18.4-alpine3.24
     environment:
-      POSTGRES_DB: rill
+      POSTGRES_DB: typethock
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${RILL_POSTGRES_ADMIN_PASSWORD:?set RILL_POSTGRES_ADMIN_PASSWORD}
-      RILL_MIGRATOR_DB_PASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
-      RILL_APP_DB_PASSWORD: ${RILL_APP_DB_PASSWORD:?set RILL_APP_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${TYPETHOCK_POSTGRES_ADMIN_PASSWORD:?set TYPETHOCK_POSTGRES_ADMIN_PASSWORD}
+      TYPETHOCK_MIGRATOR_DB_PASSWORD: ${TYPETHOCK_MIGRATOR_DB_PASSWORD:?set TYPETHOCK_MIGRATOR_DB_PASSWORD}
+      TYPETHOCK_APP_DB_PASSWORD: ${TYPETHOCK_APP_DB_PASSWORD:?set TYPETHOCK_APP_DB_PASSWORD}
     volumes:
-      - rill-data:/var/lib/postgresql
+      - typethock-data:/var/lib/postgresql
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d rill"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d typethock"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -24,9 +24,9 @@ services:
   migrate:
     image: flyway/flyway:12.11.0-alpine
     environment:
-      FLYWAY_URL: jdbc:postgresql://database:5432/rill
-      FLYWAY_USER: rill_migrator
-      FLYWAY_PASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
+      FLYWAY_URL: jdbc:postgresql://database:5432/typethock
+      FLYWAY_USER: typethock_migrator
+      FLYWAY_PASSWORD: ${TYPETHOCK_MIGRATOR_DB_PASSWORD:?set TYPETHOCK_MIGRATOR_DB_PASSWORD}
       FLYWAY_CONNECT_RETRIES: "60"
       FLYWAY_LOCATIONS: filesystem:/flyway/sql
       FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
@@ -43,15 +43,15 @@ services:
   permissions:
     image: postgres:18.4-alpine3.24
     environment:
-      PGPASSWORD: ${RILL_MIGRATOR_DB_PASSWORD:?set RILL_MIGRATOR_DB_PASSWORD}
+      PGPASSWORD: ${TYPETHOCK_MIGRATOR_DB_PASSWORD:?set TYPETHOCK_MIGRATOR_DB_PASSWORD}
     command:
       [
         "psql",
         "--host=database",
-        "--username=rill_migrator",
-        "--dbname=rill",
+        "--username=typethock_migrator",
+        "--dbname=typethock",
         "--set=ON_ERROR_STOP=1",
-        "--command=REVOKE ALL ON TABLE flyway_schema_history FROM rill_app",
+        "--command=REVOKE ALL ON TABLE flyway_schema_history FROM typethock_app",
       ]
     depends_on:
       migrate:
@@ -65,12 +65,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      SPRING_PROFILES_ACTIVE: ${RILL_SPRING_PROFILES_ACTIVE:-prod}
-      RILL_DATABASE_URL: jdbc:postgresql://database:5432/rill
-      RILL_DATABASE_USERNAME: rill_app
-      RILL_DATABASE_PASSWORD: ${RILL_APP_DB_PASSWORD:?set RILL_APP_DB_PASSWORD}
-      RILL_COOKIE_SECURE: ${RILL_COOKIE_SECURE:-true}
-      RILL_FLYWAY_ENABLED: "false"
+      SPRING_PROFILES_ACTIVE: ${TYPETHOCK_SPRING_PROFILES_ACTIVE:-prod}
+      TYPETHOCK_DATABASE_URL: jdbc:postgresql://database:5432/typethock
+      TYPETHOCK_DATABASE_USERNAME: typethock_app
+      TYPETHOCK_DATABASE_PASSWORD: ${TYPETHOCK_APP_DB_PASSWORD:?set TYPETHOCK_APP_DB_PASSWORD}
+      TYPETHOCK_COOKIE_SECURE: ${TYPETHOCK_COOKIE_SECURE:-true}
+      TYPETHOCK_FLYWAY_ENABLED: "false"
     depends_on:
       database:
         condition: service_healthy
@@ -103,7 +103,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "${RILL_BIND_ADDRESS:-127.0.0.1}:${RILL_HTTP_PORT:-8080}:8080"
+      - "${TYPETHOCK_BIND_ADDRESS:-127.0.0.1}:${TYPETHOCK_HTTP_PORT:-8080}:8080"
     depends_on:
       backend:
         condition: service_healthy
@@ -125,7 +125,7 @@ services:
       - edge
 
 volumes:
-  rill-data:
+  typethock-data:
 
 networks:
   edge:

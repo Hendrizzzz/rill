@@ -1,11 +1,11 @@
-# Rill
+# TypeThock
 
-Rill is a quiet, keyboard-first typing practice application. The typing loop
+TypeThock is a quiet, keyboard-first typing practice application. The typing loop
 runs entirely in the browser; an optional account preserves results across
 devices through a Spring Boot API.
 
 The product includes word and timed tests, English and Spanish word lists, 1,030
-attributed public-domain or Rill-original quotations, tab-private custom text,
+attributed public-domain or TypeThock-original quotations, tab-private custom text,
 strict error behavior, punctuation and number modifiers, and an original
 code-learning corpus with 32 algorithm concepts placed in 16 mnemonic contexts
 across C++, Java, Python 3, C, C#, JavaScript, TypeScript, and Go. That produces

@@ -1,4 +1,4 @@
-# Rill deployment and maintenance
+# TypeThock deployment and maintenance
 
 Last updated: 2026-07-26
 
@@ -9,25 +9,25 @@ container, which serves the static application and proxies same-origin API
 requests. Spring Boot and PostgreSQL remain on private Compose networks.
 
 ```text
-internet -> HTTPS ingress -> Rill Nginx -> Spring Boot -> PostgreSQL
+internet -> HTTPS ingress -> TypeThock Nginx -> Spring Boot -> PostgreSQL
 ```
 
 The ingress must overwrite forwarding headers, preserve the public `Host`, set
 its own source-address abuse controls, and must not expose the backend or
-database directly. Rill does not infer cookie security from forwarded headers.
+database directly. TypeThock does not infer cookie security from forwarded headers.
 
 ## Required production configuration
 
 Create a deployment-only `.env` that is never committed:
 
 ```text
-RILL_POSTGRES_ADMIN_PASSWORD=<unique high-entropy bootstrap/admin value>
-RILL_MIGRATOR_DB_PASSWORD=<unique high-entropy value>
-RILL_APP_DB_PASSWORD=<different unique high-entropy value>
-RILL_SPRING_PROFILES_ACTIVE=prod
-RILL_COOKIE_SECURE=true
-RILL_BIND_ADDRESS=127.0.0.1
-RILL_HTTP_PORT=8080
+TYPETHOCK_POSTGRES_ADMIN_PASSWORD=<unique high-entropy bootstrap/admin value>
+TYPETHOCK_MIGRATOR_DB_PASSWORD=<unique high-entropy value>
+TYPETHOCK_APP_DB_PASSWORD=<different unique high-entropy value>
+TYPETHOCK_SPRING_PROFILES_ACTIVE=prod
+TYPETHOCK_COOKIE_SECURE=true
+TYPETHOCK_BIND_ADDRESS=127.0.0.1
+TYPETHOCK_HTTP_PORT=8080
 ```
 
 Restrict the file to the deployment account. Prefer an orchestrator secret
@@ -91,10 +91,10 @@ out, and then remove only that temporary file:
 
 ```text
 docker compose exec database pg_dump \
-  --username rill_migrator --dbname rill \
-  --format custom --file /tmp/rill-backup.dump
-docker compose cp database:/tmp/rill-backup.dump ./rill-backup.dump
-docker compose exec database rm /tmp/rill-backup.dump
+  --username typethock_migrator --dbname typethock \
+  --format custom --file /tmp/typethock-backup.dump
+docker compose cp database:/tmp/typethock-backup.dump ./typethock-backup.dump
+docker compose exec database rm /tmp/typethock-backup.dump
 ```
 
 Encrypt backups at rest, restrict access, copy them off the application host,
@@ -103,21 +103,21 @@ not trustworthy until a restore drill has succeeded.
 
 ## Restore drill
 
-Use a disposable database, never the active `rill` database:
+Use a disposable database, never the active `typethock` database:
 
 ```text
-docker compose cp ./rill-backup.dump database:/tmp/rill-backup.dump
+docker compose cp ./typethock-backup.dump database:/tmp/typethock-backup.dump
 docker compose exec database createdb \
-  --username postgres --owner rill_migrator rill_restore_check
+  --username postgres --owner typethock_migrator typethock_restore_check
 docker compose exec database pg_restore \
-  --username rill_migrator --dbname rill_restore_check \
-  --exit-on-error /tmp/rill-backup.dump
+  --username typethock_migrator --dbname typethock_restore_check \
+  --exit-on-error /tmp/typethock-backup.dump
 docker compose exec database psql \
-  --username rill_migrator --dbname rill_restore_check \
+  --username typethock_migrator --dbname typethock_restore_check \
   --command "SELECT count(*) FROM flyway_schema_history;"
 docker compose exec database dropdb \
-  --username postgres rill_restore_check
-docker compose exec database rm /tmp/rill-backup.dump
+  --username postgres typethock_restore_check
+docker compose exec database rm /tmp/typethock-backup.dump
 ```
 
 If any command fails, retain the source backup, investigate, and do not switch
