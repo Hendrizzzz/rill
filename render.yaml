@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: typethock-api
+    name: typethock-typewriting-api
     runtime: docker
     plan: free
     region: singapore

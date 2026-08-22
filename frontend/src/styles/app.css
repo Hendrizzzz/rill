@@ -2396,7 +2396,10 @@ body {
   }
 
   .site-header {
-    height: 5.5rem;
+    height: auto;
+    min-height: 5.5rem;
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
   }
 
   .wordmark {
@@ -2405,6 +2408,7 @@ body {
 
   .site-header nav {
     gap: 0;
+    margin-left: auto;
   }
 
   .site-header nav a,
@@ -2553,5 +2557,11 @@ body {
 
   .site-footer {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .wordmark {
+    font-size: 2rem;
   }
 }

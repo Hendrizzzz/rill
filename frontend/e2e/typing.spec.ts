@@ -1020,20 +1020,25 @@ test.describe("guest typing", () => {
     const caretAtTargetEnd = await page
       .locator(".prompt-word .typing-caret")
       .boundingBox();
-    const caretVerticalGeometry = await page
-      .locator(".prompt-word .typing-caret")
-      .evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        const caretStyle = getComputedStyle(element, "::before");
-        const topGap = Number.parseFloat(caretStyle.top);
-        const caretHeight = Number.parseFloat(caretStyle.height);
-        return {
-          topGap,
-          bottomGap: bounds.height - topGap - caretHeight,
-          caretHeight,
-          fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
-        };
-      });
+    const caretVerticalGeometry = await page.evaluate(() => {
+      const anchor = document.querySelector<HTMLElement>(
+        ".prompt-word .typing-caret",
+      );
+      const visual = document.querySelector<HTMLElement>(
+        ".typing-caret-visual",
+      );
+      if (anchor === null || visual === null) {
+        throw new Error("The typing caret elements are missing.");
+      }
+      const anchorBounds = anchor.getBoundingClientRect();
+      const visualBounds = visual.getBoundingClientRect();
+      return {
+        topGap: visualBounds.top - anchorBounds.top,
+        bottomGap: anchorBounds.bottom - visualBounds.bottom,
+        caretHeight: visualBounds.height,
+        fontSize: Number.parseFloat(getComputedStyle(anchor).fontSize),
+      };
+    });
     const typedGeometry = await activeWord
       .locator(".prompt-slot")
       .evaluateAll((slots) =>
@@ -1060,6 +1065,7 @@ test.describe("guest typing", () => {
       );
     expect(afterSubstitutions).not.toBeNull();
     expect(caretAtTargetEnd).not.toBeNull();
+    expect(caretVerticalGeometry).not.toBeNull();
     expect(
       Math.abs(
         caretVerticalGeometry.topGap - caretVerticalGeometry.bottomGap,
