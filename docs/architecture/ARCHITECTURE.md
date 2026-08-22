@@ -1,11 +1,11 @@
-# Rill architecture
+# TypeThock architecture
 
 Status: implemented release-1 architecture; local verification complete
 Last updated: 2026-07-26
 
 ## Decision summary
 
-Rill uses a modular monorepo with a React single-page application, a Spring Boot JSON API, and PostgreSQL. It is a modular monolith, not a microservice system.
+TypeThock uses a modular monorepo with a React single-page application, a Spring Boot JSON API, and PostgreSQL. It is a modular monolith, not a microservice system.
 
 | Area | Choice | Reason |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ No third-party runtime script, analytics SDK, UI kit, state library, or animatio
 TypeWriting/
   backend/
     pom.xml
-    src/main/java/com/rill/typing/
+    src/main/java/com/typethock/typing/
       auth/
       result/
       security/
@@ -216,11 +216,11 @@ Side effects live outside the reducer:
 
 Runtime secrets and environment-dependent values:
 
-- `RILL_DATABASE_URL`
-- `RILL_DATABASE_USERNAME`
-- `RILL_DATABASE_PASSWORD`
-- `RILL_COOKIE_SECURE` (must be true in production)
-- `RILL_ALLOWED_ORIGINS` (development only; exact origins)
+- `TYPETHOCK_DATABASE_URL`
+- `TYPETHOCK_DATABASE_USERNAME`
+- `TYPETHOCK_DATABASE_PASSWORD`
+- `TYPETHOCK_COOKIE_SECURE` (must be true in production)
+- `TYPETHOCK_ALLOWED_ORIGINS` (development only; exact origins)
 
 Production fails fast for missing database configuration, disabled Secure cookies, or non-empty production CORS origins. `.env.example` contains names and safe examples, never credentials suitable for production.
 

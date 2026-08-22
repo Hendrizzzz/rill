@@ -25,9 +25,9 @@ test("serves the expected source build", async ({ page }) => {
   await page.goto("/");
   const expectedBuildId = process.env.E2E_EXPECTED_BUILD_ID;
   const html = page.locator("html");
-  await expect(html).toHaveAttribute("data-rill-build-id", /^(source-[a-f0-9]{16}|[A-Za-z0-9._-]+)$/);
+  await expect(html).toHaveAttribute("data-typethock-build-id", /^(source-[a-f0-9]{16}|[A-Za-z0-9._-]+)$/);
   if (expectedBuildId !== undefined) {
-    await expect(html).toHaveAttribute("data-rill-build-id", expectedBuildId);
+    await expect(html).toHaveAttribute("data-typethock-build-id", expectedBuildId);
   }
 });
 
@@ -1314,7 +1314,7 @@ test.describe("guest typing", () => {
   }, testInfo) => {
     await page.addInitScript(() => {
       localStorage.setItem(
-        "rill.guest-results.v2",
+        "typethock.guest-results.v2",
         JSON.stringify({
           version: 2,
           results: [
@@ -1394,7 +1394,7 @@ test.describe("guest typing", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.addInitScript(() => {
       localStorage.setItem(
-        "rill.guest-results.v2",
+        "typethock.guest-results.v2",
         JSON.stringify({
           version: 2,
           results: [
@@ -1564,7 +1564,7 @@ test.describe("guest typing", () => {
 
   test("applies a saved dark theme before application startup", async ({ page }) => {
     await page.addInitScript(() => {
-      localStorage.setItem("rill.theme.v1", "nocturne");
+      localStorage.setItem("typethock.theme.v1", "nocturne");
     });
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "nocturne");
@@ -1714,12 +1714,12 @@ test.describe("guest typing", () => {
     await expect(input).toBeVisible();
     await page.waitForLoadState("networkidle");
     const baseline = requests.length;
-    await input.pressSequentially("<img src=x onerror=window.__rillXss=1>", {
+    await input.pressSequentially("<img src=x onerror=window.__typethockXss=1>", {
       delay: 1,
     });
     expect(
       await page.evaluate(() =>
-        Object.prototype.hasOwnProperty.call(window, "__rillXss"),
+        Object.prototype.hasOwnProperty.call(window, "__typethockXss"),
       ),
     ).toBe(false);
     await expect(page.locator(".prompt-window img")).toHaveCount(0);
@@ -1883,7 +1883,7 @@ test("keeps a signed-in pending result visible when sync is unavailable", async 
   await page.addInitScript(
     ({ accountId }) => {
       localStorage.setItem(
-        "rill.pending-account-results.v2",
+        "typethock.pending-account-results.v2",
         JSON.stringify({
           version: 2,
           entries: [
@@ -2033,7 +2033,7 @@ test("account result, export, logout, and deletion lifecycle", async ({ page }) 
   const downloadPromise = page.waitForEvent("download");
   await signedInDialog.getByRole("button", { name: "export data" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^rill-export-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(download.suggestedFilename()).toMatch(/^typethock-export-\d{4}-\d{2}-\d{2}\.json$/);
   await signedInDialog.getByRole("button", { name: "sign out" }).click();
   await expect(page.getByRole("button", { name: "account", exact: true })).toBeVisible();
 

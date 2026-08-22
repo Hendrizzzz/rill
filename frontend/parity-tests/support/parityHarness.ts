@@ -96,7 +96,7 @@ function graphFromBuckets(buckets: readonly PaceBucket[]) {
   };
 }
 
-export function runRill(trace: ParityTrace): ParityResult {
+export function runTypethock(trace: ParityTrace): ParityResult {
   const config: TestConfig = {
     ...trace.config,
     contentType: "words",
@@ -117,7 +117,7 @@ export function runRill(trace: ParityTrace): ParityResult {
     if (state.status === "completed") break;
     if (state.wordIndex !== event.wordIndex) {
       throw new Error(
-        `${trace.id}: event ${String(event.sequence)} targets word ${String(event.wordIndex)}, Rill is on ${String(state.wordIndex)}.`,
+        `${trace.id}: event ${String(event.sequence)} targets word ${String(event.wordIndex)}, TypeThock is on ${String(state.wordIndex)}.`,
       );
     }
     const now = startedAt + event.atUs / 1_000;
@@ -140,7 +140,7 @@ export function runRill(trace: ParityTrace): ParityResult {
 
   const result = state.result;
   if (result === null) {
-    throw new Error(`${trace.id}: Rill did not complete the trace.`);
+    throw new Error(`${trace.id}: TypeThock did not complete the trace.`);
   }
   return {
     version: "result/1",
@@ -194,8 +194,8 @@ export function runOracleBatch(
 export interface Comparison {
   kind:
     | "equal"
-    | "rill-rollover-correction"
-    | "rill-terminal-rollover-correction"
+    | "typethock-rollover-correction"
+    | "typethock-terminal-rollover-correction"
     | "different";
   differences: string[];
 }
@@ -238,7 +238,7 @@ function collectDifferences(
         ),
       );
   }
-  return [`${path}: Rill=${JSON.stringify(left)} oracle=${JSON.stringify(right)}`];
+  return [`${path}: TypeThock=${JSON.stringify(left)} oracle=${JSON.stringify(right)}`];
 }
 
 function samePrefix<T>(longer: readonly T[], shorter: readonly T[]): boolean {
@@ -317,9 +317,9 @@ function expectedConsistency(
   );
 }
 
-function isRillRolloverCorrection(
+function isTypethockRolloverCorrection(
   trace: ParityTrace,
-  rill: ParityResult,
+  typethock: ParityResult,
   oracle: ParityResult,
 ): boolean {
   if (trace.config.mode !== "words") return false;
@@ -346,25 +346,25 @@ function isRillRolloverCorrection(
   });
   if (
     collectDifferences(
-      withoutGraphAndConsistency(rill),
+      withoutGraphAndConsistency(typethock),
       withoutGraphAndConsistency(oracle),
     ).length > 0
   ) {
     return false;
   }
 
-  const finalIndex = rill.graph.boundariesMs.length - 1;
-  const previousBoundary = rill.graph.boundariesMs[finalIndex - 1] ?? 0;
+  const finalIndex = typethock.graph.boundariesMs.length - 1;
+  const previousBoundary = typethock.graph.boundariesMs[finalIndex - 1] ?? 0;
   const finalDuration = normalizedEndMs - previousBoundary;
   const insertedCharacters = insertedCharactersByInterval(
     trace,
-    rill.graph.boundariesMs,
+    typethock.graph.boundariesMs,
   );
   const expectedWpm = Math.round(
-    calculateWpm(rill.counters.correctCharacters, normalizedEndMs),
+    calculateWpm(typethock.counters.correctCharacters, normalizedEndMs),
   );
   const expectedRaw = Math.round(
-    calculateWpm(rill.counters.typedCharacters, normalizedEndMs),
+    calculateWpm(typethock.counters.typedCharacters, normalizedEndMs),
   );
   const expectedBurst = Math.round(
     calculateWpm(insertedCharacters[finalIndex] ?? 0, finalDuration),
@@ -375,36 +375,36 @@ function isRillRolloverCorrection(
     trace.completionAtUs,
   );
   const graphSeriesHaveExpectedLength = [
-    rill.graph.wpm,
-    rill.graph.raw,
-    rill.graph.burst,
-    rill.graph.errors,
-  ].every((series) => series.length === rill.graph.boundariesMs.length);
+    typethock.graph.wpm,
+    typethock.graph.raw,
+    typethock.graph.burst,
+    typethock.graph.errors,
+  ].every((series) => series.length === typethock.graph.boundariesMs.length);
 
   return (
     finalIndex >= 0 &&
-    rill.durationMs === normalizedEndMs &&
+    typethock.durationMs === normalizedEndMs &&
     oracle.durationMs === normalizedEndMs &&
-    rill.graph.boundariesMs.length === oracle.graph.boundariesMs.length + 1 &&
-    rill.graph.boundariesMs.at(-1) === normalizedEndMs &&
+    typethock.graph.boundariesMs.length === oracle.graph.boundariesMs.length + 1 &&
+    typethock.graph.boundariesMs.at(-1) === normalizedEndMs &&
     graphSeriesHaveExpectedLength &&
-    samePrefix(rill.graph.boundariesMs, oracle.graph.boundariesMs) &&
-    samePrefix(rill.graph.wpm, oracle.graph.wpm) &&
-    samePrefix(rill.graph.raw, oracle.graph.raw) &&
-    samePrefix(rill.graph.burst, oracle.graph.burst) &&
-    samePrefix(rill.graph.errors, oracle.graph.errors) &&
-    rill.graph.wpm[finalIndex] === expectedWpm &&
-    rill.graph.raw[finalIndex] === expectedRaw &&
-    rill.graph.burst[finalIndex] === expectedBurst &&
-    rill.graph.errors[finalIndex] === expectedErrors &&
-    rill.metrics.consistency ===
-      expectedConsistency(trace, rill.graph.boundariesMs)
+    samePrefix(typethock.graph.boundariesMs, oracle.graph.boundariesMs) &&
+    samePrefix(typethock.graph.wpm, oracle.graph.wpm) &&
+    samePrefix(typethock.graph.raw, oracle.graph.raw) &&
+    samePrefix(typethock.graph.burst, oracle.graph.burst) &&
+    samePrefix(typethock.graph.errors, oracle.graph.errors) &&
+    typethock.graph.wpm[finalIndex] === expectedWpm &&
+    typethock.graph.raw[finalIndex] === expectedRaw &&
+    typethock.graph.burst[finalIndex] === expectedBurst &&
+    typethock.graph.errors[finalIndex] === expectedErrors &&
+    typethock.metrics.consistency ===
+      expectedConsistency(trace, typethock.graph.boundariesMs)
   );
 }
 
-function isRillTerminalRolloverCorrection(
+function isTypethockTerminalRolloverCorrection(
   trace: ParityTrace,
-  rill: ParityResult,
+  typethock: ParityResult,
   oracle: ParityResult,
 ): boolean {
   if (trace.config.mode !== "words") return false;
@@ -436,15 +436,15 @@ function isRillTerminalRolloverCorrection(
   });
   if (
     collectDifferences(
-      withoutCorrectedTerminalSample(rill),
+      withoutCorrectedTerminalSample(typethock),
       withoutCorrectedTerminalSample(oracle),
     ).length > 0
   ) {
     return false;
   }
 
-  const finalIndex = rill.graph.boundariesMs.length - 1;
-  const previousBoundary = rill.graph.boundariesMs[finalIndex - 1] ?? 0;
+  const finalIndex = typethock.graph.boundariesMs.length - 1;
+  const previousBoundary = typethock.graph.boundariesMs[finalIndex - 1] ?? 0;
   const finalDuration = normalizedEndMs - previousBoundary;
   const finalInsertCount = trace.events.filter(
     (event) =>
@@ -455,27 +455,27 @@ function isRillTerminalRolloverCorrection(
         : event.atUs > previousBoundary * 1_000),
   ).length;
   const expectedWpm = Math.round(
-    calculateWpm(rill.counters.correctCharacters, normalizedEndMs),
+    calculateWpm(typethock.counters.correctCharacters, normalizedEndMs),
   );
   const expectedRaw = Math.round(
-    calculateWpm(rill.counters.typedCharacters, normalizedEndMs),
+    calculateWpm(typethock.counters.typedCharacters, normalizedEndMs),
   );
   const expectedBurst = Math.round(
     calculateWpm(finalInsertCount, finalDuration),
   );
   const recomputedConsistency = expectedConsistency(
     trace,
-    rill.graph.boundariesMs,
+    typethock.graph.boundariesMs,
   );
   return (
     finalIndex >= 0 &&
-    rill.durationMs === normalizedEndMs &&
+    typethock.durationMs === normalizedEndMs &&
     oracle.durationMs === normalizedEndMs &&
-    rill.graph.wpm[finalIndex] === expectedWpm &&
-    rill.graph.raw[finalIndex] === expectedRaw &&
-    rill.graph.burst[finalIndex] === expectedBurst &&
-    rill.metrics.consistency === recomputedConsistency &&
-    collectDifferences(rill, oracle).some((difference) =>
+    typethock.graph.wpm[finalIndex] === expectedWpm &&
+    typethock.graph.raw[finalIndex] === expectedRaw &&
+    typethock.graph.burst[finalIndex] === expectedBurst &&
+    typethock.metrics.consistency === recomputedConsistency &&
+    collectDifferences(typethock, oracle).some((difference) =>
       [
         `graph.wpm[${String(finalIndex)}]`,
         `graph.raw[${String(finalIndex)}]`,
@@ -487,18 +487,18 @@ function isRillTerminalRolloverCorrection(
 
 export function compareResults(
   trace: ParityTrace,
-  rill: ParityResult,
+  typethock: ParityResult,
   oracle: ParityResult,
 ): Comparison {
-  const differences = collectDifferences(rill, oracle);
+  const differences = collectDifferences(typethock, oracle);
   if (differences.length === 0) {
     return { kind: "equal", differences: [] };
   }
-  if (isRillRolloverCorrection(trace, rill, oracle)) {
-    return { kind: "rill-rollover-correction", differences };
+  if (isTypethockRolloverCorrection(trace, typethock, oracle)) {
+    return { kind: "typethock-rollover-correction", differences };
   }
-  if (isRillTerminalRolloverCorrection(trace, rill, oracle)) {
-    return { kind: "rill-terminal-rollover-correction", differences };
+  if (isTypethockTerminalRolloverCorrection(trace, typethock, oracle)) {
+    return { kind: "typethock-terminal-rollover-correction", differences };
   }
   return { kind: "different", differences };
 }

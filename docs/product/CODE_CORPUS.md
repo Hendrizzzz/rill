@@ -5,7 +5,7 @@ Last updated: 2026-08-10
 
 ## Scope
 
-Rill bundles 32 familiar algorithm concepts:
+TypeThock bundles 32 familiar algorithm concepts:
 
 1. duplicate detection
 2. palindrome checking
@@ -52,7 +52,7 @@ for the selected language alongside concept and context counts.
 
 The eight languages are a deliberate popular subset of LeetCode's broader
 runtime catalog. This is a scope decision, not a claim that these are the only
-popular languages or that Rill is affiliated with LeetCode:
+popular languages or that TypeThock is affiliated with LeetCode:
 
 - <https://support.leetcode.com/hc/en-us/articles/360011833974-What-are-the-environments-for-the-programming-languages>
 
@@ -63,7 +63,7 @@ particular problem statement, editorial explanation, example set, or code
 implementation is creative expression that may be protected. Public visibility
 or widespread reposting does not make content public domain.
 
-Rill therefore:
+TypeThock therefore:
 
 - authors every bundled implementation, title, invariant note, and complexity
   label specifically for this project;

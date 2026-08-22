@@ -37,13 +37,13 @@ function sourceFingerprint(): string {
 }
 
 const buildId =
-  process.env.RILL_BUILD_ID ?? `source-${sourceFingerprint().slice(0, 16)}`;
+  process.env.TYPETHOCK_BUILD_ID ?? `source-${sourceFingerprint().slice(0, 16)}`;
 
 export default defineConfig({
   plugins: [
     react(),
     {
-      name: "rill-build-identity",
+      name: "typethock-build-identity",
       generateBundle() {
         this.emitFile({
           type: "asset",
@@ -54,7 +54,7 @@ export default defineConfig({
     },
   ],
   define: {
-    __RILL_BUILD_ID__: JSON.stringify(buildId),
+    __TYPETHOCK_BUILD_ID__: JSON.stringify(buildId),
   },
   server: {
     host: "127.0.0.1",

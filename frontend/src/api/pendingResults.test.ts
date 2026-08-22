@@ -9,7 +9,7 @@ import {
 import { ApiError } from "./client";
 import type { TypingResult } from "../features/typing/types";
 
-const KEY = "rill.pending-account-results.v2";
+const KEY = "typethock.pending-account-results.v2";
 
 function result(clientResultId: string): TypingResult {
   return {
@@ -94,7 +94,7 @@ describe("pending account results", () => {
 
   it("preserves and reports incompatible pre-release pending results", () => {
     localStorage.setItem(
-      "rill.pending-account-results.v1",
+      "typethock.pending-account-results.v1",
       JSON.stringify({
         version: 1,
         entries: [
@@ -112,7 +112,7 @@ describe("pending account results", () => {
     expect(hasLegacyPendingAccountResults("account-a")).toBe(true);
     expect(hasLegacyPendingAccountResults("account-b")).toBe(false);
     expect(queueAccountResult("account-a", result("current"))).toBe("queued");
-    expect(localStorage.getItem("rill.pending-account-results.v1")).toContain(
+    expect(localStorage.getItem("typethock.pending-account-results.v1")).toContain(
       "legacy",
     );
   });

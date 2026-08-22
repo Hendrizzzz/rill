@@ -1,15 +1,15 @@
-# Rill product requirements
+# TypeThock product requirements
 
 Status: release scope implemented; final verification in progress
 Last updated: 2026-08-03
 
 ## Verdict
 
-Rill is worth building as a focused, useful typing instrument and as a production-oriented full-stack reference project. The release should stay narrow: make repeated typing practice excellent, preserve meaningful history, and avoid social or competitive features that would distract from the core loop.
+TypeThock is worth building as a focused, useful typing instrument and as a production-oriented full-stack reference project. The release should stay narrow: make repeated typing practice excellent, preserve meaningful history, and avoid social or competitive features that would distract from the core loop.
 
 ## Product intent
 
-Rill helps an individual practise speed and accuracy without visual noise. A guest can open the app and begin immediately. An account is optional and exists to preserve results across devices, not to gate the typing experience.
+TypeThock helps an individual practise speed and accuracy without visual noise. A guest can open the app and begin immediately. An account is optional and exists to preserve results across devices, not to gate the typing experience.
 
 The product must feel:
 
@@ -29,14 +29,14 @@ The product must feel:
 - Deterministic, seeded prompt generation from bundled English and Spanish word
   lists.
 - A curated corpus of 1,030 English quotations: 906 attributed public-domain
-  literary excerpts and 124 project-original Rill entries, including concise
+  literary excerpts and 124 project-original TypeThock entries, including concise
   observations and longer narrative micro-scenes.
 - Plain custom text (2–300 words, at most 2,000 characters) held only in the
   active browser tab; prompt text is never persisted or uploaded.
 - Code practice built from 32 common algorithm concepts in 16
   mnemonic contexts across C++, Java, Python 3, C, C#, JavaScript, TypeScript,
   and Go (4,096 contextual drills total; 512 per language). Every implementation and teaching
-  note is authored for Rill; no third-party problem statement, editorial, or
+  note is authored for TypeThock; no third-party problem statement, editorial, or
   submission is bundled. Contextual drills are not presented as distinct
   algorithms.
 - Code practice renders source on a four-space indentation grid, automatically
@@ -171,7 +171,7 @@ ready -> running -> completed
   acceptable for release 1; more human languages require their own reviewed
   corpus.
 - “Popular LeetCode languages” is interpreted as the eight languages used by
-  LeetCode’s expanded editorial rollout. Rill teaches broadly known algorithms
+  LeetCode’s expanded editorial rollout. TypeThock teaches broadly known algorithms
   but does not claim affiliation with LeetCode and does not reproduce its
   problem text, examples, editorials, proprietary assets, or user submissions.
 - The target deployment is a public service for unrelated users. HTTPS terminates at an operator-managed ingress in front of the bundled Nginx container.

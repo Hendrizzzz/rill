@@ -1,5 +1,5 @@
 {
-  "schema": "rill-parity-program/1",
+  "schema": "typethock-parity-program/1",
   "oracle": {
     "repository": "monkeytypegame/monkeytype",
     "commit": "7feea96c5df21a59af9553fa7c52eb33af5997b8",
@@ -83,33 +83,33 @@
       ]
     },
     {
-      "id": "rill-quality",
-      "name": "Rill quality, security, and deployment",
+      "id": "typethock-quality",
+      "name": "TypeThock quality, security, and deployment",
       "blocking": true,
-      "claim": "Rill's own release contract is verified independently of Monkeytype feature or visual identity.",
+      "claim": "TypeThock's own release contract is verified independently of Monkeytype feature or visual identity.",
       "cases": [
         {
-          "id": "RILL-001",
+          "id": "TYPETHOCK-001",
           "name": "Frontend typecheck, lint, unit tests, coverage, and production build",
           "command": "npm run typecheck && npm run lint && npm run test:coverage && npm run build"
         },
         {
-          "id": "RILL-002",
+          "id": "TYPETHOCK-002",
           "name": "Clean Spring/PostgreSQL integration verification",
           "command": "./mvnw --batch-mode --no-transfer-progress clean verify"
         },
         {
-          "id": "RILL-003",
+          "id": "TYPETHOCK-003",
           "name": "Owned production container health and build fingerprint",
           "command": "docker compose up --build --detach --wait"
         },
         {
-          "id": "RILL-004",
+          "id": "TYPETHOCK-004",
           "name": "Browser interaction, accessibility, responsive, and console checks",
           "command": "Playwright and in-app Browser"
         },
         {
-          "id": "RILL-005",
+          "id": "TYPETHOCK-005",
           "name": "Dependency and production-header review",
           "command": "npm audit --audit-level=high plus HTTP inspection"
         }

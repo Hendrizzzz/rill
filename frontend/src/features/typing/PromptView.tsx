@@ -148,6 +148,8 @@ export function PromptView({
   compositionText,
 }: PromptViewProps) {
   const promptWindowRef = useRef<HTMLSpanElement>(null);
+  const visualCaretRef = useRef<HTMLSpanElement>(null);
+  const visualCaretPositionedRef = useRef(false);
   const [windowStart, setWindowStart] = useState(0);
   const visibleWindowStart =
     state.wordIndex < windowStart
@@ -306,6 +308,84 @@ export function PromptView({
     state.wordIndex,
   ]);
 
+  useLayoutEffect(() => {
+    const windowElement = promptWindowRef.current;
+    const visualCaret = visualCaretRef.current;
+    if (windowElement === null || visualCaret === null) {
+      return;
+    }
+
+    const alignVisualCaret = () => {
+      const anchor = windowElement.querySelector<HTMLElement>(
+        ".typing-caret",
+      );
+      if (anchor === null) {
+        visualCaret.dataset.visible = "false";
+        visualCaret.classList.remove("is-animated");
+        visualCaretPositionedRef.current = false;
+        return;
+      }
+
+      const viewport = windowElement.getBoundingClientRect();
+      const anchorBounds = anchor.getBoundingClientRect();
+      const windowStyles = window.getComputedStyle(windowElement);
+      const parsedLineHeight = Number.parseFloat(windowStyles.lineHeight);
+      const parsedFontSize = Number.parseFloat(windowStyles.fontSize);
+      const fallbackLineHeight =
+        (Number.isFinite(parsedLineHeight) ? parsedLineHeight : undefined) ??
+        (Number.isFinite(parsedFontSize) ? parsedFontSize * 1.3 : 24);
+      const anchorHeight = anchorBounds.height || fallbackLineHeight;
+      const verticalInset = Math.min(2, anchorHeight / 4);
+      const left =
+        anchorBounds.left - viewport.left + windowElement.scrollLeft;
+      const top =
+        anchorBounds.top -
+        viewport.top +
+        windowElement.scrollTop +
+        verticalInset;
+
+      if (!visualCaretPositionedRef.current) {
+        visualCaret.classList.remove("is-animated");
+      }
+      visualCaret.style.setProperty("--caret-x", `${String(left)}px`);
+      visualCaret.style.setProperty("--caret-y", `${String(top)}px`);
+      visualCaret.style.setProperty(
+        "--caret-height",
+        `${String(Math.max(2, anchorHeight - verticalInset * 2))}px`,
+      );
+      visualCaret.dataset.visible = "true";
+
+      if (!visualCaretPositionedRef.current) {
+        // Commit the initial position before enabling interpolation so focus and
+        // restarts never animate the caret in from the corner of the prompt.
+        void visualCaret.getBoundingClientRect();
+        visualCaret.classList.add("is-animated");
+        visualCaretPositionedRef.current = true;
+      }
+    };
+
+    alignVisualCaret();
+    const observer = new ResizeObserver(alignVisualCaret);
+    observer.observe(windowElement);
+    window.visualViewport?.addEventListener("resize", alignVisualCaret);
+    return () => {
+      observer.disconnect();
+      window.visualViewport?.removeEventListener(
+        "resize",
+        alignVisualCaret,
+      );
+    };
+  }, [
+    captureFocused,
+    compositionText,
+    state.config.contentType,
+    state.currentInput.length,
+    state.prompt.id,
+    state.status,
+    state.wordIndex,
+    visibleWindowStart,
+  ]);
+
   return (
     <button
       type="button"
@@ -331,6 +411,11 @@ export function PromptView({
         lang={state.prompt.language}
         dir={state.config.contentType === "code" ? "ltr" : "auto"}
       >
+        <span
+          ref={visualCaretRef}
+          className="typing-caret-visual"
+          data-visible="false"
+        />
         {words.map((target, offset) => {
           const absoluteIndex = visibleWindowStart + offset;
           const codeMode = state.config.contentType === "code";

@@ -1,5 +1,5 @@
 try {
-  const theme = localStorage.getItem("rill.theme.v1");
+  const theme = localStorage.getItem("typethock.theme.v1");
   document.documentElement.dataset.theme =
     theme === "paper" || theme === "nocturne" || theme === "tide"
       ? theme

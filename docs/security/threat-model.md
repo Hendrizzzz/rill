@@ -1,15 +1,15 @@
-# Rill threat model
+# TypeThock threat model
 
 Status: implementation-grounded release-1 model; local verification complete
 Last updated: 2026-08-10
 
 ## Assumption-validation check-in
 
-- Rill is designed to be internet-facing over HTTPS, initially as a single public deployment with one API instance.
+- TypeThock is designed to be internet-facing over HTTPS, initially as a single public deployment with one API instance.
 - Accounts use usernames only. Stored user data is limited to a password hash, session-token hash, typing results, and timestamps.
 - There are no privileged/admin users, third-party identity providers, uploads, payments, emails, or user-authored rich content.
 - The browser and network are attacker-controlled; the reverse proxy, API runtime configuration, and PostgreSQL instance are operator-controlled.
-- Competitive integrity is out of scope: stored personal results may be client-tampered, so Rill makes no leaderboard or anti-cheat claim.
+- Competitive integrity is out of scope: stored personal results may be client-tampered, so TypeThock makes no leaderboard or anti-cheat claim.
 
 The target context is a public service for unrelated users. HTTPS terminates at
 an operator-managed ingress in the Compose topology or at Vercel in the
@@ -20,7 +20,7 @@ against this boundary.
 
 ## Executive summary
 
-The highest-risk areas are account-session theft or fixation, cross-site state changes against cookie-authenticated users, ownership mistakes in result/export/delete endpoints, and resource abuse of authentication/result APIs. Rill reduces these risks with random revocable sessions whose raw values never enter storage or logs, explicit CSRF protection, principal-derived ownership, bounded DTOs/database constraints, password hashing, a constrained same-origin deployment, per-username throttling, and a process-global pre-work authentication budget. Client score tampering remains an accepted low-impact limitation because results are private and non-competitive.
+The highest-risk areas are account-session theft or fixation, cross-site state changes against cookie-authenticated users, ownership mistakes in result/export/delete endpoints, and resource abuse of authentication/result APIs. TypeThock reduces these risks with random revocable sessions whose raw values never enter storage or logs, explicit CSRF protection, principal-derived ownership, bounded DTOs/database constraints, password hashing, a constrained same-origin deployment, per-username throttling, and a process-global pre-work authentication budget. Client score tampering remains an accepted low-impact limitation because results are private and non-competitive.
 
 ## Scope and assumptions
 
@@ -122,7 +122,7 @@ flowchart LR
 3. Authenticated attacker supplies another user identifier or guesses an id → endpoint trusts request data instead of principal → cross-account history disclosure/deletion.
 4. Attacker steals a raw session from logs/database/browser-accessible storage → replays it before expiry → impersonates user.
 5. Attacker posts extreme counts or a huge pace array → expensive validation/JSON/database work → API availability degradation or corrupt metrics.
-6. Tampered API/local-storage string reaches an HTML injection sink → script executes in Rill origin → performs authenticated actions.
+6. Tampered API/local-storage string reaches an HTML injection sink → script executes in TypeThock origin → performs authenticated actions.
 7. Spoofed forwarding headers defeat per-IP limits or secure-cookie decisions → brute-force protection weakens or cookies are misconfigured.
 8. Compromised dependency/build input ships malicious client/server code → session/data compromise across users.
 
@@ -151,9 +151,9 @@ flowchart LR
 
 | Path | Why it matters | Related threats |
 | --- | --- | --- |
-| `backend/src/main/java/com/rill/typing/auth/` and `config/SecurityConfiguration.java` | Session resolution, CSRF/CORS/headers, proxy trust, rate limits | TM-001, TM-002, TM-004, TM-007 |
-| `backend/src/main/java/com/rill/typing/auth/` | Password handling, session lifecycle, export/delete | TM-001–TM-004 |
-| `backend/src/main/java/com/rill/typing/result/` | Ownership, bounds, canonical scoring, pagination | TM-003, TM-005, TM-009 |
+| `backend/src/main/java/com/typethock/typing/auth/` and `config/SecurityConfiguration.java` | Session resolution, CSRF/CORS/headers, proxy trust, rate limits | TM-001, TM-002, TM-004, TM-007 |
+| `backend/src/main/java/com/typethock/typing/auth/` | Password handling, session lifecycle, export/delete | TM-001–TM-004 |
+| `backend/src/main/java/com/typethock/typing/result/` | Ownership, bounds, canonical scoring, pagination | TM-003, TM-005, TM-009 |
 | `backend/src/main/resources/db/migration/` | Uniqueness, foreign keys, cascades, range checks | TM-003–TM-005 |
 | `backend/src/main/resources/application*.yml` | Secret/config and production defaults | TM-004, TM-007 |
 | `frontend/src/api/` | CSRF, credential handling, fixed-origin requests, errors | TM-002, TM-006 |

@@ -10,13 +10,13 @@ import type {
 
 export type ThemeName = "paper" | "nocturne" | "tide";
 
-const CONFIG_KEY = "rill.test-config.v2";
-const LEGACY_CONFIG_KEY = "rill.test-config.v1";
-const THEME_KEY = "rill.theme.v1";
-const GUEST_RESULTS_KEY = "rill.guest-results.v4";
-const PREVIOUS_GUEST_RESULTS_KEY = "rill.guest-results.v3";
-const PREVIOUS_V2_GUEST_RESULTS_KEY = "rill.guest-results.v2";
-const LEGACY_GUEST_RESULTS_KEY = "rill.guest-results.v1";
+const CONFIG_KEY = "typethock.test-config.v2";
+const LEGACY_CONFIG_KEY = "typethock.test-config.v1";
+const THEME_KEY = "typethock.theme.v1";
+const GUEST_RESULTS_KEY = "typethock.guest-results.v4";
+const PREVIOUS_GUEST_RESULTS_KEY = "typethock.guest-results.v3";
+const PREVIOUS_V2_GUEST_RESULTS_KEY = "typethock.guest-results.v2";
+const LEGACY_GUEST_RESULTS_KEY = "typethock.guest-results.v1";
 const MAX_GUEST_RESULTS = 100;
 
 export const MIN_SAVED_WORD_RESULT_DURATION_MS = 1_000;

@@ -11,11 +11,11 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.rill</groupId>
-  <artifactId>rill-backend</artifactId>
+  <groupId>com.typethock</groupId>
+  <artifactId>typethock-backend</artifactId>
   <version>1.0.0</version>
-  <name>Rill backend</name>
-  <description>Private account and typing-result API for Rill.</description>
+  <name>TypeThock backend</name>
+  <description>Private account and typing-result API for TypeThock.</description>
 
   <properties>
     <java.version>21</java.version>

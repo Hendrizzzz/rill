@@ -1,11 +1,11 @@
-# Rill design direction
+# TypeThock design direction
 
 Status: approved direction for initial implementation
 Last updated: 2026-07-26
 
 ## Concept: a quiet editorial instrument
 
-Rill should resemble a well-made writing tool, not a game dashboard or productivity template. The memorable element is a broad field of text with a thin, warm caret moving through it. Nothing competes with the words while a test is active.
+TypeThock should resemble a well-made writing tool, not a game dashboard or productivity template. The memorable element is a broad field of text with a thin, warm caret moving through it. Nothing competes with the words while a test is active.
 
 The composition is deliberately sparse but not generic:
 

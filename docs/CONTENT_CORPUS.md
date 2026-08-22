@@ -3,7 +3,7 @@
 Status: active
 Last reviewed: 2026-08-10
 
-Rill's content should be worth practising and safe to publish. It does not copy
+TypeThock's content should be worth practising and safe to publish. It does not copy
 modern movie or television dialogue, song lyrics, commercial quote databases,
 LeetCode problem statements, editorials, solutions, or user submissions.
 
@@ -20,7 +20,7 @@ LeetCode problem statements, editorials, solutions, or user submissions.
   with dialogue, technical moments, and everyday narrative.
 
 Every entry has a stable ID, theme, attribution, source URL, and rights basis.
-The `Rill original` attribution means the line was created for this repository,
+The `TypeThock original` attribution means the line was created for this repository,
 not collected from a quotation site or attributed to a public figure.
 
 The generated literary file can be reproduced with

@@ -1,14 +1,14 @@
-# Rill–Monkeytype parity test ledger
+# TypeThock–Monkeytype parity test ledger
 
 Status: reconciled current-worktree inventory; unresolved rows remain explicit  
-Owner: Rill maintainers  
+Owner: TypeThock maintainers  
 Created: 2026-07-27  
-Normative Rill behavior: [`../product/TYPING_CONTRACT.md`](../product/TYPING_CONTRACT.md)  
+Normative TypeThock behavior: [`../product/TYPING_CONTRACT.md`](../product/TYPING_CONTRACT.md)  
 Prior evidence: [`../VERIFICATION.md`](../VERIFICATION.md)
 
 ## Purpose and claim boundary
 
-This ledger is the source of truth for comparing Rill's supported typing behavior
+This ledger is the source of truth for comparing TypeThock's supported typing behavior
 with Monkeytype. It has two jobs:
 
 1. enumerate the meaningful behavior classes, boundaries, and failure modes; and
@@ -26,12 +26,12 @@ unbounded. “All possible cases” therefore means:
 
 A green ledger supports a bounded claim:
 
-> For the Rill release modes and settings listed here, the two products produce
+> For the TypeThock release modes and settings listed here, the two products produce
 > equivalent retained typing statistics and graph samples when given the same
 > prompt, committed input events, and event timestamps.
 
 It does **not** claim visual-design identity, feature-for-feature Monkeytype
-identity, or equivalence for modes Rill does not implement.
+identity, or equivalence for modes TypeThock does not implement.
 
 The legacy row-by-row disposition below records the 2026-07-27 baseline:
 312 rows — 37 `PASS`, 258 `BLOCKED`, 16 `N/A`, and one intentional `DIFF`.
@@ -49,13 +49,13 @@ Monkeytype is a changing external product. Every comparison run must record:
 - date, time zone, and run ID;
 - exact Monkeytype URL and, when visible, version/build identifier;
 - Monkeytype HTML/main-asset SHA-256 fingerprints and settings export/snapshot;
-- exact Rill commit SHA or `WORKTREE` plus diff reference;
+- exact TypeThock commit SHA or `WORKTREE` plus diff reference;
 - browser name and full version;
 - browser driver/controller and result-extractor versions;
 - operating system, device type, zoom, and device-pixel ratio;
 - Monkeytype language, mode, duration/word count, punctuation, numbers, and
   behavior settings that can change scoring;
-- Rill settings;
+- TypeThock settings;
 - exact prompt text;
 - exact committed event trace and monotonic timestamps;
 - whether the run was deterministic/replayed or manually typed.
@@ -72,9 +72,9 @@ reported separately.
 | --- | --- | --- |
 | `MT-ENGINE` | A pinned, independently identified Monkeytype scoring implementation or extracted golden vectors | Exact metric and graph-sample equivalence for the same deterministic trace |
 | `MT-LIVE` | The public Monkeytype website through trusted browser input | Real interaction and displayed-result behavior for the captured live trace |
-| `RILL` | The normative Rill typing/API contract | Rill state, persistence, failure, and deployment behavior |
+| `TYPETHOCK` | The normative TypeThock typing/API contract | TypeThock state, persistence, failure, and deployment behavior |
 | `A11Y` | WCAG criteria plus named assistive-technology/browser expectations | Accessibility behavior; Monkeytype behavior is context only |
-| `SEC-PERF` | The stated threat/performance requirement and measured evidence | Rill security or performance control |
+| `SEC-PERF` | The stated threat/performance requirement and measured evidence | TypeThock security or performance control |
 | `EXPLORATORY` | Uncontrolled/manual observation | A lead only; never exact parity |
 
 The gates are independent:
@@ -82,7 +82,7 @@ The gates are independent:
 - exact numerical parity requires `MT-ENGINE` deterministic evidence;
 - public-site integration uses representative `MT-LIVE` evidence against each
   live run's own captured trace; and
-- Rill quality uses `RILL`, `A11Y`, and `SEC-PERF` evidence.
+- TypeThock quality uses `TYPETHOCK`, `A11Y`, and `SEC-PERF` evidence.
 
 `MT-LIVE` is not a prerequisite for a mathematical equality claim because the
 public site does not expose a controllable clock. Conversely, `MT-ENGINE`
@@ -98,7 +98,7 @@ Exact parity and live-browser realism are separate lanes:
    Capture the prompt, ordered browser input events, `inputType`, composition
    sequence, actual site-observed elapsed times, settings, and extracted result.
    Do not pretend two live runs have identical millisecond timing.
-2. **Deterministic replay:** feed one normalized trace into Rill's pure
+2. **Deterministic replay:** feed one normalized trace into TypeThock's pure
    calculator and a pinned independent Monkeytype engine/golden-vector harness.
    Both receive the same integer-microsecond trace, the exact
    `elapsedUs / 1000` fractional-millisecond conversion, tie ordering, prompt,
@@ -145,7 +145,7 @@ epoch and must not aggregate `STALE` evidence as current.
 
 ### Compare semantics, not branding
 
-Rill must retain its original interface. Pixel layout, colors, typography,
+TypeThock must retain its original interface. Pixel layout, colors, typography,
 branding, animation curves, and proprietary Monkeytype assets are not parity
 targets. The following are parity targets:
 
@@ -167,7 +167,7 @@ targets. The following are parity targets:
 | Graph sample timestamps and values | Exact before rendering |
 | Smoothed path | Must pass through the samples without overshoot or invented extrema; pixel-identical interpolation is not required |
 | Tooltip | Must expose the exact underlying sample and remain inside the viewport |
-| Accessibility/interaction | Rill contract, WCAG expectations, and browser behavior apply; Monkeytype is reference evidence, not permission to copy a defect |
+| Accessibility/interaction | TypeThock contract, WCAG expectations, and browser behavior apply; Monkeytype is reference evidence, not permission to copy a defect |
 | Unsupported Monkeytype feature | `N/A`, with the product-scope difference recorded |
 
 Never hide a difference behind a broad tolerance. If independent live typing
@@ -185,7 +185,7 @@ Use exactly one value in each matrix row:
 | `RUN` | In progress; evidence incomplete |
 | `PASS` | Pass criteria met and evidence linked |
 | `DIFF` | Reproducible product difference |
-| `BUG` | Confirmed Rill defect with code/reproduction evidence; owner and regression/issue link are required when remediation starts |
+| `BUG` | Confirmed TypeThock defect with code/reproduction evidence; owner and regression/issue link are required when remediation starts |
 | `BLOCKED` | Environment or oracle prevents a valid comparison |
 | `N/A` | Deliberate scope difference; rationale recorded |
 | `INVALID` | Run cannot support a conclusion |
@@ -207,9 +207,9 @@ Store new evidence below `docs/testing/evidence/<run-id>/`:
   manifest.json
   run.md
   trace.json
-  rill-result.json
+  typethock-result.json
   monkeytype-result.json
-  rill.png
+  typethock.png
   monkeytype.png
   browser-console.txt
   notes.md
@@ -243,7 +243,7 @@ Derived values never substitute for missing primitives. The trace and result
 snippets illustrate their respective shapes; they are not one complete shared
 test vector.
 
-### Deterministic trace: `rill-parity-trace/1`
+### Deterministic trace: `typethock-parity-trace/1`
 
 Use integer microseconds so sub-millisecond boundaries survive JSON
 serialization. Adapters convert `elapsedUs / 1000` to the application's
@@ -251,7 +251,7 @@ millisecond clock.
 
 ```json
 {
-  "schema": "rill-parity-trace/1",
+  "schema": "typethock-parity-trace/1",
   "config": {
     "mode": "words",
     "modeValue": 10,
@@ -295,11 +295,11 @@ Rules:
 - live-only focus/composition/key metadata belongs in the capture artifact and
   maps explicitly to this normalized trace.
 
-### Normalized result: `rill-parity-result/1`
+### Normalized result: `typethock-parity-result/1`
 
 ```json
 {
-  "schema": "rill-parity-result/1",
+  "schema": "typethock-parity-result/1",
   "mode": "words",
   "modeValue": 10,
   "punctuation": false,
@@ -342,20 +342,20 @@ Metric strings are base-10 values rounded to exactly two decimal places.
 Primitive integers and bucket order must match before metrics are compared.
 For every field, the manifest records provenance as `direct-extraction`,
 `independent-derivation`, or `not-exposed`. A parity gate cannot silently fill
-a `not-exposed` primitive from Rill's own output.
+a `not-exposed` primitive from TypeThock's own output.
 
 ### Independent reference-model requirements
 
 The parity reference model must:
 
-- consume `rill-parity-trace/1` rather than Rill state or result aggregates;
+- consume `typethock-parity-trace/1` rather than TypeThock state or result aggregates;
 - derive word index, retained text, attempts, character categories, completion,
   buckets, and metrics prefix by prefix;
-- not import or call Rill production reducers, calculators, validators, or
+- not import or call TypeThock production reducers, calculators, validators, or
   backend services;
 - identify the pinned Monkeytype source/build or independently extracted golden
   behavior on which each rule is based;
-- emit `rill-parity-result/1` and an optional prefix-state stream;
+- emit `typethock-parity-result/1` and an optional prefix-state stream;
 - pass mutation checks proving the suite detects changes to word credit,
   separator classification, correction history, deadline inclusivity, 500 ms
   tail handling, bucket assignment, rounding, and consistency;
@@ -364,7 +364,7 @@ The parity reference model must:
 Frontend/backend agreement is useful internal evidence, but it is not an
 independent parity oracle.
 
-### Manifest: `rill-parity-manifest/1`
+### Manifest: `typethock-parity-manifest/1`
 
 The manifest contains the run metadata specified above plus:
 
@@ -381,7 +381,7 @@ Add one row per execution session. A deterministic session may cover multiple
 case IDs when it uses one frozen environment. A mixed campaign row is an index
 only and must preserve the environment and command boundaries in its evidence.
 
-| Run ID | Epoch | Date | Rill revision | Oracle class | Browser/OS | Case/variant IDs | Derived result | Evidence |
+| Run ID | Epoch | Date | TypeThock revision | Oracle class | Browser/OS | Case/variant IDs | Derived result | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `20260726T174929Z-mixed-chromium-7feea96c` | Historical pre-reconciliation campaign | 2026-07-27 | `528e07f… + WORKTREE` | Mixed | Windows / Playwright and Docker | 311-row historical inventory | Superseded as current-revision proof; retained as dated evidence | [historical run](evidence/20260726T174929Z-mixed-chromium-7feea96c/run.md) |
 | `20260726T190914Z-final-mixed-8b4dce69` | Pinned source `7feea96…`; live `v26.28.0` | 2026-07-27 | `528e07f… + source snapshot 3793a78…` | Mixed, separated in record | Windows / in-app Browser; CLI | All 312 rows | 37 pass, 258 blocked, 16 N/A, 1 diff | [current run](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md) |
@@ -399,8 +399,8 @@ Copy this block to `docs/testing/evidence/<run-id>/run.md` for every run:
 - Comparison epoch:
 - Operator:
 - Started/completed:
-- Rill revision and dirty-state hash:
-- Rill URL:
+- TypeThock revision and dirty-state hash:
+- TypeThock URL:
 - Monkeytype URL/build:
 - Browser/version:
 - Driver/controller/extractor versions:
@@ -428,7 +428,7 @@ Copy this block to `docs/testing/evidence/<run-id>/run.md` for every run:
 
 ## Final statistics
 
-| Statistic | Rill raw | Monkeytype raw | Displayed Rill | Displayed Monkeytype | Verdict |
+| Statistic | TypeThock raw | Monkeytype raw | Displayed TypeThock | Displayed Monkeytype | Verdict |
 | --- | ---: | ---: | --- | --- | --- |
 | Duration ms | | | | | |
 | Completion reason | | | | | |
@@ -513,7 +513,7 @@ These rows establish that the comparison environment itself is controlled.
 | ENV-010 | P1 | Numbers off/on | Same target digits and scoring | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | ENV-011 | P1 | Punctuation and numbers together | Interaction produces the same target/scoring | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | ENV-012 | P0 | English word-list/version difference | Frozen prompt removes generator differences | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
-| ENV-013 | P1 | Browser zoom 80/100/125/200/400% | Statistics unchanged; Rill remains operable | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
+| ENV-013 | P1 | Browser zoom 80/100/125/200/400% | Statistics unchanged; TypeThock remains operable | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | ENV-014 | P1 | DPR 1/1.25/1.5/2/3 | Statistics and graph samples unchanged | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | ENV-015 | P1 | Clean guest state | No previous result/config contaminates run | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | ENV-016 | P1 | Existing history/account state | Current result remains independent | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -533,7 +533,7 @@ These rows establish that the comparison environment itself is controlled.
 | IN-001 | P0 | First character correct | Starts timer once; one correct attempt | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | IN-002 | P0 | First character incorrect | Starts timer once; one incorrect attempt | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | IN-003 | P0 | Correct character in middle/end | Advances caret and counters exactly once | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
-| IN-004 | P0 | Wrong character of equal width | Target glyph stays visible as an error in Rill; counts match | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
+| IN-004 | P0 | Wrong character of equal width | Target glyph stays visible as an error in TypeThock; counts match | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | IN-005 | P0 | Wrong narrow/wide character | No spacing drift; counts match | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | IN-006 | P0 | Overtype beyond target length | Extra count and caret position match | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | IN-007 | P0 | Backspace wrong current character | Retained text changes; historical attempt remains | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -609,7 +609,7 @@ These rows establish that the comparison environment itself is controlled.
 | WD-016 | P1 | Space typed after final word completion | No extra post-result mutation | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | WD-017 | P0 | Prompt wraps at current word | Logical caret/word remains stable | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | WD-018 | P1 | Resize changes line wrapping mid-test | State/statistics unchanged | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
-| WD-019 | P1 | Empty/malformed prompt response | Rill error/retry state; comparison marked N/A | N/A | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#not-applicable) |
+| WD-019 | P1 | Empty/malformed prompt response | TypeThock error/retry state; comparison marked N/A | N/A | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#not-applicable) |
 | WD-020 | P1 | Prompt exhaustion in time mode | Explicit completion/failure contract, no crash | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | WD-021 | P0 | Extra character at word start/middle/end | Positional classification and following characters match | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | WD-022 | P0 | Missing character at word start/middle/end | No cascading substitution misclassification | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -646,8 +646,8 @@ These rows establish that the comparison environment itself is controlled.
 | TM-020 | P1 | Completion and restart in same frame | Exactly one immutable result | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | TM-021 | P0 | Events at 999.999/1000/1000.001 ms | Sub-millisecond capture normalizes and assigns the intended bucket | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
 | TM-022 | P0 | Completion at 494.99/495/499/500/1495 ms | Event hundredth-ms normalization, aggregate 10 ms rounding, and graph-tail decisions match the pinned source | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
-| TM-023 | P0 | Word test ends at raw 1995 ms | Monkeytype emits only the 1000 ms point; Rill intentionally preserves the normalized 2000 ms boundary instead of copying the reference data-loss defect | DIFF | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#intentional-difference) |
-| TM-024 | P0 | Word test ends 0.01–4.99 ms after an exact second that its aggregate duration rounds back to | Monkeytype omits post-boundary terminal input from the graph; Rill folds it into the existing final second so the graph agrees with its retained counters and remains persistable, with independently recomputed final values | DIFF | `npm run test:parity:campaign` |
+| TM-023 | P0 | Word test ends at raw 1995 ms | Monkeytype emits only the 1000 ms point; TypeThock intentionally preserves the normalized 2000 ms boundary instead of copying the reference data-loss defect | DIFF | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#intentional-difference) |
+| TM-024 | P0 | Word test ends 0.01–4.99 ms after an exact second that its aggregate duration rounds back to | Monkeytype omits post-boundary terminal input from the graph; TypeThock folds it into the existing final second so the graph agrees with its retained counters and remains persistable, with independently recomputed final values | DIFF | `npm run test:parity:campaign` |
 
 ## Statistics and character-accounting matrix
 
@@ -748,10 +748,10 @@ These rows establish that the comparison environment itself is controlled.
 
 ## Persistence, API, history, and failure matrix
 
-These cases verify Rill reliability. Monkeytype comparison is `N/A` where there
+These cases verify TypeThock reliability. Monkeytype comparison is `N/A` where there
 is no portable external API or equivalent account setup.
 
-| ID | Pri | Case or boundary | Expected Rill behavior | Status | Last run/evidence |
+| ID | Pri | Case or boundary | Expected TypeThock behavior | Status | Last run/evidence |
 | --- | --- | --- | --- | --- | --- |
 | API-001 | P0 | Guest result save/reload | Exact current-schema result survives | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
 | API-002 | P1 | Guest retention limit | Deterministic newest-first pruning | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -787,7 +787,7 @@ is no portable external API or equivalent account setup.
 
 ## Browser, accessibility, and responsive matrix
 
-| ID | Pri | Case or boundary | Required Rill behavior | Status | Last run/evidence |
+| ID | Pri | Case or boundary | Required TypeThock behavior | Status | Last run/evidence |
 | --- | --- | --- | --- | --- | --- |
 | BR-001 | P0 | Current Chromium desktop | Core trace and chart pass | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | BR-002 | P0 | Current Firefox desktop | Core trace and chart pass | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -829,9 +829,9 @@ Generated tests must store their seed and minimize any failing trace.
 
 | ID | Pri | Generator/property | Required invariant | Status | Last run/evidence |
 | --- | --- | --- | --- | --- | --- |
-| GEN-001 | P0 | Random correct/wrong/space/backspace traces | Rill and an independently implemented Rill-contract model agree prefix by prefix; counters never negative | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
-| GEN-002 | P0 | Random timestamps around second boundaries | Rill and an independently implemented Rill-contract model assign identical buckets/totals | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
-| GEN-003 | P0 | Random retained word/input pairs | Independent classifier and Rill emit identical categories/invariants | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
+| GEN-001 | P0 | Random correct/wrong/space/backspace traces | TypeThock and an independently implemented TypeThock-contract model agree prefix by prefix; counters never negative | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
+| GEN-002 | P0 | Random timestamps around second boundaries | TypeThock and an independently implemented TypeThock-contract model assign identical buckets/totals | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
+| GEN-003 | P0 | Random retained word/input pairs | Independent classifier and TypeThock emit identical categories/invariants | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
 | GEN-004 | P1 | Random corrected-error histories | Independent model confirms retained text and historical accuracy separation | PASS | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#case-coverage) |
 | GEN-005 | P0 | Random bucket vectors | Frontend, backend, and independent model derive identical metrics | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | GEN-006 | P0 | Random positive half-rounding vectors | JavaScript, Java, and independent decimal oracle agree | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -848,7 +848,7 @@ Generated tests must store their seed and minimize any failing trace.
 
 These are release controls rather than Monkeytype-parity assertions.
 
-| ID | Pri | Case or boundary | Required Rill behavior | Status | Last run/evidence |
+| ID | Pri | Case or boundary | Required TypeThock behavior | Status | Last run/evidence |
 | --- | --- | --- | --- | --- | --- |
 | NF-001 | P0 | HTML/script-like typed input | Rendered as text; no execution | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
 | NF-002 | P0 | Malicious API strings/JSON | Validation or safe storage; no SQL/script injection | BLOCKED | [campaign](evidence/20260726T190914Z-final-mixed-8b4dce69/run.md#blocked-cases) |
@@ -868,18 +868,18 @@ These are release controls rather than Monkeytype-parity assertions.
 These must remain visible so that “parity” is never misreported as complete
 Monkeytype feature equivalence.
 
-| ID | Monkeytype capability | Rill release-1 position | Status | Evidence/rationale |
+| ID | Monkeytype capability | TypeThock release-1 position | Status | Evidence/rationale |
 | --- | --- | --- | --- | --- |
 | SCOPE-001 | Quote tests | Not implemented | N/A | Product scope |
 | SCOPE-002 | Zen/custom free typing | Not implemented | N/A | Product scope |
-| SCOPE-003 | Languages beyond the Rill English prompt set | Not implemented as target generation | N/A | Product scope |
+| SCOPE-003 | Languages beyond the TypeThock English prompt set | Not implemented as target generation | N/A | Product scope |
 | SCOPE-004 | Alternative word lists/difficulties | Not implemented | N/A | Product scope |
 | SCOPE-005 | Stop-on-error/freedom/master behaviors | Not implemented | N/A | Product scope |
 | SCOPE-006 | Funbox/caret/sound appearance options | Not parity targets | N/A | Original product/design requirement |
 | SCOPE-007 | Multiplayer/leaderboards | Not implemented | N/A | Product scope |
 | SCOPE-008 | Monkeytype account/import/export ecosystem | Not a portable oracle | N/A | Separate products |
 | SCOPE-009 | Exact chart interpolation and pixel design | Intentionally original; sample semantics are the target | N/A | IP/design boundary |
-| SCOPE-010 | Monkeytype bugs or inaccessible behavior | Must not be copied automatically | N/A | Rill correctness/accessibility takes priority |
+| SCOPE-010 | Monkeytype bugs or inaccessible behavior | Must not be copied automatically | N/A | TypeThock correctness/accessibility takes priority |
 
 ## Mandatory release subset
 
@@ -915,8 +915,8 @@ browser/emulation coverage but not physical mobile input parity.
 
 Any `NR`, `DIFF`, `BUG`, `BLOCKED`, `INVALID`, or `STALE` row in the applicable
 subset must be named in the release report. Reports aggregate counts separately
-for `MT-ENGINE`, `MT-LIVE`, `RILL`, `A11Y`, and `SEC-PERF`; they must never
-collapse Rill-only evidence into “all the same.”
+for `MT-ENGINE`, `MT-LIVE`, `TYPETHOCK`, `A11Y`, and `SEC-PERF`; they must never
+collapse TypeThock-only evidence into “all the same.”
 
 ## Difference triage
 
@@ -925,8 +925,8 @@ For every `DIFF`:
 1. reproduce with a frozen prompt and deterministic timestamped trace;
 2. state expected and observed values;
 3. locate the first divergent event, counter, or graph bucket;
-4. determine whether the reference changed, the setup was invalid, Rill has a
-   defect, or Rill intentionally follows a safer/correcter contract;
+4. determine whether the reference changed, the setup was invalid, TypeThock has a
+   defect, or TypeThock intentionally follows a safer/correcter contract;
 5. add the smallest regression test that proves the decision;
 6. fix only after evaluating the evidence;
 7. rerun the case, neighboring boundaries, and generated related traces;

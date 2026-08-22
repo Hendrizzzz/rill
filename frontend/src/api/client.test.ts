@@ -417,7 +417,7 @@ describe("API client", () => {
       new Response('{"schemaVersion":1}', {
         headers: {
           "Content-Type": "application/json",
-          "Content-Disposition": 'attachment; filename="rill-export-test.json"',
+          "Content-Disposition": 'attachment; filename="typethock-export-test.json"',
         },
       }),
     );
@@ -425,7 +425,7 @@ describe("API client", () => {
     const { downloadAccountExport } = await import("./client");
 
     const exported = await downloadAccountExport();
-    expect(exported.filename).toBe("rill-export-test.json");
+    expect(exported.filename).toBe("typethock-export-test.json");
     await expect(exported.blob.text()).resolves.toContain('"schemaVersion":1');
   });
 

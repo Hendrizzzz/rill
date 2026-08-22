@@ -9,12 +9,12 @@ RUN mvn --batch-mode --no-transfer-progress -DskipTests package
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk --no-cache --update-cache upgrade p11-kit p11-kit-trust libexpat \
-    && addgroup -S rill \
-    && adduser -S -G rill -h /app rill
+    && addgroup -S typethock \
+    && adduser -S -G typethock -h /app typethock
 WORKDIR /app
-COPY --from=build --chown=rill:rill /workspace/target/rill-backend-1.0.0.jar /app/rill.jar
+COPY --from=build --chown=typethock:typethock /workspace/target/typethock-backend-1.0.0.jar /app/typethock.jar
 
-USER rill
+USER typethock
 EXPOSE 8080
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-ENTRYPOINT ["java", "-jar", "/app/rill.jar"]
+ENTRYPOINT ["java", "-jar", "/app/typethock.jar"]

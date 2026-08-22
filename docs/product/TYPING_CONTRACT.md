@@ -1,4 +1,4 @@
-# Rill typing contract
+# TypeThock typing contract
 
 Status: normative release-1 contract
 Last updated: 2026-08-03
@@ -267,7 +267,7 @@ This separates:
   fractional second rounds to `0.50` or above at two decimal places; the first
   retained edge is therefore `495ms`, while `494.99ms` is omitted.
 - At `1.995s`, the pinned reference rounds the aggregate duration to `2.00s`
-  but drops the entire second graph bucket. Rill deliberately emits the
+  but drops the entire second graph bucket. TypeThock deliberately emits the
   normalized `2.00s` boundary instead. This is an intentional safety
   difference: copying the reference would discard graph data and distort
   consistency.
@@ -374,13 +374,13 @@ After committing `cat`, any additional space while the next `currentInput` is em
   bounded window, it rebases on a complete row boundary. Stable prompt indices
   are React keys.
 - Quote prompts select deterministically from `quote-v3`: 906 attributed
-  public-domain literary excerpts and 124 documented Rill-original entries.
+  public-domain literary excerpts and 124 documented TypeThock-original entries.
 - Code prompts select deterministically from `code-v4`: 32 common algorithm
   concepts in 16 mnemonic contexts and eight programming languages (4,096
   drills total; 512 per language). The UI states selected-language drills, concepts, and contexts
   separately so contextual repetition is not misrepresented as new algorithms.
 - Code snippets, titles, invariant notes, and complexity labels are original
-  Rill content. No LeetCode statement, example, editorial, source code, user
+  TypeThock content. No LeetCode statement, example, editorial, source code, user
   submission, branding, or proprietary asset is included. The corpus is bundled
   locally and does not scrape or fetch a third-party service.
 - A code result uses `WORDS` mode internally, with `modeValue` equal to its line

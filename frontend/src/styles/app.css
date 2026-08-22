@@ -533,6 +533,7 @@ textarea:focus-visible {
 }
 
 .prompt-window {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
@@ -746,15 +747,30 @@ textarea:focus-visible {
   flex: 0 0 0;
 }
 
-.typing-caret::before {
+.typing-caret-visual {
+  --caret-x: 0px;
+  --caret-y: 0px;
+  --caret-height: 1.18em;
+
   position: absolute;
-  top: 0.12em;
-  left: -0.04em;
+  inset: 0 auto auto 0;
+  z-index: 3;
   width: 2px;
-  height: 1.18em;
+  height: var(--caret-height);
+  border-radius: 1px;
   background: var(--accent);
-  content: "";
-  transform: translateX(0);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(var(--caret-x), var(--caret-y), 0);
+  will-change: transform;
+}
+
+.typing-caret-visual[data-visible="true"] {
+  opacity: 1;
+}
+
+.typing-caret-visual.is-animated {
+  transition: transform 75ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .test-restart-row {
@@ -808,7 +824,7 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
-.test-page--ready .typing-caret::before {
+.test-page--ready .typing-caret-visual[data-visible="true"] {
   animation: caret-blink 1.05s steps(1, end) infinite;
 }
 
@@ -1906,6 +1922,10 @@ kbd {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  .typing-caret-visual.is-animated {
+    transition: none;
+  }
 }
 
 /* Studio revision: a typographer's proofing desk, not a generic SaaS shell. */
@@ -2166,15 +2186,6 @@ body {
   font-weight: 430;
   letter-spacing: 0;
   line-height: 1.7;
-}
-
-.typing-caret::before {
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  width: 2px;
-  height: auto;
-  transform: none;
 }
 
 .test-restart-row {

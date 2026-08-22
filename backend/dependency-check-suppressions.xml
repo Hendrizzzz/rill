@@ -3,7 +3,7 @@
   <suppress>
     <notes><![CDATA[
       CVE-2026-66299 affects the optional Apache Tomcat WebSocket chat example.
-      Rill uses embedded Tomcat and does not package Tomcat's examples web application.
+      TypeThock uses embedded Tomcat and does not package Tomcat's examples web application.
       Apache states that deployments without the examples web application are not affected.
     ]]></notes>
     <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat-embed-(?:core|websocket)@.*$</packageUrl>

@@ -1,4 +1,4 @@
-# Rill verification record
+# TypeThock verification record
 
 ## Unreleased content-expansion candidate
 
@@ -36,7 +36,7 @@ Actions or either public deployment.
   drills compiled inside the validator wrapper. C, C++, C#, and Go were skipped
   because operational local toolchains were unavailable; no local compilation
   is claimed for those languages. The workflow now sets
-  `RILL_REQUIRE_ALL_CODE_TOOLCHAINS=true`, turning any such skip into a CI
+  `TYPETHOCK_REQUIRE_ALL_CODE_TOOLCHAINS=true`, turning any such skip into a CI
   failure instead of silently accepting reduced language coverage.
 - `backend/mvnw.cmd clean -DskipTests package` produced the repackaged Spring Boot
   JAR with `BUILD SUCCESS`. A targeted non-container suite covering security
@@ -136,7 +136,7 @@ The OWASP Dependency-Check gate suppresses `CVE-2026-66299` only for the
 `tomcat-embed-core` and `tomcat-embed-websocket` artifacts to which the scanner
 maps it. Apache identifies the issue in Tomcat's optional WebSocket chat example
 and states that installations without the examples application are not
-affected; Rill's embedded Spring Boot application does not package that
+affected; TypeThock's embedded Spring Boot application does not package that
 application. This is a documented non-applicability suppression, not a claim
 that Tomcat 11.0.24 has remediated the issue.
 
@@ -349,7 +349,7 @@ Against the built Compose/Nginx/Spring/PostgreSQL application:
   instead checked by executing the relevant functions extracted from the
   pinned Monkeytype source checkout;
 - the former tiny-tail 500-WPM point is omitted using the reference's rounded
-  half-second graph cutoff (494.99ms omitted, 495ms retained). Rill deliberately
+  half-second graph cutoff (494.99ms omitted, 495ms retained). TypeThock deliberately
   preserves a full bucket at the reference's lossy 1.995s rollover and records
   that intentional difference. Pointer inspection showed a contained tooltip, visible
   WPM/error axes, and all WPM/raw/burst/error series. Browser console inspection
@@ -423,12 +423,12 @@ docker compose --env-file .env.example up --build --detach --wait
 From an empty volume, PostgreSQL initialized, Flyway migrated, the permission
 gate completed, and database/backend/web became healthy. Runtime checks showed:
 
-- `rill_migrator`: not superuser, cannot create databases/roles;
-- `rill_app`: cannot create schema objects, can DML application tables, cannot
+- `typethock_migrator`: not superuser, cannot create databases/roles;
+- `typethock_app`: cannot create schema objects, can DML application tables, cannot
   DML `flyway_schema_history`;
 - three migrations, zero users, and zero results after the destructive E2E account
   cleanup;
-- backend user `rill`, web user `101`, read-only roots, `privileged=false`,
+- backend user `typethock`, web user `101`, read-only roots, `privileged=false`,
   all capabilities dropped, `no-new-privileges=true`;
 - `/theme-init.js`: HTTP 200, JavaScript MIME type, correct body in the final
   image;
@@ -469,8 +469,8 @@ validated successfully. No gitleaks or container-image scanner was available.
 
 ### Backup/restore
 
-A custom-format dump was created by `rill_migrator`, restored into the explicit
-disposable `rill_restore_check` database created by `postgres`, and queried:
+A custom-format dump was created by `typethock_migrator`, restored into the explicit
+disposable `typethock_restore_check` database created by `postgres`, and queried:
 
 ```text
 migrations:1
@@ -478,7 +478,7 @@ users:0
 results:0
 ```
 
-The disposable database and `/tmp/rill-final-backup.dump` were then removed.
+The disposable database and `/tmp/typethock-final-backup.dump` were then removed.
 
 ## Performance evidence
 
@@ -516,13 +516,13 @@ Its current evidence bundle is
 The reconciled 312-row disposition is 37 `PASS`, 258 `BLOCKED`, 16 `N/A`, and
 one `DIFF`, with no unreviewed row. The one difference is deliberate: at raw
 1995 ms, pinned Monkeytype source drops the normalized 2000 ms timer boundary,
-while Rill retains it. This is regression-tested and disclosed as `TM-023`.
+while TypeThock retains it. This is regression-tested and disclosed as `TM-023`.
 
 The blocked rows include exact cross-site trace replay, final-revision
 Playwright and performance execution, PostgreSQL/Testcontainers integration,
 physical mobile input, named screen readers, supported-Node reruns, and current
 OWASP data refresh. This campaign therefore does not claim that all edge cases
-ran or that Rill and Monkeytype are numerically identical.
+ran or that TypeThock and Monkeytype are numerically identical.
 
 Latest completed commands:
 
@@ -587,7 +587,7 @@ remain ordinary scored input. The corpus identity is `code-v2`.
 
 The editor presentation was informed by a live inspection of LeetCode's code
 surface (fixed-width type, quiet gutter, restrained syntax hierarchy, strong
-cursor, and compact metadata). Rill retains its own typography, palette,
+cursor, and compact metadata). TypeThock retains its own typography, palette,
 layout, components, copy, source, and assets.
 
 Completed commands from `frontend/`:
@@ -736,7 +736,7 @@ of this file.
 
 ## 2026-07-30 subsecond scoring and persistence boundary
 
-Rill now keeps Monkeytype-compatible statistics for word tests that complete
+TypeThock now keeps Monkeytype-compatible statistics for word tests that complete
 in less than one second, including the canonical 1ms fallback, while marking
 those results `too short · not saved`. They do not enter guest history, account
 API traffic, or the offline retry queue. Results become persistable at 1,000ms
@@ -763,11 +763,11 @@ npm.cmd run lint
 npm.cmd run build
 # all exit 0; Vite 8.1.5 built 103 modules
 
-$env:MONKEYTYPE_SOURCE_ROOT='C:\Users\hendrizzzz\AppData\Local\Temp\rill-monkeytype-audit'
+$env:MONKEYTYPE_SOURCE_ROOT='C:\Users\hendrizzzz\AppData\Local\Temp\typethock-monkeytype-audit'
 npm.cmd run test:parity:oracle
 # pinned commit 7feea96c5df21a59af9553fa7c52eb33af5997b8; 1/1 passed
 
-$env:RILL_PARITY_RUNS='10000'
+$env:TYPETHOCK_PARITY_RUNS='10000'
 npm.cmd run test:parity:campaign
 # 5/5 campaign checks passed; 10,000 traces executed
 
@@ -776,7 +776,7 @@ npx.cmd playwright test
 # 142 passed, 10 expected capability/account skips, 0 failed in 6.9 minutes
 # Chromium, Firefox, WebKit, and mobile Chromium
 
-.\mvnw.cmd '-Dtest=RillPrincipalResolverTest,DeploymentManifestTest,ProductionSafetyConfigurationTest,SecurityConfigurationTest' test
+.\mvnw.cmd '-Dtest=TypeThockPrincipalResolverTest,DeploymentManifestTest,ProductionSafetyConfigurationTest,SecurityConfigurationTest' test
 # 8 tests passed; BUILD SUCCESS
 
 .\mvnw.cmd -DskipTests package
@@ -793,7 +793,7 @@ uses Node 24.
 ## 2026-07-30 live Neon and Render verification
 
 The free Neon project is in Singapore and uses a direct owner connection for
-Flyway plus a pooled `rill_app` connection for ordinary runtime access. The
+Flyway plus a pooled `typethock_app` connection for ordinary runtime access. The
 runtime role was checked after its password rotation:
 
 ```text
@@ -808,7 +808,7 @@ neon_superuser = false
 ```
 
 Render accepted the free Blueprint and created
-`https://rill-typewriting-api.onrender.com`. The first live startup reproduced
+`https://typethock-typewriting-api.onrender.com`. The first live startup reproduced
 a pgJDBC portability defect:
 
 ```text
@@ -834,7 +834,7 @@ session held the shared `backend/target` directory:
 ```
 
 Render deployed commit `85a07354f2cb422129bc3ce2cbe3cd2650b993e9`.
-Its container log reported `Started RillApplication in 145.099 seconds` on the
+Its container log reported `Started TypeThockApplication in 145.099 seconds` on the
 free instance and then `Your service is live`. This is a cold deployment
 startup observation, not an application-request benchmark. The deployed
 readiness endpoint returned:
@@ -920,7 +920,7 @@ npx.cmd playwright test e2e/typing.spec.ts --project=chromium --workers=1
 .\mvnw.cmd
   '-Dtest=AuthenticationRateLimiterTest,ProductionSafetyConfigurationTest,
           DeploymentManifestTest,SecurityConfigurationTest,
-          RillPrincipalResolverTest' test
+          TypeThockPrincipalResolverTest' test
 # 12 tests passed; 0 failures; 0 errors; BUILD SUCCESS
 ```
 

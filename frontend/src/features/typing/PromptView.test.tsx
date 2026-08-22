@@ -166,6 +166,95 @@ describe("code prompt presentation", () => {
       container.querySelector('.prompt-code-row[data-active="true"]'),
     ).not.toBeNull();
     expect(container.querySelector(".typing-caret")).toBeNull();
+    expect(
+      container.querySelector<HTMLElement>(".typing-caret-visual")?.dataset
+        .visible,
+    ).toBe("false");
+  });
+
+  it("keeps one visual caret and interpolates it between in-flow anchors", () => {
+    let anchorLeft = 100;
+    const boundsSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function mockBounds(this: HTMLElement) {
+        if (this.classList.contains("prompt-window")) {
+          return {
+            x: 20,
+            y: 10,
+            width: 500,
+            height: 120,
+            top: 10,
+            right: 520,
+            bottom: 130,
+            left: 20,
+            toJSON: () => ({}),
+          };
+        }
+        if (this.classList.contains("typing-caret")) {
+          return {
+            x: anchorLeft,
+            y: 40,
+            width: 0,
+            height: 27,
+            top: 40,
+            right: anchorLeft,
+            bottom: 67,
+            left: anchorLeft,
+            toJSON: () => ({}),
+          };
+        }
+        return {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          toJSON: () => ({}),
+        };
+      });
+
+    try {
+      const initialState = activeState(0);
+      const { container, rerender } = render(
+        <PromptView
+          state={initialState}
+          captureRef={createRef<HTMLTextAreaElement>()}
+          captureFocused={true}
+          compositionText=""
+        />,
+      );
+      const visualCaret = container.querySelector<HTMLElement>(
+        ".typing-caret-visual",
+      );
+
+      expect(visualCaret?.dataset.visible).toBe("true");
+      expect(visualCaret?.style.getPropertyValue("--caret-x")).toBe("80px");
+      expect(visualCaret?.style.getPropertyValue("--caret-y")).toBe("32px");
+      expect(visualCaret?.style.getPropertyValue("--caret-height")).toBe(
+        "23px",
+      );
+      expect(visualCaret).toHaveClass("is-animated");
+
+      anchorLeft = 116;
+      rerender(
+        <PromptView
+          state={{ ...initialState, currentInput: ["d"] }}
+          captureRef={createRef<HTMLTextAreaElement>()}
+          captureFocused={true}
+          compositionText=""
+        />,
+      );
+
+      expect(
+        container.querySelector<HTMLElement>(".typing-caret-visual"),
+      ).toBe(visualCaret);
+      expect(visualCaret?.style.getPropertyValue("--caret-x")).toBe("96px");
+    } finally {
+      boundsSpy.mockRestore();
+    }
   });
 });
 

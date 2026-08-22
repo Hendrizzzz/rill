@@ -1,4 +1,4 @@
-# Rill zero-cost deployment
+# TypeThock zero-cost deployment
 
 Last updated: 2026-08-10
 
@@ -15,7 +15,7 @@ browser -> Vercel static site and /api reverse proxy
 
 Vercel remains the browser-visible origin. Its external rewrite sends `/api`
 requests to Render without exposing a second origin to frontend code. This
-preserves Rill's `Secure`, `SameSite=Lax`, host-only session cookies and CSRF
+preserves TypeThock's `Secure`, `SameSite=Lax`, host-only session cookies and CSRF
 header flow. Do not replace the rewrite with a browser-visible cross-origin API
 URL.
 
@@ -66,7 +66,7 @@ The 0.5 GB plan cannot serve an unlimited number of accounts.
    hostname, while avoiding a non-portable dependency on
    `$HOME/.postgresql/root.crt` inside the container.
 
-4. Do not create `rill_app` with the Neon Console, CLI, or API: Neon grants
+4. Do not create `typethock_app` with the Neon Console, CLI, or API: Neon grants
    those roles membership in `neon_superuser`. Connect to the direct hostname
    with `psql` as the Neon owner, using an interactive password prompt and
    authenticated TLS:
@@ -79,19 +79,19 @@ The 0.5 GB plan cannot serve an unlimited number of accounts.
    grant only runtime data access:
 
    ```sql
-   CREATE ROLE rill_app LOGIN;
-   \password rill_app
+   CREATE ROLE typethock_app LOGIN;
+   \password typethock_app
 
-   GRANT CONNECT ON DATABASE neondb TO rill_app;
-   GRANT USAGE ON SCHEMA public TO rill_app;
+   GRANT CONNECT ON DATABASE neondb TO typethock_app;
+   GRANT USAGE ON SCHEMA public TO typethock_app;
    GRANT SELECT, INSERT, UPDATE, DELETE
-     ON ALL TABLES IN SCHEMA public TO rill_app;
+     ON ALL TABLES IN SCHEMA public TO typethock_app;
    GRANT USAGE, SELECT
-     ON ALL SEQUENCES IN SCHEMA public TO rill_app;
+     ON ALL SEQUENCES IN SCHEMA public TO typethock_app;
    ALTER DEFAULT PRIVILEGES IN SCHEMA public
-     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO rill_app;
+     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO typethock_app;
    ALTER DEFAULT PRIVILEGES IN SCHEMA public
-     GRANT USAGE, SELECT ON SEQUENCES TO rill_app;
+     GRANT USAGE, SELECT ON SEQUENCES TO typethock_app;
    ```
 
    Replace `neondb` if the project uses a different database name.
@@ -102,14 +102,14 @@ The 0.5 GB plan cannot serve an unlimited number of accounts.
           rolbypassrls,
           pg_has_role(rolname, 'neon_superuser', 'member') AS neon_superuser
      FROM pg_roles
-    WHERE rolname = 'rill_app';
+    WHERE rolname = 'typethock_app';
    ```
 
    Every boolean privilege and `neon_superuser` value must be `false`.
 7. Record both role credentials in a password manager.
 
 The one Spring process holds both credentials: Flyway uses the Neon owner on
-the direct hostname, while Hikari uses `rill_app` on the pooled hostname. This
+the direct hostname, while Hikari uses `typethock_app` on the pooled hostname. This
 limits ordinary SQL access, although arbitrary server-code execution could
 still read both environment secrets. Production startup rejects database URLs
 that do not use certificate and hostname verification plus channel binding.
@@ -118,18 +118,18 @@ that do not use certificate and hostname verification plus channel binding.
 
 In Render, create a Blueprint from
 `https://github.com/Hendrizzzz/typewriting`. Render reads `render.yaml` and
-creates the `rill-typewriting-api` Docker web service on the free plan.
+creates the `typethock-typewriting-api` Docker web service on the free plan.
 
 Provide these secret values when the Blueprint asks:
 
 | Variable | Value |
 | --- | --- |
-| `RILL_DATABASE_URL` | Neon pooled JDBC URL |
-| `RILL_DATABASE_USERNAME` | `rill_app` |
-| `RILL_DATABASE_PASSWORD` | `rill_app` password |
-| `RILL_FLYWAY_URL` | Neon direct JDBC URL |
-| `RILL_FLYWAY_USERNAME` | Neon owner username |
-| `RILL_FLYWAY_PASSWORD` | Neon owner password |
+| `TYPETHOCK_DATABASE_URL` | Neon pooled JDBC URL |
+| `TYPETHOCK_DATABASE_USERNAME` | `typethock_app` |
+| `TYPETHOCK_DATABASE_PASSWORD` | `typethock_app` password |
+| `TYPETHOCK_FLYWAY_URL` | Neon direct JDBC URL |
+| `TYPETHOCK_FLYWAY_USERNAME` | Neon owner username |
+| `TYPETHOCK_FLYWAY_PASSWORD` | Neon owner password |
 
 The manifest fixes the production profile, secure cookies, small connection
 pool, Flyway connection retries, startup migrations, Singapore region,
@@ -143,16 +143,16 @@ runtime role's default access to Flyway metadata:
 ```sql
 REVOKE ALL PRIVILEGES
   ON TABLE public.flyway_schema_history
-  FROM rill_app;
+  FROM typethock_app;
 
 SELECT has_table_privilege(
-         'rill_app', 'public.flyway_schema_history', 'SELECT') AS can_select,
+         'typethock_app', 'public.flyway_schema_history', 'SELECT') AS can_select,
        has_table_privilege(
-         'rill_app', 'public.flyway_schema_history', 'INSERT') AS can_insert,
+         'typethock_app', 'public.flyway_schema_history', 'INSERT') AS can_insert,
        has_table_privilege(
-         'rill_app', 'public.flyway_schema_history', 'UPDATE') AS can_update,
+         'typethock_app', 'public.flyway_schema_history', 'UPDATE') AS can_update,
        has_table_privilege(
-         'rill_app', 'public.flyway_schema_history', 'DELETE') AS can_delete;
+         'typethock_app', 'public.flyway_schema_history', 'DELETE') AS can_delete;
 ```
 
 All four values must be `false`. Repeat that check after migration-related
@@ -167,7 +167,7 @@ free instance; an attacker can also consume a budget temporarily, so they are
 not a substitute for a source-aware distributed edge limiter.
 
 If Render assigns a hostname other than
-`rill-typewriting-api.onrender.com`, update the destination in
+`typethock-typewriting-api.onrender.com`, update the destination in
 `frontend/vercel.json` before deploying Vercel.
 
 ## 3. Create the Vercel frontend
@@ -222,7 +222,7 @@ Use the Vercel production hostname for all browser checks:
    `SameSite=Lax`, and `Path=/`.
 4. Register a disposable account, complete one test, open history, log out,
    log in, export the account, and delete the disposable account.
-5. Confirm `RILL_SESSION` is host-only and has `Secure`, `HttpOnly`,
+5. Confirm `TYPETHOCK_SESSION` is host-only and has `Secure`, `HttpOnly`,
    `SameSite=Lax`, and `Path=/`; it must belong to the Vercel hostname, not the
    Render hostname.
 6. Confirm static assets include a one-year immutable cache header.
@@ -250,8 +250,8 @@ actual public hostname.
   pg_dump \
     --dbname "postgresql://<owner>@<direct-host>/<database>?sslmode=verify-full&channel_binding=require" \
     --password --format custom \
-    --file rill-YYYYMMDD.dump
-  gpg --symmetric --cipher-algo AES256 rill-YYYYMMDD.dump
+    --file typethock-YYYYMMDD.dump
+  gpg --symmetric --cipher-algo AES256 typethock-YYYYMMDD.dump
   ```
 
   Move the encrypted file to storage outside Neon and remove the unencrypted
@@ -260,7 +260,7 @@ actual public hostname.
   ```text
   pg_restore \
     --dbname "postgresql://<owner>@<direct-branch-host>/<database>?sslmode=verify-full&channel_binding=require" \
-    --password --exit-on-error rill-YYYYMMDD.dump
+    --password --exit-on-error typethock-YYYYMMDD.dump
   ```
 
   Then compare Flyway history and representative row counts.

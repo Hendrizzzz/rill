@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 import {
   compareResults,
   runOracleBatch,
-  runRill,
+  runTypethock,
   type ParityTrace,
 } from "./support/parityHarness";
 
 describe("pinned Monkeytype full-field source oracle", () => {
-  it("matches Rill for one complete shared trace", () => {
+  it("matches TypeThock for one complete shared trace", () => {
     const sourceRoot = process.env.MONKEYTYPE_SOURCE_ROOT;
     if (!sourceRoot) {
       throw new Error("MONKEYTYPE_SOURCE_ROOT is required for the parity oracle.");
@@ -33,7 +33,7 @@ describe("pinned Monkeytype full-field source oracle", () => {
     const oracleResult = oracle.results[0];
     expect(oracleResult).toBeDefined();
     if (oracleResult === undefined) throw new Error("Oracle returned no result.");
-    expect(compareResults(trace, runRill(trace), oracleResult)).toEqual({
+    expect(compareResults(trace, runTypethock(trace), oracleResult)).toEqual({
       kind: "equal",
       differences: [],
     });

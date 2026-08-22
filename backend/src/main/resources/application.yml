@@ -1,16 +1,16 @@
 spring:
   application:
-    name: rill-backend
+    name: typethock-backend
   datasource:
-    url: ${RILL_DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/rill}
-    username: ${RILL_DATABASE_USERNAME:rill}
-    password: ${RILL_DATABASE_PASSWORD:rill-local-only}
+    url: ${TYPETHOCK_DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/typethock}
+    username: ${TYPETHOCK_DATABASE_USERNAME:typethock}
+    password: ${TYPETHOCK_DATABASE_PASSWORD:typethock-local-only}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 1
       connection-timeout: 5000
   flyway:
-    enabled: ${RILL_FLYWAY_ENABLED:true}
+    enabled: ${TYPETHOCK_FLYWAY_ENABLED:true}
     clean-disabled: true
   jpa:
     open-in-view: false
@@ -37,10 +37,10 @@ server:
     include-binding-errors: never
     include-stacktrace: never
 
-rill:
+typethock:
   cookie:
-    name: RILL_SESSION
-    secure: ${RILL_COOKIE_SECURE:false}
+    name: TYPETHOCK_SESSION
+    secure: ${TYPETHOCK_COOKIE_SECURE:false}
     max-age: 7d
     touch-interval: 15m
   allowed-origins: []
@@ -48,8 +48,8 @@ rill:
   max-sessions-per-account: 10
   max-results-per-hour: 120
   max-result-requests-per-minute: 240
-  max-auth-attempts-per-minute: ${RILL_MAX_AUTH_ATTEMPTS_PER_MINUTE:30}
-  max-registrations-per-hour: ${RILL_MAX_REGISTRATIONS_PER_HOUR:60}
+  max-auth-attempts-per-minute: ${TYPETHOCK_MAX_AUTH_ATTEMPTS_PER_MINUTE:30}
+  max-registrations-per-hour: ${TYPETHOCK_MAX_REGISTRATIONS_PER_HOUR:60}
 
 management:
   endpoints:

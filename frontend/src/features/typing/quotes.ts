@@ -6,7 +6,7 @@ export interface PracticeQuote {
   attribution: string;
   sourceUrl: string;
   theme: string;
-  rights: "public-domain" | "rill-original";
+  rights: "public-domain" | "typethock-original";
 }
 
 export const PRACTICE_QUOTES_V1: readonly PracticeQuote[] = [
@@ -690,9 +690,9 @@ export const PRACTICE_QUOTES_V2: readonly PracticeQuote[] = [
   ...PRACTICE_QUOTES_V1,
   ...ORIGINAL_QUOTES_V2.map((quote) => ({
     ...quote,
-    attribution: "Rill original",
+    attribution: "TypeThock original",
     sourceUrl: ORIGINAL_SOURCE_URL,
-    rights: "rill-original" as const,
+    rights: "typethock-original" as const,
   })),
 ];
 
